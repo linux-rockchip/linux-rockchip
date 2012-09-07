@@ -224,4 +224,7 @@ config RK_USB_DETECT_BY_OTG_BVALID
 	depends on USB_GADGET && (ARCH_RK2928 || ARCH_RK3188 || ARCH_RK3026)
 	default y
 
+config RK_CHECK_UACCESS
+	bool "Enable explicitly check __user pointer when {get,put}_user"
+
 endif
