@@ -103,6 +103,7 @@ static inline bool cpu_is_rk3188(void)
 
 static inline bool soc_is_rk3028(void) { return soc_is_rk3168m(); }
 static inline bool soc_is_rk3168(void) { return soc_is_rk3108(); }
+static inline bool soc_is_rk2928b(void) { return soc_is_rk3168m(); }
 
 #ifdef CONFIG_SOC_RK3000
 static inline bool soc_is_rk3000(void) { return true; }
