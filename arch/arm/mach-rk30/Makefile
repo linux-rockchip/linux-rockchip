@@ -44,6 +44,9 @@ board-$(CONFIG_MACH_RK30_PHONE_A22) += board-rk30-phone-a22.o board-rk30-phone-a
 obj-$(CONFIG_SOC_RK3028) += board.o
 board-$(CONFIG_MACH_RK3028_TB) += board-rk3028-tb.o
 
+obj-$(CONFIG_SOC_RK3028) += board.o
+board-$(CONFIG_MACH_RK3028_TB) += board-rk3028-tb.o
+
 obj-$(CONFIG_SOC_RK3066B) += board.o
 board-$(CONFIG_MACH_RK3066B_FPGA) += board-rk3066b-fpga.o
 board-$(CONFIG_MACH_RK3066B_SDK) += board-rk3066b-sdk.o
