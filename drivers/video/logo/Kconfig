@@ -106,4 +106,9 @@ config LOGO_LINUX_BMP_SUNSET
 	bool "Bmp logo sunset"
 	depends on  LOGO_LINUX_BMP
 	default n
+
+config LOGO_LINUX_BMP_ANDROID
+        bool "Bmp logo android"
+        depends on  LOGO_LINUX_BMP
+        default n
 endif # LOGO
