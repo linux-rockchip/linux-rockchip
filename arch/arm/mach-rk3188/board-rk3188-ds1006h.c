@@ -97,6 +97,22 @@ struct rk29_keys_platform_data rk29_keys_pdata = {
 	.chn	= 1,  //chn: 0-7, if do not use ADC,set 'chn' -1
 };
 
+/*
+     v1.0 : 	ignore
+     v1.1 :      rk610 lvds + rk610 codec + MT5931_MT6622 + light photoresistor + adc/cw2015
+     v1.2 :      lvds       + rt5631      + M500          + us5151              + adc
+*/
+#define DS1006H_V1_2_SUPPORT  1
+int get_harware_version()
+{
+    #if DS1006H_V1_2_SUPPORT
+        return 2;
+    #else
+        return 1;
+    #endif
+}
+EXPORT_SYMBOL_GPL(get_harware_version);
+
 #if defined(CONFIG_CT36X_TS)
 
 #define TOUCH_MODEL		363
@@ -205,7 +221,7 @@ static struct rk29_bl_info rk29_bl_info = {
         .min_brightness = 65,
         .max_brightness = 150,
         .brightness_mode =BRIGHTNESS_MODE_CONIC,
-	.pre_div = 40 * 1000,  // pwm output clk: 40k;
+	.pre_div = 30 * 1000,  // pwm output clk: 30k;
 	.pwm_id = PWM_ID,
 	.bl_ref = PWM_EFFECT_VALUE,
 	.io_init = rk29_backlight_io_init,
@@ -255,17 +271,44 @@ static struct sensor_platform_data lis3dh_info = {
 	.irq_enable = 1,
 	.poll_delay_ms = 30,
         .init_platform_hw = lis3dh_init_platform_hw,
-	.orientation = {-1, 0, 0, 0, 0, -1, 0, 1, 0},
+	.orientation = {-1, 0, 0, 0, 1, 0, 0, 0, -1},
 };
 #endif
 
-#if (defined(CONFIG_SENSORS_AK8963) || defined(CONFIG_SENSORS_AK8963_MODULE)) 
-static struct akm8963_platform_data akm_platform_data_8963 = { 
-                 .gpio_DRDY      = RK30_PIN3_PD7, 
-                 .gpio_RST        = 0, 
-                 .layout              = 3, 
-                 .outbit           = 1, 
-}; 
+#if defined (CONFIG_COMPASS_AK8963)
+static struct sensor_platform_data akm8963_info =
+{
+       .type = SENSOR_TYPE_COMPASS,
+       .irq_enable = 1,
+       .poll_delay_ms = 30,
+       .m_layout = 
+       {
+               {
+                       {0, 1, 0},
+                       {1, 0, 0},
+                       {0, 0, -1},
+               },
+
+               {
+                       {1, 0, 0},
+                       {0, 1, 0},
+                       {0, 0, 1},
+               },
+
+               {
+                       {0, -1, 0},
+                       {-1, 0, 0},
+                       {0, 0, -1},
+               },
+
+               {
+                       {1, 0, 0},
+                       {0, 1, 0},
+                       {0, 0, 1},
+               },
+       }
+};
+
 #endif
 
 #if defined(CONFIG_LS_PHOTORESISTOR)
@@ -387,10 +430,18 @@ static struct sensor_platform_data cm3217_info = {
 
 #ifdef CONFIG_FB_ROCKCHIP
 
+#if DS1006H_V1_2_SUPPORT
+#define LCD_CS_PIN         RK30_PIN0_PB0
+#else
 #define LCD_CS_PIN         INVALID_GPIO
+#endif
 #define LCD_CS_VALUE       GPIO_HIGH
 
+#if DS1006H_V1_2_SUPPORT
+#define LCD_EN_PIN         RK30_PIN0_PB1
+#else
 #define LCD_EN_PIN         RK30_PIN0_PB0
+#endif
 #define LCD_EN_VALUE       GPIO_LOW
 
 static int rk_fb_io_init(struct rk29_fb_setting_info *fb_setting)
@@ -1118,7 +1169,11 @@ struct platform_device rk_device_gps = {
 #if defined(CONFIG_MT5931_MT6622)
 static struct mt6622_platform_data mt6622_platdata = {
 		    .power_gpio         = { // BT_REG_ON
+		      #if DS1006H_V1_2_SUPPORT
+                    .io             = RK30_PIN3_PC7, // set io to INVALID_GPIO for disable it
+		      #else
 		    	.io             = RK30_PIN3_PD5, // set io to INVALID_GPIO for disable it
+		    	#endif
 			    .enable         = GPIO_HIGH,
 			    .iomux          = {
 				    .name       = NULL,
@@ -1126,7 +1181,11 @@ static struct mt6622_platform_data mt6622_platdata = {
 		    },
 
 		    .reset_gpio         = { // BT_RST
+		        #if DS1006H_V1_2_SUPPORT
+                    .io             = RK30_PIN3_PD1,
+		        #else
 		        .io             = RK30_PIN0_PD7,
+		        #endif
 		        .enable         = GPIO_HIGH,
 		        .iomux          = {
 		            .name       = NULL,
@@ -1134,7 +1193,11 @@ static struct mt6622_platform_data mt6622_platdata = {
 		    },
 
 		    .irq_gpio           = {
+		          #if DS1006H_V1_2_SUPPORT
+                       .io             = RK30_PIN0_PA5,
+		          #else
 			    .io             = RK30_PIN3_PD2,
+			    #endif
 			    .enable         = GPIO_HIGH,
 			    .iomux          = {
 				    .name       = NULL,
@@ -1225,13 +1288,6 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 		.platform_data = &mma8452_info,
 	},
 #endif
-#if defined (CONFIG_LS_US5151)
-        {    
-                .type           = "us5151",
-                .addr           = 0x10,
-                .flags          = 0, 
-        },   
-#endif
 
 #if defined (CONFIG_GS_LIS3DH)
 	{
@@ -1242,15 +1298,16 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 		.platform_data = &lis3dh_info,
 	},
 #endif
-#if defined (CONFIG_SENSORS_AK8963)
-        {
-                .type             = "akm8963",
-                .addr           = 0x0d,
-                .flags           = I2C_CLIENT_WAKE,
-               .irq             = RK30_PIN3_PD7,
-              .platform_data = &akm_platform_data_8963,
-        },
+#if defined (CONFIG_COMPASS_AK8963)
+	{
+		.type          = "ak8963",
+		.addr          = 0x0d,
+		.flags         = 0,
+		.irq           = RK30_PIN3_PD7,	
+		.platform_data = &akm8963_info,
+	},
 #endif
+
 #if defined (CONFIG_LS_PHOTORESISTOR)
 	{
 		.type           = "ls_photoresistor",
@@ -1292,13 +1349,6 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 		.addr          = 0x40,
 		.flags         = 0,
 	},
-#endif
-#if defined (CONFIG_SND_SOC_RT5631)
-        {
-                .type                   = "rt5631",
-                .addr                   = 0x1a,
-                .flags                  = 0,
-        },
 #endif
 };
 #endif
@@ -1712,6 +1762,14 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.platform_data = &cm3217_info,
 	},
 #endif
+#if defined (CONFIG_LS_US5151)
+        {    
+                .type           = "us5151",
+                .addr           = 0x10,
+                .flags          = 0, 
+        },   
+#endif
+
 #if defined(CONFIG_HDMI_CAT66121)
 	{
 		.type		= "cat66121_hdmi",
@@ -1761,6 +1819,14 @@ static struct i2c_board_info __initdata i2c4_info[] = {
 			.platform_data		= &rk610_codec_pdata,			
 		},
 #endif
+#endif
+
+#if defined (CONFIG_SND_SOC_RT5631)
+        {
+                .type                   = "rt5631",
+                .addr                   = 0x1a,
+                .flags                  = 0,
+        },
 #endif
 
 };
@@ -1856,7 +1922,7 @@ static void __init machine_rk30_board_init(void)
 	spi_register_board_info(board_spi_devices, ARRAY_SIZE(board_spi_devices));
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	rk_platform_add_display_devices();
-	board_usb_detect_init(RK30_PIN0_PA7);
+	//board_usb_detect_init(RK30_PIN0_PA7);
 
 #ifdef CONFIG_WIFI_CONTROL_FUNC
 	rk29sdk_wifi_bt_gpio_control_init();
@@ -1912,53 +1978,86 @@ static void __init rk30_reserve(void)
 #endif
 	board_mem_reserved();
 }
-
+/******************************** arm dvfs frequency volt table **********************************/
 /**
  * dvfs_cpu_logic_table: table for arm and logic dvfs 
  * @frequency	: arm frequency
  * @cpu_volt	: arm voltage depend on frequency
- * @logic_volt	: logic voltage arm requests depend on frequency
- * comments	: min arm/logic voltage
  */
-static struct cpufreq_frequency_table dvfs_arm_table[] = {
-#if 0
-	{.frequency = 312 * 1000,       .index = 850 * 1000},
-	{.frequency = 504 * 1000,       .index = 900 * 1000},
-	{.frequency = 816 * 1000,       .index = 950 * 1000},
-	{.frequency = 1008 * 1000,      .index = 1025 * 1000},
-	{.frequency = 1200 * 1000,      .index = 1100 * 1000},
-	{.frequency = 1416 * 1000,      .index = 1200 * 1000},
-	//{.frequency = 1608 * 1000,      .index = 1300 * 1000},
-#else
-        {.frequency = 312 * 1000,       .index = 800 * 1000},
-        {.frequency = 504 * 1000,       .index = 850 * 1000},
+
+//sdk
+static struct cpufreq_frequency_table dvfs_arm_table_volt_level0[] = {
+        {.frequency = 312 * 1000,       .index = 850 * 1000},
+        {.frequency = 504 * 1000,       .index = 900 * 1000},
         {.frequency = 816 * 1000,       .index = 950 * 1000},
-        {.frequency = 1008 * 1000,      .index = 1000 * 1000},
-        {.frequency = 1200 * 1000,      .index = 1075 * 1000},
-        {.frequency = 1416 * 1000,      .index = 1175 * 1000},
-        {.frequency = 1608 * 1000,      .index = 1275 * 1000},
+        {.frequency = 1008 * 1000,      .index = 1025 * 1000},
+        {.frequency = 1200 * 1000,      .index = 1100 * 1000},
+        {.frequency = 1416 * 1000,      .index = 1200 * 1000},
+        {.frequency = 1608 * 1000,      .index = 1300 * 1000},
+        {.frequency = CPUFREQ_TABLE_END},
+};
+//default
+static struct cpufreq_frequency_table dvfs_arm_table_volt_level1[] = {
+        {.frequency = 312 * 1000,       .index = 875 * 1000},
+        {.frequency = 504 * 1000,       .index = 925 * 1000},
+        {.frequency = 816 * 1000,       .index = 975 * 1000},
+        {.frequency = 1008 * 1000,      .index = 1075 * 1000},
+        {.frequency = 1200 * 1000,      .index = 1150 * 1000},
+        {.frequency = 1416 * 1000,      .index = 1250 * 1000},
+        {.frequency = 1608 * 1000,      .index = 1350 * 1000},
+        {.frequency = CPUFREQ_TABLE_END},
+};
+// ds1006h 10'
+static struct cpufreq_frequency_table dvfs_arm_table_volt_level2[] = {
+        {.frequency = 312 * 1000,       .index = 900 * 1000},
+        {.frequency = 504 * 1000,       .index = 925 * 1000},
+        {.frequency = 816 * 1000,       .index = 1000 * 1000},
+        {.frequency = 1008 * 1000,      .index = 1075 * 1000},
+        {.frequency = 1200 * 1000,      .index = 1200 * 1000},
+        {.frequency = 1416 * 1000,      .index = 1250 * 1000},
+        {.frequency = 1608 * 1000,      .index = 1350 * 1000},
+        {.frequency = CPUFREQ_TABLE_END},
+};
+//if you board is good for volt quality,select dvfs_arm_table_volt_level0
+#define dvfs_arm_table dvfs_arm_table_volt_level2
 
-#endif
-	{.frequency = CPUFREQ_TABLE_END},
+/******************************** gpu dvfs frequency volt table **********************************/
+//sdk
+static struct cpufreq_frequency_table dvfs_gpu_table_volt_level0[] = {	
+        {.frequency = 133 * 1000,       .index = 975 * 1000},//the mininum rate is limited 133M for rk3188
+	{.frequency = 200 * 1000,       .index = 975 * 1000},
+	{.frequency = 266 * 1000,       .index = 1000 * 1000},
+	{.frequency = 300 * 1000,       .index = 1050 * 1000},
+	{.frequency = 400 * 1000,       .index = 1100 * 1000},
+	{.frequency = 600 * 1000,       .index = 1200 * 1000},
+        {.frequency = CPUFREQ_TABLE_END},
+};
+//ds1006h 10'
+static struct cpufreq_frequency_table dvfs_gpu_table_volt_level1[] = {	
+       {.frequency = 133 * 1000,       .index = 975 * 1000},
+	{.frequency = 200 * 1000,       .index = 1000 * 1000},
+	{.frequency = 266 * 1000,       .index = 1025 * 1000},
+	{.frequency = 300 * 1000,       .index = 1050 * 1000},
+	{.frequency = 400 * 1000,       .index = 1100 * 1000},
+	{.frequency = 600 * 1000,       .index = 1250 * 1000},
+        {.frequency = CPUFREQ_TABLE_END},
 };
 
-static struct cpufreq_frequency_table dvfs_gpu_table[] = {
-	{.frequency = 100 * 1000,       .index = 950 * 1000},
-       {.frequency = 150 * 1000,       .index = 975 * 1000},
-       {.frequency = 200 * 1000,       .index = 975 * 1000},  
-       {.frequency = 240 * 1000,       .index = 1000 * 1000},  
-       {.frequency = 300 * 1000,       .index = 1050 * 1000},  
-       {.frequency = 400 * 1000,       .index = 1100 * 1000},
-       {.frequency = 600 * 1000,       .index = 1200 * 1000},
-	{.frequency = CPUFREQ_TABLE_END},
-};
+#define dvfs_gpu_table dvfs_gpu_table_volt_level1
 
-static struct cpufreq_frequency_table dvfs_ddr_table[] = {
-	//{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 950 * 1000},
+/******************************** ddr dvfs frequency volt table **********************************/
+static struct cpufreq_frequency_table dvfs_ddr_table_volt_level0[] = {
+	{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 950 * 1000},
 	{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index = 1000 * 1000},
-	{.frequency = 400 * 1000 + DDR_FREQ_NORMAL,     .index = 1100 * 1000},
+	{.frequency = 396 * 1000 + DDR_FREQ_NORMAL,     .index = 1100 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
+
+#define dvfs_ddr_table dvfs_ddr_table_volt_level0
+
+/******************************** arm dvfs frequency volt table end **********************************/
+
+
 
 //#define DVFS_CPU_TABLE_SIZE	(ARRAY_SIZE(dvfs_cpu_logic_table))
 //static struct cpufreq_frequency_table cpu_dvfs_table[DVFS_CPU_TABLE_SIZE];
