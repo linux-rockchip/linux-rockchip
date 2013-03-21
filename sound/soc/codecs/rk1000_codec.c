@@ -1071,7 +1071,7 @@ static int rk1000_codec_proc_init(void)
 #endif
 
 #if 1
-int reg_send_data(struct i2c_client *client, const char start_reg,
+static int reg_send_data(struct i2c_client *client, const char start_reg,
 				const char *buf, int count, unsigned int scl_rate)
 {
 	int ret;
