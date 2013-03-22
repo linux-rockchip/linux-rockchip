@@ -1,0 +1,12 @@
+#
+# efuse configuration
+#
+
+
+menu "EFUSE support"
+ config RK_EFUSE
+	bool "EFUSE support"
+	help
+	  if you want use efuse function , pls enable it
+endmenu
+

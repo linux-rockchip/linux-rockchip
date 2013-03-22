@@ -132,3 +132,4 @@ obj-y				+= cir/
 obj-$(CONFIG_ARCH_RK29)		+= dbg/
 obj-$(CONFIG_MTK_COMBO)		+= mtk_wcn_combo/
 obj-$(CONFIG_MT5931_MT6622)     += mtk_wcn_bt/
+obj-y		+= efuse/
