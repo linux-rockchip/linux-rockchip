@@ -340,7 +340,7 @@ static int rk29_backlight_pwm_resume(void)
 	gpio_free(pwm_gpio);
 	iomux_set(PWM_MODE);
 #ifdef  LCD_DISP_ON_PIN
-	msleep(230);
+	msleep(130);
 	gpio_direction_output(BL_EN_PIN, 1);
 	gpio_set_value(BL_EN_PIN, BL_EN_VALUE);
 #endif
@@ -2051,14 +2051,14 @@ static struct cpufreq_frequency_table dvfs_gpu_table[] = {
 	{.frequency = 100 * 1000,	.index = 1000 * 1000},
 	{.frequency = 200 * 1000,	.index = 1000 * 1000},
 	{.frequency = 266 * 1000,	.index = 1050 * 1000},
-	{.frequency = 300 * 1000,	.index = 1050 * 1000},
-	{.frequency = 400 * 1000,	.index = 1100 * 1000},
+	//{.frequency = 300 * 1000,	.index = 1050 * 1000},
+	{.frequency = 400 * 1000,	.index = 1125 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
 
 static struct cpufreq_frequency_table dvfs_ddr_table[] = {
-	{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 950 * 1000},
-	{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index =  1000 * 1000},
+	{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 1000 * 1000},
+	{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index = 1050 * 1000},
 	{.frequency = 400 * 1000 + DDR_FREQ_NORMAL,     .index = 1100 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
