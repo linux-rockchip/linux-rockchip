@@ -1732,18 +1732,6 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 		.platform_data = &proximity_stk3171_info,
 	},
 #endif
-#if defined (CONFIG_SND_SOC_RK1000)
-	{
-		.type          = "rk1000_i2c_codec",
-		.addr          = 0x60,
-		.flags         = 0,
-	},
-	{
-		.type          = "rk1000_control",
-		.addr          = 0x40,
-		.flags         = 0,
-	},
-#endif
 #if defined (CONFIG_SND_SOC_RT5631)
         {
                 .type                   = "rt5631",
