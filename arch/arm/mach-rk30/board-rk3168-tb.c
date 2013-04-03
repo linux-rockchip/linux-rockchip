@@ -56,6 +56,11 @@
 #include <linux/mfd/rk610_core.h>
 #endif
 
+#if defined(CONFIG_MFD_RK616)
+#include <linux/mfd/rk616.h>
+#endif
+
+
 #if defined(CONFIG_RK_HDMI)
 	#include "../../../drivers/video/rockchip/hdmi/rk_hdmi.h"
 #endif
@@ -547,7 +552,7 @@ struct rk29fb_info lcdc0_screen_info = {
 #if defined(CONFIG_LCDC1_RK3066B) || defined(CONFIG_LCDC1_RK3188)
 struct rk29fb_info lcdc1_screen_info = {
 	#if defined(CONFIG_RK_HDMI)
-	.prop		= EXTEND,	//extend display device
+	.prop	   = EXTEND,	//extend display device
 	.lcd_info  = NULL,
 	.set_screen_info = hdmi_init_lcdc,
 	#endif
@@ -686,6 +691,73 @@ static struct rk610_ctl_platform_data rk610_ctl_pdata = {
 	.rk610_power_on_init = rk610_power_on_init,
 };
 #endif
+
+#if defined(CONFIG_MFD_RK616)
+#define RK616_RST_PIN 			RK30_PIN3_PB2
+#define RK616_PWREN_PIN			RK30_PIN0_PA3
+#define RK616_SCL_RATE			(100*1000)   //i2c scl rate
+static int rk616_power_on_init(void)
+{
+	int ret;
+
+	if(RK616_PWREN_PIN != INVALID_GPIO)
+	{
+		ret = gpio_request(RK616_PWREN_PIN, "rk616 pwren");
+		if (ret)
+		{
+			printk(KERN_ERR "rk616 pwren gpio request fail\n");
+		}
+		else 
+		{
+			gpio_direction_output(RK616_PWREN_PIN,GPIO_HIGH);
+		}
+	}
+	
+	if(RK616_RST_PIN != INVALID_GPIO)
+	{
+		ret = gpio_request(RK616_RST_PIN, "rk616 reset");
+		if (ret)
+		{
+			printk(KERN_ERR "rk616 reset gpio request fail\n");
+		}
+		else 
+		{
+			gpio_direction_output(RK616_RST_PIN, GPIO_HIGH);
+			msleep(2);
+			gpio_direction_output(RK616_RST_PIN, GPIO_LOW);
+			msleep(10);
+	    		gpio_set_value(RK616_RST_PIN, GPIO_HIGH);
+		}
+	}
+
+	return 0;
+	
+}
+
+
+static int rk616_power_deinit(void)
+{
+	gpio_set_value(RK616_PWREN_PIN,GPIO_LOW);
+	gpio_set_value(RK616_RST_PIN,GPIO_LOW);
+	gpio_free(RK616_PWREN_PIN);
+	gpio_free(RK616_RST_PIN);
+	
+	return 0;
+}
+
+static struct rk616_platform_data rk616_pdata = {
+	.power_init = rk616_power_on_init,
+	.power_deinit = rk616_power_deinit,
+	.scl_rate   = RK616_SCL_RATE,
+	.lcd0_func = INPUT,             //port lcd0 as input
+	.lcd1_func = INPUT,             //port lcd1 as input
+	.lvds_ch_nr = 1,		//the number of used lvds channel  
+	.hdmi_irq = RK30_PIN2_PD6,
+	.spk_ctl_gpio = RK30_PIN2_PD7,
+	.hp_ctl_gpio = RK30_PIN2_PD7,
+};
+#endif
+
 
 #ifdef CONFIG_SND_SOC_RK610
 static int rk610_codec_io_init(void)
@@ -2045,6 +2117,15 @@ static struct i2c_board_info __initdata i2c3_info[] = {
 
 #ifdef CONFIG_I2C4_RK30
 static struct i2c_board_info __initdata i2c4_info[] = {
+#if defined (CONFIG_MFD_RK616)
+	{
+		.type	       = "rk616",
+		.addr	       = 0x50,
+		.flags	       = 0,
+		.platform_data = &rk616_pdata,
+	},
+#endif
+
 };
 #endif
 
