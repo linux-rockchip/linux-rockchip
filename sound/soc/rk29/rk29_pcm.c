@@ -65,7 +65,7 @@ static const struct snd_pcm_hardware rockchip_pcm_hardware = {
 #ifdef CONFIG_RK_SRAM_DMA
 	.period_bytes_max	= 8*1024,
 #else
-	.period_bytes_max	= 2048*4,///PAGE_SIZE*2,
+	.period_bytes_max	= 1024*6*2,//2048*4,///PAGE_SIZE*2,
 #endif
 	.periods_min		= 3,///2,
 	.periods_max		= 128,
@@ -115,8 +115,8 @@ static void rockchip_pcm_enqueue(struct snd_pcm_substream *substream)
 		limit = prtd->dma_limit;
 
 	if (DMA_INFIN_LOOP()) {
-		if(prtd->dma_period % prtd->params->dma_size*16){
-			WARN_ON(1);
+		if(prtd->dma_period % (prtd->params->dma_size*16)){
+			printk("dma_period(%d) is not an integer multiple of dma_size(%d)",prtd->dma_period,prtd->params->dma_size*16);
 			rk29_dma_config(prtd->params->channel,
 								prtd->params->dma_size, 1);
 		}							
@@ -284,6 +284,8 @@ static int rockchip_pcm_hw_params(struct snd_pcm_substream *substream,
 	prtd->curr = NULL;
 	prtd->next = NULL;
 	prtd->end = NULL;
+	//printk("dma:: limit: %d, period: %d, dma_start: %d, dma_end %d, dma_bytes: %d",
+	//	prtd->dma_limit, prtd->dma_period, prtd->dma_start, prtd->dma_end, totbytes);
 	spin_unlock_irq(&prtd->lock);
 	return ret;
 }
