@@ -3,3 +3,4 @@ obj-$(CONFIG_RGA_RK30) += rga/
 obj-$(CONFIG_RK_HDMI) += hdmi/
 obj-$(CONFIG_RK_LVDS) += lvds/
 obj-$(CONFIG_RK_TVENCODER) += tvencoder/
+obj-$(CONFIG_RK_VGA) += vga/

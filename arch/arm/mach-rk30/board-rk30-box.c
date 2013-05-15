@@ -1619,6 +1619,17 @@ static struct rkdisplay_platform_data tv_data = {
 };
 #endif
 
+#if defined (CONFIG_RK_VGA)
+static struct rkdisplay_platform_data vga_data = {
+	.property 		= DISPLAY_MAIN,
+	.video_source 	= DISPLAY_SOURCE_LCDC0,
+	.io_pwr_pin 	= INVALID_GPIO,
+	.io_reset_pin 	= INVALID_GPIO,
+	.io_switch_pin	= RK30_PIN0_PC7,
+};
+#endif
+/*$_rbox_$_modify_$_zhengyang_end$_20120704_$*/
+
 static int rk_platform_add_display_devices(void)
 {
 	struct platform_device *fb = NULL;  //fb
@@ -1879,6 +1890,14 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.flags          = 0,
     },
 #endif
+#endif
+#if defined (CONFIG_RK_VGA)
+	{
+		.type           = "vga_i2c",
+		.addr           = 0x50,
+		.flags          = 0,
+		.platform_data = &vga_data,
+	},
 #endif
 };
 #endif
