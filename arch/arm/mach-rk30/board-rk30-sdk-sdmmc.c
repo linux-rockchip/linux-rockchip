@@ -236,7 +236,7 @@
     
     #elif defined(CONFIG_MT5931) || defined(CONFIG_MT5931_MT6622)
     //power
-    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PC6 //RK30_PIN3_PD0       // huweiguo          
+    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN6_PA7 //RK30_PIN3_PD0       // huweiguo          
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_HIGH                   
     //reset
     #define RK30SDK_WIFI_GPIO_RESET_N               RK30_PIN3_PD1       // huweiguo 

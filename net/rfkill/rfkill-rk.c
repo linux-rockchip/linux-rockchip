@@ -115,12 +115,18 @@ static const char bt_name[] =
     #else
         "rk903"
     #endif
-#elif defined(CONFIG_AP6330)
-        "rk903_26M"
 #elif defined(CONFIG_BCM4329)
         "bcm4329"
 #elif defined(CONFIG_MV8787)
         "mv8787"
+#elif defined(CONFIG_AP6210)
+        "ap6210"
+#elif defined(CONFIG_AP6330)
+		"ap6330"
+#elif defined(CONFIG_AP6476)
+		"ap6476"
+#elif defined(CONFIG_AP6493)
+		"ap6493"
 #else
         "bt_default"
 #endif
@@ -156,6 +162,8 @@ static int rfkill_rk_setup_gpio(struct rfkill_rk_gpio* gpio, int mux, const char
 	if (gpio_is_valid(gpio->io)) {
         int ret=0;
         sprintf(gpio->name, "%s_%s", prefix, name);
+        
+    
 		ret = gpio_request(gpio->io, gpio->name);
 		if (ret) {
 			LOG("Failed to get %s gpio.\n", gpio->name);
@@ -282,6 +290,7 @@ static int rfkill_rk_set_power(void *data, bool blocked)
 	struct rfkill_rk_data *rfkill = data;
     struct rfkill_rk_gpio *poweron = &rfkill->pdata->poweron_gpio;
     struct rfkill_rk_gpio *reset = &rfkill->pdata->reset_gpio;
+    struct rfkill_rk_gpio* rts = &rfkill->pdata->rts_gpio;
 
     DBG("Enter %s\n", __func__);
 
@@ -302,6 +311,27 @@ static int rfkill_rk_set_power(void *data, bool blocked)
 			gpio_direction_output(reset->io, !reset->enable);
             msleep(20);
         }
+
+#if defined(CONFIG_AP6210)
+        if (gpio_is_valid(rts->io))
+        {
+            if (rts->iomux.name)
+            {
+                rk_mux_api_set(rts->iomux.name, rts->iomux.fgpio);
+            }
+            LOG("ENABLE UART_RTS\n");
+            gpio_direction_output(rts->io, rts->enable);
+
+            msleep(100);
+
+            LOG("DISABLE UART_RTS\n");
+            gpio_direction_output(rts->io, !rts->enable);
+            if (rts->iomux.name)
+            {
+                rk_mux_api_set(rts->iomux.name, rts->iomux.fmux);
+            }
+        }
+#endif
 
     	LOG("bt turn on power\n");
 	} else {

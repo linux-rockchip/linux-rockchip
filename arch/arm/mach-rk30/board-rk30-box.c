@@ -99,12 +99,15 @@
 
 #include <plat/key.h>
 static struct rk29_keys_button key_button[] = {
+
+/*	
 	{
 		.desc	= "vol-",
 		.code	= KEY_VOLUMEDOWN,
 		.gpio	= RK30_PIN4_PC5,
 		.active_low = PRESS_LEV_LOW,
 	},
+*/
 	{
 		.desc	= "play",
 		.code	= KEY_POWER,
@@ -1497,28 +1500,31 @@ static struct platform_device device_rfkill_rk = {
 #endif
 
 #if defined(CONFIG_MT5931_MT6622)
+
 static struct mt6622_platform_data mt6622_platdata = {
     .power_gpio         = { // BT_REG_ON
-        .io             = RK30_PIN3_PC7, // set io to INVALID_GPIO for disable it
+        .io             = RK30_PIN0_PC6, // set io to INVALID_GPIO for disable it
         .enable         = GPIO_HIGH,
         .iomux          = {
-            .name       = NULL,
+            .name       = GPIO0C6_TRACECLK_SMCADDR2_NAME,
+            .fgpio      = GPIO0C_GPIO0C6,
         },
     },
 
     .reset_gpio         = { // BT_RST
-        .io             = RK30_PIN3_PD1,
+        .io             = RK30_PIN4_PC5,
         .enable         = GPIO_LOW,
         .iomux          = {
-            .name       = NULL,
+            .name       = GPIO4C5_SMCDATA5_TRACEDATA5_NAME,
+            .fgpio      = GPIO4C_GPIO4C5,
         },
     },
-
     .irq_gpio           = {
-        .io             = RK30_PIN6_PA7,
+        .io             = RK30_PIN3_PD2,
         .enable         = GPIO_HIGH,
         .iomux          = {
-            .name       = NULL,
+            .name       = GPIO3D2_SDMMC1INTN_NAME,
+            .fgpio      = GPIO3D_GPIO3D2,
         },
     }
 };
@@ -2009,6 +2015,9 @@ static void __init machine_rk30_board_init(void)
 
 #if defined(CONFIG_MT6620)
     clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 48*1000000);
+#endif
+#if defined(CONFIG_MT5931_MT6622)
+    clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 24*1000000);
 #endif
 }
 

@@ -54,7 +54,7 @@
 #include <net/bluetooth/hci_core.h>
 #include <linux/gpio.h>
 #include <mach/gpio.h>
-
+#include <mach/iomux.h>//hzb
 #include "bt_hwctl.h"
 
 
@@ -235,7 +235,9 @@ static int mt6622_probe(struct platform_device *pdev)
     struct mt6622_platform_data *pdata = pdev->dev.platform_data;
     
     printk("mt6622_probe.\n");
-    
+    rk30_mux_api_set(GPIO0C6_TRACECLK_SMCADDR2_NAME, GPIO0C_GPIO0C6);
+    rk30_mux_api_set(GPIO4C5_SMCDATA5_TRACEDATA5_NAME, GPIO4C_GPIO4C5);
+    rk30_mux_api_set(GPIO3D2_SDMMC1INTN_NAME, GPIO3D_GPIO3D2);
     mt6622_pdata = pdata;
     if(pdata == NULL) {
     	printk("mt6622_probe failed.\n");
