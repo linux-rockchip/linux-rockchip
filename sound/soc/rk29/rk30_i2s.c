@@ -37,6 +37,7 @@
 
 #include "rk29_pcm.h"
 #include "rk29_i2s.h"
+#include "../../../drivers/video/rockchip/hdmi/rk_hdmi.h"
 
 
 #if 0
@@ -154,6 +155,8 @@ static void rockchip_snd_txctrl(struct rk29_i2s_info *i2s, int on, bool stopI2S)
 				writel(xfer, &(pheadi2s->I2S_XFER));
 				
 				i2s0_clk_exit(clk);
+
+				writel(0x1,&(pheadi2s->I2S_CLR));
 			}
 
 			//after stop rx & tx clk, reset i2s
@@ -293,6 +296,23 @@ static int rockchip_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
 	return 0;
 }
 
+static int SR2FS(int samplerate){
+
+	switch(samplerate){
+        case 32000:return HDMI_AUDIO_FS_32000;
+        case 44100:return HDMI_AUDIO_FS_44100;
+        case 48000:return HDMI_AUDIO_FS_48000;
+        case 88200:return HDMI_AUDIO_FS_88200;
+        case 96000:return HDMI_AUDIO_FS_96000;
+        case 176400:return HDMI_AUDIO_FS_176400;
+        case 192000:return HDMI_AUDIO_FS_192000;
+
+        default:{
+            printk(KERN_ERR "SR2FS %d unsupport.", samplerate);
+            return HDMI_AUDIO_FS_44100;
+        }
+    }
+}
 static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params, struct snd_soc_dai *socdai)
 {
@@ -300,7 +320,8 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 	u32 iismod;
 	u32 dmarc;
 	u32 iis_ckr_value;//clock generation register
-		
+	struct hdmi_audio hdmi_audio_cfg;
+	
 	I2S_DBG("Enter %s, %d >>>>>>>>>>>\n", __func__, __LINE__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -329,6 +350,31 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 			iismod |= I2S_DATA_WIDTH(31);
 			break;
 	}
+    iismod &= ~CHANNLE_4_EN;
+	switch (params_channels(params)) {
+		case 8:
+			iismod |= CHANNLE_4_EN;
+			break;
+		case 6:
+			iismod |= CHANNEL_3_EN;
+			break;
+		case 4:
+			iismod |= CHANNEL_2_EN;
+			break;
+		case 2:
+			iismod |= CHANNEL_1_EN;
+			break;
+		default:
+			I2S_DBG("%d channels not supported\n", params_channels(params));
+			return -EINVAL;
+	}
+    //set hdmi codec params
+    
+    hdmi_audio_cfg.channel = params_channels(params);
+    hdmi_audio_cfg.rate = SR2FS(params_rate(params));
+    hdmi_audio_cfg.type = HDMI_AUDIO_LPCM;
+    hdmi_audio_cfg.word_length = HDMI_AUDIO_WORD_LENGTH_16bit;
+	hdmi_config_audio(&hdmi_audio_cfg);
 	
 	iis_ckr_value = readl(&(pheadi2s->I2S_CKR));
 	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE) 
@@ -391,8 +437,10 @@ static int rockchip_i2s_trigger(struct snd_pcm_substream *substream, int cmd, st
         case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
                 if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 	                rockchip_snd_rxctrl(i2s, 0, stopI2S);
-                else
+                else{
+                    stopI2S = true;
 	                rockchip_snd_txctrl(i2s, 0, stopI2S);
+                }
                 break;
         default:
                 ret = -EINVAL;
@@ -814,6 +862,10 @@ static int proc_i2s_show(struct seq_file *s, void *v)
 	printk("I2S_INTCR = 0x%08X\n", readl(&(pheadi2s->I2S_INTCR)));
 	printk("I2S_INTSR = 0x%08X\n", readl(&(pheadi2s->I2S_INTSR)));
 	printk("I2S_XFER = 0x%08X\n", readl(&(pheadi2s->I2S_XFER)));
+    printk("I2S_FIFOLR = 0x%08X\n", readl(&(pheadi2s->I2S_FIFOLR)));
+    printk("I2S_CLR = 0x%08X\n", readl(&(pheadi2s->I2S_CLR)));
+    printk("I2S_TXDR = 0x%08X\n", readl(&(pheadi2s->I2S_TXDR)));
+    printk("I2S_RXDR = 0x%08X\n", readl(&(pheadi2s->I2S_RXDR)));
 
 	printk("========Show I2S reg========\n");
 	return 0;
