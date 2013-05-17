@@ -1627,7 +1627,11 @@ static struct rkdisplay_platform_data tv_data = {
 
 #if defined (CONFIG_RK_VGA)
 static struct rkdisplay_platform_data vga_data = {
+	#ifdef CONFIG_HDMI_RK30
+	.property 		= DISPLAY_AUX,
+	#else
 	.property 		= DISPLAY_MAIN,
+	#endif
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 	.io_pwr_pin 	= INVALID_GPIO,
 	.io_reset_pin 	= INVALID_GPIO,
