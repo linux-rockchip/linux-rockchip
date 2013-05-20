@@ -302,7 +302,7 @@ int rk616_pll_set_rate(struct mfd_rk616 *rk616,int id,u32 cfg_val,u32 frac)
 		if(((rk616->pll0_rate >> 32) == cfg_val) && 
 			((rk616->pll0_rate & 0xffffffff) == frac))
 		{
-			//return 0;
+			return 0;
 		}
 		rk616->pll0_rate = ((u64)cfg_val << 32) | frac;
 		offset = 0;
@@ -312,7 +312,7 @@ int rk616_pll_set_rate(struct mfd_rk616 *rk616,int id,u32 cfg_val,u32 frac)
 		if(((rk616->pll1_rate >> 32) == cfg_val) && 
 			((rk616->pll1_rate & 0xffffffff) == frac))
 		{
-			// return 0;
+			 return 0;
 		}
 		rk616->pll1_rate = ((u64)cfg_val << 32) | frac;
 		offset = 0x0c;
