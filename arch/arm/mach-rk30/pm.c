@@ -706,6 +706,7 @@ static int rk30_pm_enter(suspend_state_t state)
 	cpll_con3 = cru_readl(PLL_CONS(CPLL_ID, 3));
 	power_off_pll(CPLL_ID);
 
+#ifndef CONFIG_RK_IR_WAKEUP  
 	//apll
 	clk_sel0 = cru_readl(CRU_CLKSELS_CON(0));
 	clk_sel1 = cru_readl(CRU_CLKSELS_CON(1));
@@ -726,6 +727,8 @@ static int rk30_pm_enter(suspend_state_t state)
 		   | AHB2APB_W_MSK | AHB2APB_11
 		   , CRU_CLKSELS_CON(1));
 	power_off_pll(APLL_ID);
+#endif
+
 
 	//gpll
 	cru_writel(PLL_MODE_SLOW(GPLL_ID), CRU_MODE_CON);
@@ -759,11 +762,15 @@ static int rk30_pm_enter(suspend_state_t state)
 	power_on_pll(GPLL_ID);
 	cru_writel((PLL_MODE_MSK(GPLL_ID) << 16) | (PLL_MODE_MSK(GPLL_ID) & cru_mode_con), CRU_MODE_CON);
 
+
+#ifndef CONFIG_RK_IR_WAKEUP       
 	//apll
 	cru_writel(0xffff0000 | clk_sel1, CRU_CLKSELS_CON(1));
 	cru_writel(0xffff0000 | clk_sel0, CRU_CLKSELS_CON(0));
 	power_on_pll(APLL_ID);
 	cru_writel((PLL_MODE_MSK(APLL_ID) << 16) | (PLL_MODE_MSK(APLL_ID) & cru_mode_con), CRU_MODE_CON);
+#endif
+
 
 	//cpll
 	if (((cpll_con3 & PLL_PWR_DN_MSK) == PLL_PWR_ON) &&
