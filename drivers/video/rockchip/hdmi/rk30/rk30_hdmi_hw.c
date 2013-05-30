@@ -716,9 +716,9 @@ irqreturn_t hdmi_irq(int irq, void *priv)
 		interrupt3 = HDMIRdReg(INTR_STATUS3);
 		interrupt4 = HDMIRdReg(INTR_STATUS4);
 		HDMIWrReg(INTR_STATUS1, interrupt1);
-		HDMIWrReg(INTR_STATUS2, interrupt2);
-		HDMIWrReg(INTR_STATUS3, interrupt3);
-		HDMIWrReg(INTR_STATUS4, interrupt4);
+//		HDMIWrReg(INTR_STATUS2, interrupt2);
+//		HDMIWrReg(INTR_STATUS3, interrupt3);
+//		HDMIWrReg(INTR_STATUS4, interrupt4);
 #if 0
 		RK30DBG( "[%s] interrupt1 %02x interrupt2 %02x interrupt3 %02x interrupt4 %02x\n",\
 			 __FUNCTION__, interrupt1, interrupt2, interrupt3, interrupt4);
@@ -740,7 +740,7 @@ irqreturn_t hdmi_irq(int irq, void *priv)
 //			HDMIWrReg(SYS_CTRL, 0x10);
 //			rk30_hdmi->pwr_mode = PWR_SAVE_MODE_A;
 //		}
-		if(interrupt2 && hdmi->ops->hdcp_irq_cb)
+		if(hdmi->ops->hdcp_irq_cb)
 			hdmi->ops->hdcp_irq_cb(interrupt2);
 	}
 	return IRQ_HANDLED;
