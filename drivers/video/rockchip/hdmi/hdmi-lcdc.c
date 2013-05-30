@@ -79,6 +79,40 @@ static int hdmi_set_info(struct rk29fb_screen *screen, unsigned int vic)
 }
 
 /**
+ * hdmi_find_best_mode: find the video mode nearest to input vic
+ * @hdmi: 
+ * @vic: input vic
+ * 
+ * NOTES:
+ * If vic is zero, return the high resolution video mode vic.
+ */
+static int hdmi_find_best_mode(struct hdmi* hdmi, int vic)
+{
+	struct list_head *pos, *head = &hdmi->edid.modelist;
+	struct display_modelist *modelist;
+	int found = 0;
+	
+	if(vic)
+	{
+		list_for_each(pos, head) {
+			modelist = list_entry(pos, struct display_modelist, list);
+			if(modelist->vic == vic)
+			{
+				found = 1;	
+				break;
+			}
+		}
+	}
+	if( (vic == 0 || found == 0) && head->next != head)	{
+		modelist = list_entry(head->next, struct display_modelist, list);
+	}
+		
+	if(modelist != NULL)
+		return modelist->vic;
+	else
+		return 0;
+}
+/**
  * hdmi_set_lcdc: switch lcdc mode to required video mode
  * @hdmi: 
  * 
@@ -89,7 +123,11 @@ int hdmi_set_lcdc(struct hdmi *hdmi)
 {
 	int rc = 0;
 	struct rk29fb_screen screen;
-	
+//	printk("%s vic is %d\n", __FUNCTION__, hdmi->vic);
+	if(hdmi->autoset)
+		hdmi->vic = hdmi_find_best_mode(hdmi, 0);
+	else
+		hdmi->vic = hdmi_find_best_mode(hdmi, hdmi->vic);
 	if(hdmi->vic == 0)
 		hdmi->vic = HDMI_VIDEO_DEFAULT_MODE;
 
@@ -223,6 +261,7 @@ static int hdmi_add_videomode(const struct fb_videomode *mode, struct list_head 
 		if (!modelist_new)
 			return -ENOMEM;	
 		modelist_new->mode = hdmi_mode[i].mode;
+		modelist_new->vic = hdmi_mode[i].vic;
 		list_add_tail(&modelist_new->list, pos);
 	}
 	
