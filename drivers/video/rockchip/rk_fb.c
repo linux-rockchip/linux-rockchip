@@ -459,7 +459,12 @@ static int rk_fb_set_par(struct fb_info *info)
 		xsize = screen->x_res;
 		ysize = screen->y_res;
 	}
-
+	
+	xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+	ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+	xsize = screen->x_res * dev_drv->x_scale/100;
+	ysize = screen->y_res * dev_drv->y_scale/100;
+	
 #if defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF) || defined(CONFIG_NO_DUAL_DISP)
 	if(screen->screen_id == 0) //this is for device like rk2928 ,whic have one lcdc but two display outputs
 	{			   //save parameter set by android
