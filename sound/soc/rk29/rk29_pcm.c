@@ -279,14 +279,16 @@ static int rockchip_pcm_hw_params(struct snd_pcm_substream *substream,
 	prtd->dma_period = params_period_bytes(params);
 	prtd->dma_start = runtime->dma_addr;
 	prtd->dma_pos = prtd->dma_start;
-	prtd->dma_end = prtd->dma_start + totbytes;
+	prtd->dma_end = prtd->dma_start + prtd->dma_limit*prtd->dma_period;
 	prtd->transfer_first = 1;
 	prtd->curr = NULL;
 	prtd->next = NULL;
 	prtd->end = NULL;
-	//printk("dma:: limit: %d, period: %d, dma_start: %d, dma_end %d, dma_bytes: %d",
-	//	prtd->dma_limit, prtd->dma_period, prtd->dma_start, prtd->dma_end, totbytes);
 	spin_unlock_irq(&prtd->lock);
+
+	//if((totbytes-(prtd->dma_period*prtd->dma_limit))!=0)
+	//	printk( "i2s dma info:periodsize(%ld),limit(%d),buffersize(%d),over(%d)\n",
+	//		prtd->dma_period,prtd->dma_limit,totbytes,totbytes-(prtd->dma_period*prtd->dma_limit));
 	return ret;
 }
 
