@@ -36,6 +36,14 @@ config NO_DUAL_DISP
 	  No dual display needed
 endchoice
 
+config LCDC_OVERLAY_ENABLE
+	bool "Use Overlay mode to display video"
+	depends on FB_ROCKCHIP
+	select NO_DUAL_DISP
+	select BOX_FB_1080P
+	help
+		Enable overlay mode: win1 is used for display ui and win0 is used for display video.
+		
 config FB_ROTATE
 	bool"FB rotate support"
 	depends on FB_ROCKCHIP

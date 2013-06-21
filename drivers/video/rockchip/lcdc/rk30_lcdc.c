@@ -462,9 +462,13 @@ static int rk30_cursor_set_image(struct rk_lcdc_device_driver *dev_drv,char *img
 //	memcpy(cursor_buf, imgdata, CURSOR_BUF_SIZE);
 //	flush_cache_all();
 //	msleep(10);
-    lcdc_writel(lcdc_dev, HWC_MST, __pa(cursor_buf));
-    lcdc_msk_reg(lcdc_dev, SYS_CTRL0, m_HWC_RELOAD_EN, v_HWC_RELOAD_EN(1));
-    lcdc_cfg_done(lcdc_dev);
+	spin_lock(&lcdc_dev->reg_lock);
+	if(likely(lcdc_dev->clk_on)) {
+	    lcdc_writel(lcdc_dev, HWC_MST, __pa(cursor_buf));
+	    lcdc_msk_reg(lcdc_dev, SYS_CTRL0, m_HWC_RELOAD_EN, v_HWC_RELOAD_EN(1));
+	    lcdc_cfg_done(lcdc_dev);
+	}
+    spin_unlock(&lcdc_dev->reg_lock);
     return 0;
 }
 
@@ -473,10 +477,14 @@ static int rk30_cursor_set_cmap(struct rk_lcdc_device_driver *dev_drv, int backg
 	struct rk30_lcdc_device *lcdc_dev = container_of(dev_drv,struct rk30_lcdc_device,driver);
 	
 //	printk(KERN_INFO "lcdc%d cursor bg %08x fg %08x\n",lcdc_dev->id, background, frontground);
-	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT0, m_HWC_R|m_HWC_G|m_HWC_B, 0x000000);
-	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT1, m_HWC_R|m_HWC_G|m_HWC_B, 0xFFFFFF);
-//	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT2, m_HWC_R|m_HWC_G|m_HWC_B, 0xFF0000);
-	lcdc_cfg_done(lcdc_dev);
+	spin_lock(&lcdc_dev->reg_lock);
+	if(likely(lcdc_dev->clk_on)) {
+		lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT0, m_HWC_R|m_HWC_G|m_HWC_B, 0x000000);
+		lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT1, m_HWC_R|m_HWC_G|m_HWC_B, 0xFFFFFF);
+	//	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT2, m_HWC_R|m_HWC_G|m_HWC_B, 0xFF0000);
+		lcdc_cfg_done(lcdc_dev);
+	}
+	spin_unlock(&lcdc_dev->reg_lock);
 	return 0;
 }
 
@@ -485,17 +493,26 @@ static int rk30_cursor_set_pos(struct rk_lcdc_device_driver *dev_drv, int x, int
 	struct rk30_lcdc_device *lcdc_dev = container_of(dev_drv,struct rk30_lcdc_device,driver);
 	struct layer_par *par=dev_drv->layer_par[0];	
 	int xpos, ypos, xact, yact;
-	lcdc_writel(lcdc_dev, WIN0_ACT_INFO,v_ACT_WIDTH(xact) | v_ACT_HEIGHT(yact));
-	xact = (lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF) + 1;
-	yact = ((lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF0000 ) >> 16) + 1;
-//	printk("xact is %d yact is %d\n", xact, yact);
-	xpos = (x * dev_drv->cur_screen->x_res * dev_drv->x_scale/100)/xact;
-	ypos = (y * dev_drv->cur_screen->y_res * dev_drv->y_scale/100)/yact;
-	xpos += dev_drv->cur_screen->x_res * (100 - dev_drv->x_scale)/200 + dev_drv->cur_screen->left_margin + dev_drv->cur_screen->hsync_len;
-	ypos += dev_drv->cur_screen->y_res * (100 - dev_drv->y_scale)/200 + dev_drv->cur_screen->upper_margin + dev_drv->cur_screen->vsync_len;
-//	printk(KERN_INFO "lcdc%d cursor xpos %d ypos %d\n",lcdc_dev->id, xpos, ypos);
-    lcdc_writel(lcdc_dev, HWC_DSP_ST, v_DSP_STX(xpos)|v_DSP_STY(ypos));
-	lcdc_cfg_done(lcdc_dev);
+//	lcdc_writel(lcdc_dev, WIN0_ACT_INFO,v_ACT_WIDTH(xact) | v_ACT_HEIGHT(yact));
+	spin_lock(&lcdc_dev->reg_lock);
+		if(likely(lcdc_dev->clk_on)) {
+		#if 0
+		xact = (lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF) + 1;
+		yact = ((lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF0000 ) >> 16) + 1;
+	//	printk("xact is %d yact is %d\n", xact, yact);
+		xpos = (x * dev_drv->cur_screen->x_res * dev_drv->x_scale/100)/xact;
+		ypos = (y * dev_drv->cur_screen->y_res * dev_drv->y_scale/100)/yact;
+		#else
+		xpos = (x * dev_drv->cur_screen->x_res * dev_drv->x_scale/100)/1280;
+		ypos = (y * dev_drv->cur_screen->y_res * dev_drv->y_scale/100)/720;
+		#endif
+		xpos += dev_drv->cur_screen->x_res * (100 - dev_drv->x_scale)/200 + dev_drv->cur_screen->left_margin + dev_drv->cur_screen->hsync_len;
+		ypos += dev_drv->cur_screen->y_res * (100 - dev_drv->y_scale)/200 + dev_drv->cur_screen->upper_margin + dev_drv->cur_screen->vsync_len;
+	//	printk(KERN_INFO "lcdc%d cursor xpos %d ypos %d\n",lcdc_dev->id, xpos, ypos);
+	    lcdc_writel(lcdc_dev, HWC_DSP_ST, v_DSP_STX(xpos)|v_DSP_STY(ypos));
+		lcdc_cfg_done(lcdc_dev);
+	}
+	spin_unlock(&lcdc_dev->reg_lock);
 }
 
 static int rk30_lcdc_blank(struct rk_lcdc_device_driver*lcdc_drv,int layer_id,int blank_mode)
@@ -679,6 +696,7 @@ static  int win0_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 			case YUV420:   
 				lcdc_writel(lcdc_dev, WIN0_VIR,v_YUV_VIRWIDTH(xvir));
 				lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_W0_RGB_RB_SWAP,v_W0_RGB_RB_SWAP(0));
+				lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W0_COLOR_SPACE_CONVERSION, v_W0_COLOR_SPACE_CONVERSION(1));
 				break;
 			default:
 				printk("%s:un supported format\n",__func__);
@@ -759,6 +777,14 @@ static int win1_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		lcdc_writel(lcdc_dev, WIN1_DSP_ST,v_DSP_STX(xpos) | v_DSP_STY(ypos));
 		lcdc_writel(lcdc_dev, WIN1_DSP_INFO,v_DSP_WIDTH(par->xsize) | v_DSP_HEIGHT(par->ysize));
 		// enable win1 color key and set the color to black(rgb=0)
+		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+		if(fmt_cfg == 0) {
+			lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(1));
+			lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(1));
+		lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(0) | v_KEYCOLOR(0));
+		}
+		else
+		#endif
 		lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(1) | v_KEYCOLOR(0));
 		switch(par->format)
 	    	{

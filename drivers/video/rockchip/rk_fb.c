@@ -104,10 +104,11 @@ static int rk_fb_open(struct fb_info *info,int user)
 
 static int rk_fb_close(struct fb_info *info,int user)
 {
-	/*struct rk_lcdc_device_driver * dev_drv = (struct rk_lcdc_device_driver * )info->par;
-    	int layer_id;
-    	CHK_SUSPEND(dev_drv);
-    	layer_id = get_fb_layer_id(&info->fix);
+	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+	struct rk_lcdc_device_driver * dev_drv = (struct rk_lcdc_device_driver * )info->par;
+	int layer_id;
+//	CHK_SUSPEND(dev_drv);
+	layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
 	if(!dev_drv->layer_par[layer_id]->state)
 	{
 		return 0;
@@ -115,8 +116,8 @@ static int rk_fb_close(struct fb_info *info,int user)
 	else
 	{
     		dev_drv->open(dev_drv,layer_id,0);
-	}*/
-	
+	}
+	#endif
     	return 0;
 }
 static void fb_copy_by_ipp(struct fb_info *dst_info, struct fb_info *src_info,int offset)
@@ -202,7 +203,9 @@ static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	u32 yoffset = var->yoffset;				
 	u32 xvir = var->xres_virtual;
 	u8 data_format = var->nonstd&0xff;
-	
+	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+	rk_screen *screen = dev_drv->cur_screen;
+	#endif
 	layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
 	if(layer_id < 0)
 	{
@@ -217,6 +220,9 @@ static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
     		case XBGR888:
 		case ARGB888:
 		case ABGR888:
+			#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+			yoffset += (var->yres - screen->y_res) + (screen->y_res - screen->y_res*dev_drv->x_scale/100)/2;
+			#endif
 			par->y_offset = (yoffset*xvir + xoffset)*4;
 			break;
 		case  RGB888:
@@ -388,14 +394,27 @@ static int rk_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		 printk("bits_per_pixel:%d \n", var->bits_per_pixel);
 		 return -EINVAL;
 	 }
- 
+ 	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+	 if( (strcmp(info->fix.id, "fb1") == 0) || (strcmp(info->fix.id, "fb4") == 0) ) {
 	 if( ((var->xoffset+var->xres) > var->xres_virtual) ||
-	     ((var->yoffset+var->yres) > (var->yres_virtual)) )
+			((var->yoffset+var->yres) > var->yres_virtual*2))
 	 {
-		 printk("%s check_var fail 2!!! \n",info->fix.id);
 		 printk("xoffset:%d>>xres:%d>>xres_vir:%d\n",var->xoffset,var->xres,var->xres_virtual);
 		 printk("yoffset:%d>>yres:%d>>yres_vir:%d\n",var->yoffset,var->yres,var->yres_virtual);
 		 return -EINVAL;
+		}
+	}
+	else
+	#endif
+	{
+		if( ((var->xoffset+var->xres) > info->var.xres_virtual) ||
+			((var->yoffset+var->yres) > (info->var.yres_virtual*2)) )
+		{
+			printk("%s check_var fail 2!!! \n",info->fix.id);
+			printk("xoffset:%d>>xres:%d>>xres_vir:%d\n",var->xoffset,var->xres,info->var.xres_virtual);
+			printk("yoffset:%d>>yres:%d>>yres_vir:%d\n",var->yoffset,var->yres,info->var.yres_virtual);
+			return -EINVAL;
+		}
 	 }
 
     return 0;
@@ -460,11 +479,36 @@ static int rk_fb_set_par(struct fb_info *info)
 		ysize = screen->y_res;
 	}
 	
-	xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
-	ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
-	xsize = screen->x_res * dev_drv->x_scale/100;
-	ysize = screen->y_res * dev_drv->y_scale/100;
-	
+	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+	if(strcmp(info->fix.id, "fb1") == 0 )
+	{
+		if((xsize == screen->x_res) && (ysize == screen->y_res) )
+	#endif
+		{
+			xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+			ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+			xsize = screen->x_res * dev_drv->x_scale/100;
+			ysize = screen->y_res * dev_drv->y_scale/100;
+		}
+	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+		else {
+			xsize = xsize * screen->x_res * dev_drv->x_scale/128000;
+			ysize = ysize * screen->y_res * dev_drv->y_scale/72000;
+			xpos = xpos * screen->x_res * dev_drv->x_scale/128000;
+			ypos = ypos * screen->y_res * dev_drv->y_scale/72000;
+			if(!xpos)
+				xpos += (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+			if(!ypos)
+				ypos += (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+		}
+	}
+	else {
+		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100) >> 1;
+		ypos = 0;
+		xsize = screen->x_res;
+		ysize = screen->y_res;
+	}
+	#endif
 #if defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF) || defined(CONFIG_NO_DUAL_DISP)
 	if(screen->screen_id == 0) //this is for device like rk2928 ,whic have one lcdc but two display outputs
 	{			   //save parameter set by android
@@ -559,8 +603,17 @@ static int rk_fb_set_par(struct fb_info *info)
 
 	par->smem_start =fix->smem_start;
 	par->cbr_start = fix->mmio_start;
+	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+	if(strcmp(info->fix.id, "fb0") == 0 ) {
+		par->xact = xsize;              //winx active window height,is a part of vir
+		par->yact = ysize;
+	}
+	else 
+	#endif
+	{
 	par->xact = var->xres;              //winx active window height,is a part of vir
 	par->yact = var->yres;
+	}
 	par->xvir =  var->xres_virtual;		// virtual resolution	 stride --->LCDC_WINx_VIR
 	par->yvir =  var->yres_virtual;
 	#if defined(CONFIG_RK_HDMI)
@@ -1393,6 +1446,11 @@ int rk_fb_register(struct rk_lcdc_device_driver *dev_drv,
 #endif
 		
     }
+#else
+	if(dev_drv->screen_ctr_info->prop == PRMRY) {
+		fb_inf->fb[0]->fbops->fb_open(fb_inf->fb[0],1);
+	    fb_inf->fb[0]->fbops->fb_set_par(fb_inf->fb[0]);
+	}
 #endif
 	return 0;
 	
