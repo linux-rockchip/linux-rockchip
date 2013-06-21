@@ -573,13 +573,15 @@ static int rk_fb_set_par(struct fb_info *info)
 					par2->xact = par->xact;
 					par2->yact = par->yact;
 					par2->format = par->format;
+					par2->smem_start = par->smem_start;
+					par2->cbr_start = par->cbr_start;
 					if(par2->xsize == 0)
 						par2->xsize = par->xsize;
 					if(par2->ysize == 0)
 						par2->ysize = par->ysize;
-					if(par2->xvir == 0)
+//					if(par2->xvir == 0)
 						par2->xvir = par->xvir;
-					if(par2->yvir == 0)
+//					if(par2->yvir == 0)
 						par2->yvir = par->yvir;
 					info2->var.nonstd &= 0xffffff00;
 					info2->var.nonstd |= data_format;
