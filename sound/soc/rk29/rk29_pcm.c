@@ -117,8 +117,8 @@ static void rockchip_pcm_enqueue(struct snd_pcm_substream *substream)
 		limit = prtd->dma_limit;
 
 	if (DMA_INFIN_LOOP()) {
-		if(prtd->dma_period % prtd->params->dma_size*16){
-			WARN_ON(1);
+		if(prtd->dma_period % (prtd->params->dma_size*16)){
+			printk("dma_period(%d) is not an integer multiple of dma_size(%d)",prtd->dma_period,prtd->params->dma_size*16);
 			rk29_dma_config(prtd->params->channel,
 								prtd->params->dma_size, 1);
 		}							
@@ -283,12 +283,16 @@ static int rockchip_pcm_hw_params(struct snd_pcm_substream *substream,
 	prtd->dma_period = params_period_bytes(params);
 	prtd->dma_start = runtime->dma_addr;
 	prtd->dma_pos = prtd->dma_start;
-	prtd->dma_end = prtd->dma_start + totbytes;
+	prtd->dma_end = prtd->dma_start + prtd->dma_limit*prtd->dma_period;
 	prtd->transfer_first = 1;
 	prtd->curr = NULL;
 	prtd->next = NULL;
 	prtd->end = NULL;
 	spin_unlock_irq(&prtd->lock);
+
+	//if((totbytes-(prtd->dma_period*prtd->dma_limit))!=0)
+	//	printk( "i2s dma info:periodsize(%ld),limit(%d),buffersize(%d),over(%d)\n",
+	//		prtd->dma_period,prtd->dma_limit,totbytes,totbytes-(prtd->dma_period*prtd->dma_limit));
 	return ret;
 }
 
