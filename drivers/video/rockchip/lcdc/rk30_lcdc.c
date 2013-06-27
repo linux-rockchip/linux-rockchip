@@ -778,10 +778,10 @@ static int win1_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		lcdc_writel(lcdc_dev, WIN1_DSP_INFO,v_DSP_WIDTH(par->xsize) | v_DSP_HEIGHT(par->ysize));
 		// enable win1 color key and set the color to black(rgb=0)
 		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
-		if(fmt_cfg == 0) {
+		if(fmt_cfg == 0 && lcdc_dev->atv_layer_cnt > 1) {
 			lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(1));
 			lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(1));
-		lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(0) | v_KEYCOLOR(0));
+			lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(0) | v_KEYCOLOR(0));
 		}
 		else
 		#endif
