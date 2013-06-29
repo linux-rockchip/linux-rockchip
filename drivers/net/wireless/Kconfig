@@ -26,6 +26,12 @@ config WLAN_80211
 	  This option does not affect the kernel build, it only
 	  lets you choose drivers.
 
+config AIDC
+    bool "Enable WIFI AIDS(Automatic Identification USB Wifi Type)"
+	depends on RTL8188EU || RTL8192CU || RTL8723AU || RT5370
+	default n
+	---help---
+
 choice
 	prompt "WiFi device driver support"
 	default WIFI_NONE
@@ -87,11 +93,24 @@ choice
 	      (3) USI        WM-G-MR-09
 	      (4) Murata     SP-8HEP-P
 
+	config RTL8189ES
+        tristate "Realtek 8189ES SDIO WiFi Support"
+        depends on WLAN_80211 && MMC
+        select WIRELESS_EXT
+        select WEXT_PRIV
+        select IEEE80211
+        select CFG80211
+        select MAC80211
+        ---help---
+
 source "drivers/net/wireless/mt5931/Kconfig"
 source "drivers/net/wireless/rkusbwifi/rtl8192cu/Kconfig"
 source "drivers/net/wireless/rkusbwifi/rtl8188eu/Kconfig"
+source "drivers/net/wireless/rkusbwifi/rtl8723au/Kconfig"
 source "drivers/net/wireless/rkusbwifi/rt5370/Kconfig"
+source "drivers/net/wireless/rkusbwifi/mt7601/Kconfig"
 source "drivers/net/wireless/ar6003/Kconfig"
+source "drivers/net/wireless/rtl8723as/Kconfig"
 source "drivers/net/wireless/rkwifi/Kconfig"
 endchoice
 
@@ -128,8 +147,12 @@ choice
 		bool "AP6476"
 		depends on RKWIFI && WLAN_80211
 
-	config AP6494
+	config AP6493
 		bool "AP6493"
+		depends on RKWIFI && WLAN_80211
+
+	config GB86302I
+		bool "GB86302I"
 		depends on RKWIFI && WLAN_80211
 
 endchoice
