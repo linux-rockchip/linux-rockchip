@@ -164,12 +164,16 @@ static int win0_open(struct rk3188_lcdc_device *lcdc_dev,bool open)
 		lcdc_dev->driver.layer_par[0]->state = open;
 
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_WIN0_EN, v_WIN0_EN(open));
+		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_ALPHA_MODE_SEL0 | m_WIN1_ALPHA_MODE, v_ALPHA_MODE_SEL0(1) | v_WIN1_ALPHA_MODE(1));
+		lcdc_msk_reg(lcdc_dev, ALPHA_CTRL, m_WIN1_ALPHA_EN, v_WIN1_ALPHA_EN(open));
+		#endif
 		if(!lcdc_dev->atv_layer_cnt)  //if no layer used,disable lcdc
 		{
 			printk(KERN_INFO "no layer of lcdc%d is used,go to standby!\n",lcdc_dev->id);
 			lcdc_msk_reg(lcdc_dev, SYS_CTRL,m_LCDC_STANDBY,v_LCDC_STANDBY(1));
 		}
-		//lcdc_cfg_done(lcdc_dev);	
+		lcdc_cfg_done(lcdc_dev);	
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
 
@@ -1239,11 +1243,19 @@ static int rk3188_fb_get_layer(struct rk_lcdc_device_driver *dev_drv,const char 
        mutex_lock(&dev_drv->fb_win_id_mutex);
        if(!strcmp(id,"fb0")||!strcmp(id,"fb2"))
        {
+               #ifdef CONFIG_LCDC_OVERLAY_ENABLE
+               layer_id = dev_drv->fb1_win_id;
+               #else
                layer_id = dev_drv->fb0_win_id;
+               #endif
        }
        else if(!strcmp(id,"fb1")||!strcmp(id,"fb3"))
        {
+               #ifdef CONFIG_LCDC_OVERLAY_ENABLE
+               layer_id = dev_drv->fb0_win_id;
+               #else
                layer_id = dev_drv->fb1_win_id;
+               #endif
        }
        mutex_unlock(&dev_drv->fb_win_id_mutex);
 
