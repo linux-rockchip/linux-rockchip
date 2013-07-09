@@ -496,10 +496,8 @@ static int rk_fb_set_par(struct fb_info *info)
 			ysize = ysize * screen->y_res * dev_drv->y_scale/72000;
 			xpos = xpos * screen->x_res * dev_drv->x_scale/128000;
 			ypos = ypos * screen->y_res * dev_drv->y_scale/72000;
-			if(!xpos)
-				xpos += (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
-			if(!ypos)
-				ypos += (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+			xpos += (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+			ypos += (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
 		}
 	}
 	else {
