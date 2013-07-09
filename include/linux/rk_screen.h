@@ -109,7 +109,7 @@ struct rk29lcd_info {
 typedef struct rk29fb_screen {
 	/* screen type & hardware connect format & out face */
 	u16 type;
-	u16 hw_format;
+	u16 hw_format;  //lvds data format
 	u16 face;
 	u8 lcdc_id;    //which output interface the screeen connect to
 	u8 screen_id; //screen number
@@ -204,13 +204,9 @@ struct rk29fb_info {
 	void (*set_screen_info)(struct rk29fb_screen *screen, struct rk29lcd_info *lcd_info );
 };
 
-#ifndef CONFIG_DISPLAY_SUPPORT
-static inline void set_lcd_info(struct rk29fb_screen *screen, struct rk29lcd_info *lcd_info) {}
-static inline size_t get_fb_size(void) { return 0;}
-#else
 extern void set_lcd_info(struct rk29fb_screen *screen, struct rk29lcd_info *lcd_info);
 extern size_t get_fb_size(void);
-#endif
+
 extern void set_tv_info(struct rk29fb_screen *screen);
 extern void set_hdmi_info(struct rk29fb_screen *screen);
 
