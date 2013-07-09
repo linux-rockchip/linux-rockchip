@@ -134,9 +134,10 @@ static int HPDStatus = 0;
 
 int it66121_poll_status(struct hdmi *hdmi)
 {
+	struct it66121 *it66121 = hdmi->property->priv;
 	char HPDChangeStatus;
 	CheckHDMITX((BYTE*)&HPDStatus, &HPDChangeStatus);
-	if(HPDChangeStatus)
+	if(HPDChangeStatus && it66121->enable)
 		hdmi_submit_work(hdmi, HDMI_HPD_CHANGE, 10, NULL);
 	return HDMI_ERROR_SUCESS;
 }

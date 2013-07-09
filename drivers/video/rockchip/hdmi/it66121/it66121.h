@@ -5,6 +5,10 @@
 #include "hdmitx.h"
 #include "hdmitx_sys.h"
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
+
 #define IT66121_I2C_RATE	100 * 1000
 #define delay1ms	msleep
 
@@ -46,6 +50,11 @@ struct it66121 {
 	struct work_struct	irq_work;
 	struct delayed_work delay_work;
 	struct workqueue_struct *workqueue;
+	
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend	early_suspend;
+#endif
+	int enable;
 };
 
 extern int it66121_initial(void);
