@@ -31,7 +31,7 @@
 
 static const struct snd_soc_dapm_widget rk_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
-	SND_SOC_DAPM_MIC("Headset Jack", NULL),	
+	SND_SOC_DAPM_MIC("Headset Jack", NULL),
 	SND_SOC_DAPM_SPK("Ext Spk", NULL),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 };
@@ -99,33 +99,25 @@ static int rk_hifi_hw_params(struct snd_pcm_substream *substream,
 
 	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
 
-	#if defined(CONFIG_SND_RK_SOC_SPDIF)
-	/* MCLK must be 12M when HDMI is in */
-	if (get_hdmi_state()) {
-		DBG("%s : HDMI is in, do not set sys clk\n",__FUNCTION__);
-		return 0;
-	}
-	#endif
-
 	/* set codec DAI configuration */
-	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE) 
+	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE)
 
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
 	                SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
-	#endif	
-	#if defined (CONFIG_SND_RK29_CODEC_SOC_MASTER) 
+	#endif
+	#if defined (CONFIG_SND_RK29_CODEC_SOC_MASTER)
 
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
-	                SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM ); 
+	                SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM );
 	#endif
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE) 
+	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE)
 	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
 	                SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
-	#endif	
+	#endif
 	#if defined (CONFIG_SND_RK29_CODEC_SOC_MASTER)
 	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
 	                SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
@@ -152,12 +144,20 @@ static int rk_hifi_hw_params(struct snd_pcm_substream *substream,
 			break;
 	}
 
+	#if defined(CONFIG_RK616_USE_MCLK_12M)
+	/* MCLK must be 12M when HDMI is in */
+	if (get_hdmi_state() && pll_out != 12000000) {
+		DBG("%s : HDMI is in, don't set sys clk\n",__FUNCTION__);
+		return 0;
+	}
+	#endif
+
 	DBG("Enter:%s, %d, rate=%d\n", __FUNCTION__, __LINE__, params_rate(params));
 
 	/*Set the system clk for codec*/
 	ret = snd_soc_dai_set_sysclk(codec_dai, 0, pll_out, SND_SOC_CLOCK_IN);
 	if (ret < 0) {
-		DBG("rk_hifi_hw_params:failed to set the sysclk for codec side\n"); 
+		DBG("rk_hifi_hw_params:failed to set the sysclk for codec side\n");
 		return ret;
 	}
 
@@ -166,7 +166,7 @@ static int rk_hifi_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_MCLK, 3);
 
 	DBG("Enter:%s, %d, pll_out/4/params_rate(params) = %d \n", __FUNCTION__, __LINE__, (pll_out/4)/params_rate(params));
- 
+
 	return 0;
 }
 
@@ -180,14 +180,6 @@ static int rk_voice_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 
 	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
-
-	/* MCLK must be 12M when HDMI is in */
-	#if defined(CONFIG_SND_RK_SOC_SPDIF)
-	if (get_hdmi_state()) {
-		DBG("%s : HDMI is in, do not set sys clk\n",__FUNCTION__);
-		return 0;
-	}
-	#endif
 
 	/* set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_DSP_A |
@@ -211,6 +203,14 @@ static int rk_voice_hw_params(struct snd_pcm_substream *substream,
 			return -EINVAL;
 			break;
 	}
+
+	/* MCLK must be 12M when HDMI is in */
+	#if defined(CONFIG_RK616_USE_MCLK_12M)
+	if (get_hdmi_state() && pll_out != 12000000) {
+		DBG("%s : HDMI is in, don't set sys clk\n",__FUNCTION__);
+		return 0;
+	}
+	#endif
 
 	//snd_soc_dai_set_pll(codec_dai, RT5625_PLL_MCLK_TO_VSYSCLK, 0, pll_out, 24576000);
 
