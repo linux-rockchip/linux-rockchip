@@ -234,8 +234,8 @@ int tc358768_power_down(void) {
 	tc->vddio.disable(&tc->vddio);
 	tc->vdd_mipi.disable(&tc->vdd_mipi);
 	tc->vddc.disable(&tc->vddc);
-	tc358768_gpio_deinit(NULL);
-	
+	gpio_set_value(tc358768->reset.reset_pin, 0);
+
 	return ret;
 }
 
@@ -450,7 +450,7 @@ void tc_print(u32 addr) {
 }
 
 #define tc358768_wr_regs_32bits(reg_array)  _tc358768_wr_regs_32bits(reg_array, ARRAY_SIZE(reg_array))
-int _tc358768_wr_regs_32bits(unsigned int reg_array[], int n) {
+int _tc358768_wr_regs_32bits(unsigned int reg_array[], u32 n) {
 
 	int i = 0;
 	dsi_debug("%s:%d\n", __func__, n);
@@ -468,7 +468,7 @@ int _tc358768_wr_regs_32bits(unsigned int reg_array[], int n) {
 	return 0;
 }
 
-int tc358768_command_tx_less8bytes(unsigned char type, unsigned char *regs, int n) {
+int tc358768_command_tx_less8bytes(unsigned char type, unsigned char *regs, u32 n) {
 	int i = 0;
 	unsigned int command[] = {
 			0x06020000,
@@ -511,7 +511,7 @@ int tc358768_command_tx_less8bytes(unsigned char type, unsigned char *regs, int 
 	return 0;
 }
 
-int tc358768_command_tx_more8bytes_hs(unsigned char type, unsigned char regs[], int n) {
+int tc358768_command_tx_more8bytes_hs(unsigned char type, unsigned char regs[], u32 n) {
 
 	int i = 0;
 	unsigned int dbg_data = 0x00E80000, temp = 0;
@@ -551,7 +551,7 @@ int tc358768_command_tx_more8bytes_hs(unsigned char type, unsigned char regs[], 
 }
 
 //low power mode only for tc358768a
-int tc358768_command_tx_more8bytes_lp(unsigned char type, unsigned char regs[], int n) {
+int tc358768_command_tx_more8bytes_lp(unsigned char type, unsigned char regs[], u32 n) {
 
 	int i = 0;
 	unsigned int dbg_data = 0x00E80000, temp = 0;
@@ -586,7 +586,7 @@ int tc358768_command_tx_more8bytes_lp(unsigned char type, unsigned char regs[], 
 	return 0;
 }
 
-int _tc358768_send_packet(unsigned char type, unsigned char regs[], int n) {
+int _tc358768_send_packet(unsigned char type, unsigned char regs[], u32 n) {
 
 	if(n <= 8) {
 		tc358768_command_tx_less8bytes(type, regs, n);
@@ -597,7 +597,7 @@ int _tc358768_send_packet(unsigned char type, unsigned char regs[], int n) {
 	return 0;
 }
 
-int tc358768_send_packet(unsigned char type, unsigned char regs[], int n) {
+int tc358768_send_packet(unsigned char type, unsigned char regs[], u32 n) {
 	return _tc358768_send_packet(type, regs, n);
 }
 
@@ -607,7 +607,7 @@ The DCS is separated into two functional areas: the User Command Set and the Man
 Set. Each command is an eight-bit code with 00h to AFh assigned to the User Command Set and all other
 codes assigned to the Manufacturer Command Set.
 */
-int _mipi_dsi_send_dcs_packet(unsigned char regs[], int n) {
+int _mipi_dsi_send_dcs_packet(unsigned char regs[], u32 n) {
 
 	unsigned char type = 0;
 	if(n == 1) {
@@ -621,7 +621,7 @@ int _mipi_dsi_send_dcs_packet(unsigned char regs[], int n) {
 	return 0;
 }
 
-int mipi_dsi_send_dcs_packet(unsigned char regs[], int n) {
+int mipi_dsi_send_dcs_packet(unsigned char regs[], u32 n) {
 	return _mipi_dsi_send_dcs_packet(regs, n);
 }
 
@@ -679,7 +679,7 @@ int _tc358768_rd_lcd_regs(unsigned char type, char comd, int size, unsigned char
 	return 0;
 }
 
-int mipi_dsi_read_dcs_packet(unsigned char *data, int n) {
+int mipi_dsi_read_dcs_packet(unsigned char *data, u32 n) {
 	//DCS READ 
 	_tc358768_rd_lcd_regs(0x06, *data, n, data);
 	return 0;
