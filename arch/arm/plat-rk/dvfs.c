@@ -27,7 +27,7 @@
 #include <linux/io.h>
 #include <linux/hrtimer.h>
 
-
+#define MHz	(1000 * 1000)
 static LIST_HEAD(rk_dvfs_tree);
 static DEFINE_MUTEX(mutex);
 static DEFINE_MUTEX(rk_dvfs_mutex);
@@ -36,6 +36,7 @@ static int dump_dbg_map(char *buf);
 
 #define PD_ON	1
 #define PD_OFF	0
+#define DVFS_STR_DISABLE(on) ((on)?"enable":"disable")
 
 #define get_volt_up_delay(new_volt, old_volt)	\
 	((new_volt) > (old_volt) ? (((new_volt) - (old_volt)) >> 9) : 0)
@@ -106,7 +107,7 @@ static void dvfs_get_vd_regulator_volt_list(struct vd_node *vd)
 	if(selector>VD_VOL_LIST_CNT)
 		selector=VD_VOL_LIST_CNT;
 	
-	mutex_unlock(&mutex);
+	mutex_lock(&mutex);
 	for (i = 0; i<selector; i++) {
 		sel_volt=dvfs_regulator_list_voltage(vd->regulator,i);
 		if(sel_volt<=0)
@@ -280,35 +281,74 @@ int dvfs_clk_disable_limit(struct clk *clk)
 	return 0;
 }
 
-int is_support_dvfs(struct clk_node *dvfs_info)
+int dvfs_vd_clk_set_rate(struct clk *clk, unsigned long rate)
 {
-	return (dvfs_info->vd && dvfs_info->vd->vd_dvfs_target && dvfs_info->enable_dvfs);
-}
+	int ret = -1;
+	struct clk_node *dvfs_info=clk_get_dvfs_info(clk);
+	
+	DVFS_DBG("%s(%s(%lu))\n", __func__, dvfs_info->name, rate);
 
-int dvfs_set_rate(struct clk *clk, unsigned long rate)
-{
-	int ret = 0;
-	struct vd_node *vd;
-	DVFS_DBG("%s(%s(%lu))\n", __func__, clk->name, rate);
-	if (!clk->dvfs_info) {
-		DVFS_ERR("%s :This clk do not support dvfs!\n", __func__);
-		ret = -1;
-	} else {
-		vd = clk->dvfs_info->vd;
+	#if 0 // judge by reference func in rk
+	if (dvfs_support_clk_set_rate(dvfs_info)==false) {
+		DVFS_ERR("dvfs func:%s is not support!\n", __func__);
+		return ret;
+	}
+	#endif
+	
+	if(dvfs_info->vd&&dvfs_info->vd->vd_dvfs_target){
 		// mutex_lock(&vd->dvfs_mutex);
 		mutex_lock(&rk_dvfs_mutex);
-		ret = vd->vd_dvfs_target(clk, rate);
+		ret = dvfs_info->vd->vd_dvfs_target(clk, rate);
 		mutex_unlock(&rk_dvfs_mutex);
 		// mutex_unlock(&vd->dvfs_mutex);
+	}
+	else
+	{
+		DVFS_WARNING("%s(%s),vd is no target callback\n", __func__, clk->name);	
+		return -1;
 	}
 	DVFS_DBG("%s(%s(%lu)),is end\n", __func__, clk->name, rate);
 	return ret;
 }
+EXPORT_SYMBOL(dvfs_vd_clk_set_rate);
+
+int dvfs_vd_clk_disable(struct clk *clk, int on)
+{
+	int ret = -1;
+	struct clk_node *dvfs_info=clk_get_dvfs_info(clk);	
+	DVFS_DBG("%s(%s(%s,%lu))\n", __func__, dvfs_info->name, DVFS_STR_DISABLE(on),clk_get_rate(clk));
+
+
+	#if 0 // judge by reference func in rk
+	if (dvfs_support_clk_disable(dvfs_info)==false) {
+		DVFS_ERR("dvfs func:%s is not support!\n", __func__);
+		return ret;
+	}
+	#endif
+	
+	if(dvfs_info->vd&&dvfs_info->vd->vd_clk_disable_target){
+		// mutex_lock(&vd->dvfs_mutex);
+		mutex_lock(&rk_dvfs_mutex);
+		ret = dvfs_info->vd->vd_clk_disable_target(clk, on);
+		mutex_unlock(&rk_dvfs_mutex);
+		// mutex_unlock(&vd->dvfs_mutex);
+	}
+	else
+	{
+		DVFS_WARNING("%s(%s),vd is no target callback\n", __func__, clk->name);	
+		return -1;
+	}
+	DVFS_DBG("%s(%s(%s)),is end\n", __func__, dvfs_info->name, DVFS_STR_DISABLE(on));
+
+	return ret;
+}
+
+EXPORT_SYMBOL(dvfs_vd_clk_disable);
 
 static void dvfs_table_round_clk_rate(struct clk_node  *dvfs_clk)
 {
 	int i;
-	long temp_rate;
+	unsigned long temp_rate;
 	int rate;
 	int flags;
 	
@@ -326,7 +366,12 @@ static void dvfs_table_round_clk_rate(struct clk_node  *dvfs_clk)
 			DVFS_WARNING("clk %s:round_clk_rate : is %d,but round <=0",dvfs_clk->name,dvfs_clk->dvfs_table[i].frequency);
 			break;
 		}
-		temp_rate=(temp_rate/1000)+flags;
+		
+		/* Set rate unit as MHZ */
+		if (temp_rate % MHz != 0)
+			temp_rate = (temp_rate / MHz + 1) * MHz;
+
+		temp_rate = (temp_rate / 1000) + flags;
 		
 		DVFS_DBG("clk %s round_clk_rate %d to %d\n",
 			dvfs_clk->name,dvfs_clk->dvfs_table[i].frequency,(int)(temp_rate));
@@ -808,6 +853,7 @@ int dvfs_scale_volt(struct vd_node *vd_clk, struct vd_node *vd_dep,
 {
 	struct regulator *regulator, *regulator_dep;
 	int volt = 0, volt_dep = 0, step = 0, step_dep = 0;
+	int volt_tmp = 0, volt_dep_tmp = 0;
 	int volt_pre = 0, volt_dep_pre = 0;
 	int ret = 0;
 
@@ -843,51 +889,21 @@ int dvfs_scale_volt(struct vd_node *vd_clk, struct vd_node *vd_dep,
 		} else if (step > 0) {
 			// up voltage
 			DVFS_DBG("step > 0\n");
+			volt_tmp = volt_dep + clk_biger_than_dep;
+			volt_dep_tmp = volt + dep_biger_than_clk;
 
-			if (volt > volt_dep) {
-				if (volt_dep == volt_dep_new) {
-					volt = volt_dep + clk_biger_than_dep;
-				} else {
-					volt_dep = volt + dep_biger_than_clk;
-				}
-			} else if (volt < volt_dep){
-				if (volt == volt_new) {
-					volt_dep = volt + dep_biger_than_clk;
-				} else {
-					volt = volt_dep + clk_biger_than_dep;
-				}
-			} else {
-				if (volt != volt_new)
-					volt = volt_dep + clk_biger_than_dep;
-				if (volt_dep != volt_dep_new)
-					volt_dep = volt + dep_biger_than_clk;
-			}
-			volt = volt > volt_new ? volt_new : volt;
-			volt_dep = volt_dep > volt_dep_new ? volt_dep_new : volt_dep;
+			volt = volt_tmp > volt_new ? volt_new : volt_tmp;
+			volt_dep = volt_dep_tmp > volt_dep_new ? volt_dep_new : volt_dep_tmp;
 
 		} else if (step < 0) {
 			// down voltage
 			DVFS_DBG("step < 0\n");
-			if (volt > volt_dep) {
-				if (volt == volt_new) {
-					volt_dep = volt - clk_biger_than_dep;
-				} else {
-					volt = volt_dep - dep_biger_than_clk;
-				}
-			} else if (volt < volt_dep){
-				if (volt_dep == volt_dep_new) {
-					volt = volt_dep - dep_biger_than_clk;
-				} else {
-					volt_dep = volt - clk_biger_than_dep;
-				}
-			} else {
-				if (volt != volt_new)
-					volt = volt_dep - dep_biger_than_clk;
-				if (volt_dep != volt_dep_new)
-					volt_dep = volt - clk_biger_than_dep;
-			}
-			volt = volt < volt_new ? volt_new : volt;
-			volt_dep = volt_dep < volt_dep_new ? volt_dep_new : volt_dep;
+
+			volt_tmp = volt_dep - dep_biger_than_clk;
+			volt_dep_tmp = volt - clk_biger_than_dep;
+
+			volt = volt_tmp < volt_new ? volt_new : volt_tmp;
+			volt_dep = volt_dep_tmp < volt_dep_new ? volt_dep_new : volt_dep_tmp;
 
 		} else {
 			DVFS_ERR("Oops, some bugs here:Volt_new=%d(old=%d), volt_dep_new=%d(dep_old=%d)\n",
@@ -1197,7 +1213,7 @@ void avs_init(void)
 	memset(&init_avs_paramet[0].is_set, 0, sizeof(init_avs_paramet));
 	if(avs_ctr_data&&avs_ctr_data->avs_init)
 		avs_ctr_data->avs_init();
-	avs_init_val_get(0,1150000,"board_init");
+	avs_init_val_get(0, 1200000,"board_init");
 }
 static u8 rk_get_avs_val(void)
 {
@@ -1218,10 +1234,13 @@ void avs_init_val_get(int index, int vol, char *s)
 	init_avs_paramet[index].vol = vol;
 	init_avs_paramet[index].s = s;
 	init_avs_paramet[index].is_set++;
+	printk("DVFS MSG:\tAVS Value(index=%d): ", index);
 	for(i = 0; i < init_avs_times; i++) {
 		init_avs_paramet[index].paramet[i] = rk_get_avs_val();
 		mdelay(1);
+		printk("%d ", init_avs_paramet[index].paramet[i]);
 	}
+	printk("\n");
 }
 int avs_set_scal_val(u8 avs_base)
 {
@@ -1454,10 +1473,10 @@ struct dvfs_attribute {
 static struct dvfs_attribute dvfs_attrs[] = {
 	/*     node_name	permision		show_func	store_func */
 #ifdef CONFIG_RK_CLOCK_PROC
-	__ATTR(dvfs_tree,	S_IRUGO | S_IWUSR,	dvfs_tree_show,	dvfs_tree_store),
-	__ATTR(avs_init,	S_IRUGO | S_IWUSR,	avs_init_show,	avs_init_store),
-	//__ATTR(avs_dyn,		S_IRUGO | S_IWUSR,	avs_dyn_show,	avs_dyn_store),
-	__ATTR(avs_now,		S_IRUGO | S_IWUSR,	avs_now_show,	avs_now_store),
+	__ATTR(dvfs_tree,	S_IRUSR | S_IRGRP | S_IWUSR,	dvfs_tree_show,	dvfs_tree_store),
+	__ATTR(avs_init,	S_IRUSR | S_IRGRP | S_IWUSR,	avs_init_show,	avs_init_store),
+//	__ATTR(avs_dyn,		S_IRUSR | S_IRGRP | S_IWUSR,	avs_dyn_show,	avs_dyn_store),
+	__ATTR(avs_now,		S_IRUSR | S_IRGRP | S_IWUSR,	avs_now_show,	avs_now_store),
 #endif
 };
 

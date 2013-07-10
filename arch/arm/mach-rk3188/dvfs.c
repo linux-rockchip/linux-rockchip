@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/hrtimer.h>
+#include <plat/efuse.h>
 
 static int rk_dvfs_clk_notifier_event(struct notifier_block *this,
 		unsigned long event, void *ptr)
@@ -76,6 +77,83 @@ static int rk_dvfs_clk_notifier_event(struct notifier_block *this,
 static struct notifier_block rk_dvfs_clk_notifier = {
 	.notifier_call = rk_dvfs_clk_notifier_event,
 };
+
+struct lkg_maxvolt {
+	int leakage_level;
+	unsigned int maxvolt;
+};
+static struct lkg_maxvolt lkg_volt_table[] = {
+	{.leakage_level = 1,	.maxvolt = 1350 * 1000},
+	{.leakage_level = 3,	.maxvolt = 1275 * 1000},
+	{.leakage_level = 15,	.maxvolt = 1200 * 1000},
+};
+
+static int leakage_level = 0;
+#define MHZ	(1000 * 1000)
+#define KHZ	(1000)
+// Delayline bound for nandc = 148.5MHz, Varm = Vlog = 1.00V
+#define HIGH_DELAYLINE	125
+#define LOW_DELAYLINE	110
+static u8 rk30_get_avs_val(void);
+void dvfs_adjust_table_lmtvolt(struct clk *clk, struct cpufreq_frequency_table *table)
+{
+	int i = 0;
+	unsigned int maxvolt = 0;
+	if (IS_ERR_OR_NULL(clk) || IS_ERR_OR_NULL(table)) {
+		DVFS_ERR("%s: clk error OR table error\n", __func__);
+		return ;
+	}
+
+	leakage_level = rk_leakage_val();
+	printk("DVFS MSG: %s: %s get leakage_level = %d\n", clk->name, __func__, leakage_level);
+	if (leakage_level == 0) {
+		
+		/*
+		 * This is for delayline auto scale voltage, 
+		 * FIXME: HIGH_DELAYLINE / LOW_DELAYLINE value maybe redefined under
+		 * Varm = Vlog = 1.00V.
+		 * Warning: this value is frequency/voltage sensitive, care
+		 * about Freq nandc/Volt log.
+		 *
+		 */
+
+		unsigned long delayline_val = 0;
+		unsigned long high_delayline = 0, low_delayline = 0;
+		unsigned long rate_nandc = 0;
+		rate_nandc = clk_get_rate(clk_get(NULL, "nandc")) / KHZ;
+		printk("Get nandc rate = %lu KHz\n", rate_nandc);
+		high_delayline = HIGH_DELAYLINE * 148500 / rate_nandc;
+		low_delayline = LOW_DELAYLINE * 148500 / rate_nandc;
+		delayline_val = rk30_get_avs_val();
+		printk("This chip no leakage msg, use delayline instead, val = %lu.(HDL=%lu, LDL=%lu)\n",
+				delayline_val, high_delayline, low_delayline);
+
+		if (delayline_val >= high_delayline) {
+			leakage_level = 4;	//same as leakage_level > 4
+
+		} else if (delayline_val <= low_delayline) {
+			leakage_level = 1;
+			printk("Delayline TOO LOW, high voltage request\n");
+
+		} else
+			leakage_level = 2;	//same as leakage_level = 3
+	}
+
+	for (i = 0; i < ARRAY_SIZE(lkg_volt_table); i++) {
+		if (leakage_level <= lkg_volt_table[i].leakage_level) {
+			maxvolt = lkg_volt_table[i].maxvolt;
+			break;
+		}
+	}
+
+	for (i = 0; table[i].frequency != CPUFREQ_TABLE_END; i++) {
+		if (table[i].index > maxvolt) {
+			printk("\t\tadjust table freq=%d KHz, index=%d mV", table[i].frequency, table[i].index);
+			table[i].index = maxvolt;
+			printk(" to index=%d mV\n", table[i].index);
+		}
+	}
+}
 
 #define NO_VOLT_DIFF
 #ifdef NO_VOLT_DIFF
@@ -701,7 +779,7 @@ static struct depend_lookup rk30_depends[] = {
 	//RK_DEPPENDS("gpu", &vd_cpu, NULL),
 };
 #endif
-//static struct avs_ctr_st rk30_avs_ctr;
+static struct avs_ctr_st rk30_avs_ctr;
 
 int rk3188_dvfs_init(void)
 {
@@ -723,16 +801,13 @@ int rk3188_dvfs_init(void)
 #ifndef NO_VOLT_DIFF
 	dvfs_clk_cpu = dvfs_get_dvfs_clk_byname("cpu");
 #endif
-	//avs_board_init(&rk30_avs_ctr);
+	avs_board_init(&rk30_avs_ctr);
 	return 0;
 }
 
 
 
 /******************************rk30 avs**************************************************/
-
-#if 0
-
 static void __iomem *rk30_nandc_base=NULL;
 
 #define nandc_readl(offset)	readl_relaxed(rk30_nandc_base + offset)
@@ -757,8 +832,10 @@ static u8 rk30_get_avs_val(void)
 	nandc_writel(nanc_save_reg[0] | 0x1 << 14, 0);
 	nandc_writel(0x5, 0x130);
 
-	nandc_writel(3, 0x158);
-	nandc_writel(1, 0x134);
+	/* Just break lock status */
+	nandc_writel(0x1, 0x158);
+	nandc_writel(0x3, 0x158);
+	nandc_writel(0x21, 0x134);
 
 	while(count--) {
 		paramet = nandc_readl(0x138);
@@ -786,6 +863,5 @@ static struct avs_ctr_st rk30_avs_ctr= {
 	.avs_init 		=rk30_avs_init,
 	.avs_get_val	= rk30_get_avs_val,
 };
-#endif
 
 

@@ -33,6 +33,8 @@ enum _periph_pll {
 	periph_pll_1485mhz = 148500000,
 	periph_pll_297mhz = 297000000,
 	periph_pll_300mhz = 300000000,
+	periph_pll_384mhz = 384000000,
+	periph_pll_768mhz = 768000000,
 	periph_pll_594mhz = 594000000,
 	periph_pll_1188mhz = 1188000000, /* for box*/
 };
@@ -42,6 +44,7 @@ enum _codec_pll {
 	codec_pll_456mhz = 456000000,
 	codec_pll_504mhz = 504000000,
 	codec_pll_552mhz = 552000000, /* for HDMI */
+	codec_pll_594mhz = 594000000, /* for HDMI */
 	codec_pll_600mhz = 600000000,
 	codec_pll_742_5khz = 742500000,
 	codec_pll_768mhz = 768000000,
@@ -73,12 +76,11 @@ enum _codec_pll {
 
 #define RK30_CLOCKS_DEFAULT_FLAGS (CLK_FLG_MAX_I2S_12288KHZ/*|CLK_FLG_EXT_27MHZ*/)
 
-#if (RK30_CLOCKS_DEFAULT_FLAGS&CLK_FLG_UART_1_3M)
-#define codec_pll_default codec_pll_768mhz
-#else
-#define codec_pll_default codec_pll_1200mhz
-#endif
-#define periph_pll_default periph_pll_297mhz
+#define codec_pll_default codec_pll_594mhz
+#define periph_pll_default periph_pll_768mhz
+
+//#define codec_pll_default codec_pll_798mhz
+//#define periph_pll_default periph_pll_594mhz
 
 #endif
 

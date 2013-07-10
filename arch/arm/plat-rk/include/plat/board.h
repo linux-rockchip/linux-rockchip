@@ -89,6 +89,7 @@ enum {
 	PMIC_TYPE_TPS65910 =2,
 	PMIC_TYPE_ACT8931 =3,
 	PMIC_TYPE_ACT8846 =3,
+	PMIC_TYPE_RK808 =4,
 	PMIC_TYPE_MAX,
 };
 extern __sramdata  int g_pmic_type;
@@ -96,6 +97,7 @@ extern __sramdata  int g_pmic_type;
 #define pmic_is_tps65910()  (g_pmic_type == PMIC_TYPE_TPS65910)
 #define pmic_is_act8931()  (g_pmic_type == PMIC_TYPE_ACT8931)
 #define pmic_is_act8846()  (g_pmic_type == PMIC_TYPE_ACT8846)
+#define pmic_is_rk808()  (g_pmic_type == PMIC_TYPE_RK808)
 
 struct  pmu_info {
 	char		*name;
@@ -164,7 +166,9 @@ struct rk29_sdmmc_platform_data {
 	int enable_sd_wakeup;
 	int write_prt;
 	int write_prt_enalbe_level;
-	unsigned int sdio_INT_gpio; 
+	unsigned int sdio_INT_gpio;
+	int sdio_INT_level;
+#define USE_SDIO_INT_LEVEL  /*In order to be compatible with old project, those who do not define the member  sdio_INT_level */
 	struct rksdmmc_gpio   det_pin_info;
         int (*sd_vcc_reset)(void);
 };
@@ -187,6 +191,16 @@ struct akm8975_platform_data {
 	int gpio_DRDY;
 };
 
+struct akm_platform_data {
+       short m_layout[4][3][3];
+       char project_name[64];
+       char layout;
+       char outbit;
+       int gpio_DRDY;
+       int gpio_RST;
+};
+
+
 struct sensor_platform_data {
 	int type;
 	int irq;
@@ -198,6 +212,7 @@ struct sensor_platform_data {
 	int y_min;
 	int z_min;
 	int factory;
+	int layout;
 	unsigned char address;
 	signed char orientation[9];
 	short m_layout[4][3][3];
@@ -441,6 +456,13 @@ struct rk610_codec_platform_data {
 	unsigned int spk_ctl_io;
 	int (*io_init)(void);
 	int boot_depop;//if found boot pop,set boot_depop 1 test
+	/*
+		Some amplifiers enable a longer time.
+		config after pa_enable_io delay pa_enable_time(ms)
+		default = 0,preferably not more than 1000ms
+		so value range is 0 - 1000.
+	*/
+	unsigned int pa_enable_time;
 };
 
 struct rk_hdmi_platform_data {
@@ -458,7 +480,7 @@ struct rk_hdmi_platform_data {
 int board_boot_mode(void);
 
 /* for USB detection */
-#ifdef CONFIG_USB_GADGET
+#if defined(CONFIG_USB_GADGET) && !defined(CONFIG_RK_USB_DETECT_BY_OTG_BVALID)
 int __init board_usb_detect_init(unsigned gpio);
 #else
 static int inline board_usb_detect_init(unsigned gpio) { return 0; }
@@ -507,6 +529,7 @@ void __sramfunc board_pmu_resume(void);
 enum ddr_freq_mode {
 	DDR_FREQ_NORMAL = 1,	// default
 	DDR_FREQ_VIDEO,		// when video is playing
+       DDR_FREQ_DUALVIEW,     // when dual view,lcdc0 and lcdc1 open at the same time
 	DDR_FREQ_IDLE,		// when screen is idle
 	DDR_FREQ_SUSPEND,	// when early suspend
 };
