@@ -3050,6 +3050,8 @@ static void __init rk30_init_enable_clocks(void)
 		clk_enable_nolock(&clk_aclk_lcdc1);
 		clk_enable_nolock(&aclk_lcdc0_pre);
 		clk_enable_nolock(&aclk_lcdc1_pre);
+		clk_enable_nolock(&pd_lcdc0);
+		clk_enable_nolock(&pd_lcdc1);
 	}
 	#if 0
 	 clk_enable_nolock(&clk_gpu);
@@ -3411,10 +3413,14 @@ void rk30_clock_common_i2s_init(void)
 		i2s_rate = 49152000;
 	}
 
-	if(((i2s_rate * 20) <= general_pll_clk.rate) || !(general_pll_clk.rate % i2s_rate)) {
-		clk_set_parent_nolock(&clk_i2s_pll, &general_pll_clk);
-	} else if(((i2s_rate * 20) <= codec_pll_clk.rate) || !(codec_pll_clk.rate % i2s_rate)) {
+	/*
+	 * Priority setting i2s under cpll to fix i2s frac div do not effect, let
+	 * axi_cpu's pll different with i2s's
+	 * */
+	if(((i2s_rate * 20) <= codec_pll_clk.rate) || !(codec_pll_clk.rate % i2s_rate)) {
 		clk_set_parent_nolock(&clk_i2s_pll, &codec_pll_clk);
+	} else if(((i2s_rate * 20) <= general_pll_clk.rate) || !(general_pll_clk.rate % i2s_rate)) {
+		clk_set_parent_nolock(&clk_i2s_pll, &general_pll_clk);
 	} else {
 		if(general_pll_clk.rate > codec_pll_clk.rate)
 			clk_set_parent_nolock(&clk_i2s_pll, &general_pll_clk);

@@ -1,3 +1,4 @@
+/*$_FOR_ROCKCHIP_RBOX_$*/
 /* linux/arch/arm/mach-rk30/clock.c
  *
  * Copyright (C) 2012 ROCKCHIP, Inc.
@@ -257,9 +258,13 @@ int clk_set_rate_nolock(struct clk *clk, unsigned long rate)
 {
 	int ret;
 	unsigned long old_rate;
-
+//$_rbox_$_modify_$_chenzhi_20120616: remove if
+//$_rbox_$_modify_$_begin
+#if 0
 	if (rate == clk->rate)
 		return 0;
+#endif
+//$_rbox_$_modify_$_end
 	if (clk->flags & CONFIG_PARTICIPANT)
 		return -EINVAL;
 
