@@ -1135,7 +1135,7 @@ static struct resource resources_spdif[] = {
 };
 struct platform_device rk29_device_spdif = {
     .name             = "rk-spdif",
-    .id               = 0,
+    .id               = -1,
     .num_resources    = ARRAY_SIZE(resources_spdif),
     .resource         = resources_spdif,
 };
