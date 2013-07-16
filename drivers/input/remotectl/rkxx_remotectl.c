@@ -203,7 +203,7 @@ static void remotectl_get_pwr_scanData(struct rkxx_remotectl_drvdata *ddata,int 
         if (remotectl_button[loop].key_table[i].keyCode == KEY_POWER){			
             temp_scanCode = remotectl_button[loop].key_table[i].scanCode;
             temp_pwr_data = (temp_scanCode<<8)|((~temp_scanCode)&0xFF);
-            printk("pwr data =0x%x\n",temp_pwr_data);
+            //printk("pwr data =0x%x\n",temp_pwr_data);
         }
     }
     *pwr_data = temp_pwr_data;
@@ -366,7 +366,7 @@ void remotectl_wakeup(unsigned long _data)
             	   }		
             }*/
         }
-        printk(KERN_ERR"data=0x%x\n",ddata->scanData);
+        //printk(KERN_ERR"data=0x%x\n",ddata->scanData);
         if (ddata->scanData)					//(ddata->scanData>16)			
 				{
 					  ddata->scanData=(ddata->scanData>>1)&0xFFFF;				
@@ -448,7 +448,8 @@ static irqreturn_t remotectl_isr(int irq, void *dev_id)
     //if ((ddata->state==RMC_PRELOAD)||(ddata->state==RMC_SEQUENCE))
     //mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(130));
 #ifdef CONFIG_PM
-    //wake_lock_timeout(&ddata->remotectl_wake_lock, HZ);
+   if (ddata->state==RMC_PRELOAD)
+       wake_lock_timeout(&ddata->remotectl_wake_lock, HZ);
    if ((get_suspend_state())&&(ddata->remotectl_suspend_data.cnt<50))		//zwm
        ddata->remotectl_suspend_data.scanTime[ddata->remotectl_suspend_data.cnt++] = ddata->period;
 #endif
