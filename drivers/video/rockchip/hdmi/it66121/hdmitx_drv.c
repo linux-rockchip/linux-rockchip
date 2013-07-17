@@ -576,6 +576,7 @@ void HDMITX_PowerOn()
 void HDMITX_PowerDown()
 {
     hdmitx_LoadRegSetting(HDMITX_PwrDown_Table);
+    hdmiTxDev[0].bHPD = 0;
 }
 
 void setHDMITX_AVMute(BYTE bEnable)
