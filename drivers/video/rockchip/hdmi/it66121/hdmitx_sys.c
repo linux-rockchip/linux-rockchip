@@ -164,7 +164,7 @@ int it66121_remove(struct hdmi *hdmi)
 
 int it66121_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
 {
-	return (getHDMITX_EDIDBlock(block, buff) == TRUE)?HDMI_ERROR_SUCESS:HDMI_ERROR_FALSE;;
+	return (getHDMITX_EDIDBlock(block, buff) == TRUE)?HDMI_ERROR_SUCESS:HDMI_ERROR_FALSE;
 }
 
 int it66121_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)
