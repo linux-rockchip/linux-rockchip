@@ -95,6 +95,11 @@ struct mt3326_gps_hardware{
 	int (*ext_power_off)(int);
 };
 
+struct mt3326_gps_hardware mt3326_gps_hw = {
+    .ext_power_on =  NULL,
+    .ext_power_off = NULL,
+};
+
 /****************************************************************************** 
  * Function Configuration
 ******************************************************************************/
@@ -1088,6 +1093,15 @@ static struct platform_driver mt3326_gps_driver =
         .bus    = &platform_bus_type,
     },    
 };
+
+struct platform_device mt3326_device_gps = {
+        .name          = "mt3326-gps",
+        .id            = -1,
+        .dev = {
+        .platform_data = &mt3326_gps_hw,
+    },  
+};
+
 /*****************************************************************************/
 static int __init mt3326_gps_mod_init(void)
 {
@@ -1096,7 +1110,14 @@ static int __init mt3326_gps_mod_init(void)
 
     //ret = driver_register(&mt3326_gps_driver);
     ret = platform_driver_register(&mt3326_gps_driver);
+    if (ret != 0){
+        GPS_ERR("platform_driver_register error\n");      
+    }
+    ret = platform_device_register(&mt3326_device_gps);
 
+    if (ret != 0){
+        GPS_ERR("platform_device_register error\n");        
+    } 
     return ret;
 }
 /*****************************************************************************/

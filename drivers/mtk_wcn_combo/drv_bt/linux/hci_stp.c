@@ -1,75 +1,43 @@
 /* Copyright Statement:
  *
  * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
+ * protected under relevant copyright laws. The information contained herein is
+ * confidential and proprietary to MediaTek Inc. and/or its licensors. Without
+ * the prior written permission of MediaTek inc. and/or its licensors, any
+ * reproduction, modification, use or disclosure of MediaTek Software, and
+ * information contained herein, in whole or in part, shall be strictly
+ * prohibited.
+ * 
  * MediaTek Inc. (C) 2010. All rights reserved.
- *
+ * 
  * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
  * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
+ * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER
+ * ON AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL
+ * WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR
+ * NONINFRINGEMENT. NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH
+ * RESPECT TO THE SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY,
+ * INCORPORATED IN, OR SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES
+ * TO LOOK ONLY TO SUCH THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO.
+ * RECEIVER EXPRESSLY ACKNOWLEDGES THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO
+ * OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES CONTAINED IN MEDIATEK
+ * SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK SOFTWARE
+ * RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
+ * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S
+ * ENTIRE AND CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE
+ * RELEASED HEREUNDER WILL BE, AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE
+ * MEDIATEK SOFTWARE AT ISSUE, OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE
+ * CHARGE PAID BY RECEIVER TO MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
  *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
+ * The following software/firmware and/or related documentation ("MediaTek
+ * Software") have been modified by MediaTek Inc. All revisions are subject to
+ * any receiver's applicable license agreements with MediaTek Inc.
  */
 
-/*
- *
- *  Bluetooth HCI UART driver
- *
- *  Copyright (C) 2000-2001  Qualcomm Incorporated
- *  Copyright (C) 2002-2003  Maxim Krasnyansky <maxk@qualcomm.com>
- *  Copyright (C) 2004-2005  Marcel Holtmann <marcel@holtmann.org>
- *
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
-
-/*******************************************************************************
-*                         C O M P I L E R   F L A G S
-********************************************************************************
-*/
-/* move compile flags to hci_stp.h file. */
-
-/*******************************************************************************
-*                    E X T E R N A L   R E F E R E N C E S
-********************************************************************************
-*/
 
 #include "hci_stp.h"
+#include "bt_conf.h"
 #include "stp_exp.h"
 #include "wmt_exp.h"
 
@@ -86,10 +54,7 @@
 #define BT_LOG_WARN (1)
 #define BT_LOG_ERR (0)
 
-#define VERSION "1.0"
-#define CUSTOM_BT_CFG_FILE          "/data/BT.cfg"
-#define INTERNAL_BT_CFG_FILE        "/data/bluetooth/BT.cfg"
-#define BUILTIN_BT_CFG_FILE         "/system/etc/firmware/BT.cfg"
+#define VERSION "2.0"
 
 /* H4 receiver States */
 #define H4_W4_PACKET_TYPE (0)
@@ -107,7 +72,7 @@
 *                            P U B L I C   D A T A
 ********************************************************************************
 */
-unsigned int gHciStpDbgLevel = BT_LOG_ERR;//Modify loglevel
+unsigned int gDbgLevel = BT_LOG_INFO;
 
 /*******************************************************************************
 *                           P R I V A T E   D A T A
@@ -136,129 +101,132 @@ struct task_struct * hci_stp_tx_thrd = NULL;
 wait_queue_head_t hci_stp_tx_thrd_wq;
 #endif
 
-/* oringinal code path:
-system/bluetooth/bluedroid/bluetooth.c
-external/bluetooth/bluez/tools/hciattach.c
-mtk/src/custom/mt6516_evb/kernel/core/src/board.c // set power gpio configuration
-*/
-static unsigned char bt_bd_addr[10] =
-    {0x01, 0x1a, 0xfc, 0x06, 0x01, 0x20, 0x66, 0x46, 0x00, 0x00};
-static unsigned char bt_bd_addr_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x1a, 0xfc, 0x00};
-static unsigned char bt_link_key_type[5]=
-    {0x01, 0x1b, 0xfc, 0x01, 0x01};
-static unsigned char bt_link_key_type_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x1b, 0xfc, 0x00};
-static unsigned char bt_unit_key[20] =
-    {0x01, 0x75, 0xfc, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static unsigned char bt_unit_key_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x75, 0xfc, 0x00};
-static unsigned char bt_encrypt[7] =
-    {0x01, 0x76, 0xfc, 0x03, 0x00, 0x02, 0x10};
-static unsigned char bt_encrypt_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x76, 0xfc, 0x00};
-static unsigned char bt_pin_code_type[5] =
-    {0x01, 0x0a, 0x0c, 0x01, 0x00};
-static unsigned char bt_pin_code_type_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x0a, 0x0c, 0x00};
-static unsigned char bt_voice[6] =
-    {0x01, 0x26, 0x0c, 0x02, 0x60, 0x00};
-static unsigned char bt_voice_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x26, 0x0c, 0x00};
-static unsigned char bt_codec[8] =
-    {0x01, 0x72, 0xfc, 0x04, 0x23, 0x10, 0x00, 0x00};
-static unsigned char bt_codec_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x72, 0xfc, 0x00};
-static unsigned char bt_radio[10] =
-    {0x01, 0x79, 0xfc, 0x06, 0x06, 0x80, 0x00, 0x06, 0x03, 0x06};
-static unsigned char bt_radio_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x79, 0xfc, 0x00};
-static unsigned char bt_tx_pwr_offset[7] =
-    {0x01, 0x93, 0xfc, 0x03, 0xff, 0xff, 0xff};
-static unsigned char bt_tx_pwr_offset_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x93, 0xfc, 0x00};
-static unsigned char bt_sleep[11] =
-    {0x01, 0x7a, 0xfc, 0x07, 0x03, 0x40, 0x1f, 0x40, 0x1f, 0x00, 0x04};
-static unsigned char bt_sleep_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x7a, 0xfc, 0x00};
-static unsigned char bt_feature[6] =
-    {0x01, 0x7d, 0xfc, 0x02, 0x80, 0x0};
-static unsigned char bt_feature_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x7d, 0xfc, 0x00};
-static unsigned char bt_OSC[9] =
-    {0x01, 0x7b, 0xfc, 0x05, 0x01, 0x01, 0x14, 0x0a, 0x05};
-static unsigned char bt_OSC_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x7b, 0xfc, 0x00};
-static unsigned char bt_LPO[14] =
-    {0x01, 0x7c, 0xfc, 0x0a, 0x01, 0xfa, 0x0a, 0x02, 0x00, 0xa6, 0x0e, 0x00, 0x40, 0x00};
-static unsigned char bt_LPO_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x7c, 0xfc, 0x00};
-static unsigned char bt_legacy_PTA[14] =
-    {0x01, 0x74, 0xfc, 0x0a, 0xc9, 0x8b, 0xbf, 0x00, 0x00, 0x52, 0x0e, 0x0e, 0x1f, 0x1b};
-static unsigned char bt_legacy_PTA_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x74, 0xfc, 0x00};
-static unsigned char bt_BLE_PTA[9] =
-    {0x01, 0xfc, 0xfc, 0x05, 0x16, 0x0e, 0x0e, 0x00, 0x07};
-static unsigned char bt_BLE_PTA_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0xfc, 0xfc, 0x00};
-static unsigned char bt_RF_desence[10] =
-    {0x01, 0x20, 0xfc, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-static unsigned char bt_RF_desence_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x20, 0xfc, 0x00};
-static unsigned char bt_reset[4] =
-    {0x01, 0x03, 0x0c, 0x0};
-static unsigned char bt_reset_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0x03, 0x0c, 0x00};
-static unsigned char bt_intern_PTA_1[19] =
-    {0x01, 0xfb, 0xfc, 0x0f, 0x00, 0x01, 0x0f, 0x0f, 0x01, 0x0f, 0x0f, 0x01, 0x0f, 0x0f, 0x01, 0x0f, 0x0f, 0x02, 0x01};
-static unsigned char bt_intern_PTA_1_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0xfb, 0xfc, 0x00};
-static unsigned char bt_intern_PTA_2[11] =
-    {0x01, 0xfb, 0xfc, 0x07, 0x01, 0x19, 0x19, 0x07, 0xd0, 0x00, 0x01};
-static unsigned char bt_intern_PTA_2_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0xfb, 0xfc, 0x00};
-static unsigned char bt_SLP_control_reg[12] =
-    {0x01, 0xd0, 0xfc, 0x08, 0x74, 0x00, 0x01, 0x81, 0xe2, 0x29, 0x0, 0x0};
-static unsigned char bt_SLP_control_reg_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0xd0, 0xfc, 0x00};
-static unsigned char bt_SLP_LDOD_reg[12] =
-    {0x01, 0xd0, 0xfc, 0x08, 0x1c, 0x00, 0x02, 0x81, 0x79, 0x08, 0x0, 0x0};
-static unsigned char bt_SLP_LDOD_reg_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0xd0, 0xfc, 0x00};
-static unsigned char bt_RF_reg[10] =
-    {0x01, 0xb0, 0xfc, 0x06, 0x64, 0x01, 0x02, 0x00, 0x00, 0x00};
-static unsigned char bt_RF_reg_evt[] =
-    {0x04, 0x0e, 0x04, 0x01, 0xb0, 0xfc, 0x00};
 
-#if (HCI_STP_DEV_INIT == HCI_STP_DEV_INIT_THRD)
-/* use this array to store received event content temporarily */
+#define CUSTOM_BT_CFG_FILE          "/data/BT.cfg"
+#define INTERNAL_BT_CFG_FILE        "/data/bluetooth/BT.cfg"
+
+static bool fgetEFUSE = false;
+
+static unsigned char bt_get_bd_addr[4] =
+    {0x01, 0x09, 0x10, 0x00};
+static unsigned char bt_get_bd_addr_evt[] =
+    {0x04, 0x0E, 0x0A, 0x01, 0x09, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static unsigned char bt_set_bd_addr[10] =
+    {0x01, 0x1A, 0xFC, 0x06, 0x01, 0x20, 0x66, 0x46, 0x00, 0x00};
+static unsigned char bt_set_bd_addr_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x1A, 0xFC, 0x00};
+static unsigned char bt_set_link_key_type[5]=
+    {0x01, 0x1B, 0xFC, 0x01, 0x01};
+static unsigned char bt_set_link_key_type_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x1B, 0xFC, 0x00};
+static unsigned char bt_set_unit_key[20] =
+    {0x01, 0x75, 0xFC, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static unsigned char bt_set_unit_key_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x75, 0xFC, 0x00};
+static unsigned char bt_set_encrypt[7] =
+    {0x01, 0x76, 0xFC, 0x03, 0x00, 0x02, 0x10};
+static unsigned char bt_set_encrypt_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x76, 0xFC, 0x00};
+static unsigned char bt_set_pin_code_type[5] =
+    {0x01, 0x0A, 0x0C, 0x01, 0x00};
+static unsigned char bt_set_pin_code_type_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x0A, 0x0C, 0x00};
+static unsigned char bt_set_voice[6] =
+    {0x01, 0x26, 0x0C, 0x02, 0x60, 0x00};
+static unsigned char bt_set_voice_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x26, 0x0C, 0x00};
+static unsigned char bt_set_codec[8] =
+    {0x01, 0x72, 0xFC, 0x04, 0x23, 0x10, 0x00, 0x00};
+static unsigned char bt_set_codec_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x72, 0xFC, 0x00};
+static unsigned char bt_set_radio[10] =
+    {0x01, 0x79, 0xFC, 0x06, 0x06, 0x80, 0x00, 0x06, 0x03, 0x06};
+static unsigned char bt_set_radio_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x79, 0xFC, 0x00};
+static unsigned char bt_set_tx_pwr_offset[7] =
+    {0x01, 0x93, 0xFC, 0x03, 0xFF, 0xFF, 0xFF};
+static unsigned char bt_set_tx_pwr_offset_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x93, 0xFC, 0x00};
+static unsigned char bt_set_sleep[11] =
+    {0x01, 0x7A, 0xFC, 0x07, 0x03, 0x40, 0x1F, 0x40, 0x1F, 0x00, 0x04};
+static unsigned char bt_set_sleep_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x7A, 0xFC, 0x00};
+static unsigned char bt_set_feature[6] =
+    {0x01, 0x7D, 0xFC, 0x02, 0x80, 0x0};
+static unsigned char bt_set_feature_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x7D, 0xFC, 0x00};
+static unsigned char bt_set_OSC[9] =
+    {0x01, 0x7B, 0xFC, 0x05, 0x01, 0x01, 0x14, 0x0A, 0x05};
+static unsigned char bt_set_OSC_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x7B, 0xFC, 0x00};
+static unsigned char bt_set_LPO[14] =
+    {0x01, 0x7C, 0xFC, 0x0A, 0x01, 0xFA, 0x0A, 0x02, 0x00, 0xA6, 0x0E, 0x00, 0x40, 0x00};
+static unsigned char bt_set_LPO_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x7C, 0xFC, 0x00};
+static unsigned char bt_set_legacy_PTA[14] =
+    {0x01, 0x74, 0xFC, 0x0A, 0xC9, 0x8B, 0xBF, 0x00, 0x00, 0x52, 0x0E, 0x0E, 0x1F, 0x1B};
+static unsigned char bt_set_legacy_PTA_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x74, 0xFC, 0x00};
+static unsigned char bt_set_BLE_PTA[9] =
+    {0x01, 0xFC, 0xFC, 0x05, 0x16, 0x0E, 0x0E, 0x00, 0x07};
+static unsigned char bt_set_BLE_PTA_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0xFC, 0xFC, 0x00};
+static unsigned char bt_set_RF_desence[10] =
+    {0x01, 0x20, 0xFC, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+static unsigned char bt_set_RF_desence_evt[] =
+    {0x04, 0x0e, 0x04, 0x01, 0x20, 0xFC, 0x00};
+static unsigned char bt_reset[4] =
+    {0x01, 0x03, 0x0C, 0x0};
+static unsigned char bt_reset_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0x03, 0x0C, 0x00};
+static unsigned char bt_set_intern_PTA_1[19] =
+    {0x01, 0xFB, 0xFC, 0x0F, 0x00, 0x01, 0x0F, 0x0F, 0x01, 0x0F, 0x0F, 0x01, 0x0F, 0x0F, 0x01, 0x0F, 0x0F, 0x02, 0x01};
+static unsigned char bt_set_intern_PTA_1_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0xFB, 0xFC, 0x00};
+static unsigned char bt_set_intern_PTA_2[11] =
+    {0x01, 0xFB, 0xFC, 0x07, 0x01, 0x19, 0x19, 0x07, 0xD0, 0x00, 0x01};
+static unsigned char bt_set_intern_PTA_2_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0xFB, 0xFC, 0x00};
+static unsigned char bt_set_SLP_control_reg[12] =
+    {0x01, 0xD0, 0xFC, 0x08, 0x74, 0x00, 0x01, 0x81, 0xE2, 0x29, 0x0, 0x0};
+static unsigned char bt_set_SLP_control_reg_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0xD0, 0xFC, 0x00};
+static unsigned char bt_set_SLP_LDOD_reg[12] =
+    {0x01, 0xD0, 0xFC, 0x08, 0x1C, 0x00, 0x02, 0x81, 0x79, 0x08, 0x0, 0x0};
+static unsigned char bt_set_SLP_LDOD_reg_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0xD0, 0xFC, 0x00};
+static unsigned char bt_set_RF_reg_100[10] =
+    {0x01, 0xB0, 0xFC, 0x06, 0x64, 0x01, 0x02, 0x00, 0x00, 0x00};
+static unsigned char bt_set_RF_reg_100_evt[] =
+    {0x04, 0x0E, 0x04, 0x01, 0xB0, 0xFC, 0x00};
+
+/* Do init commands in sequence, cmd and cmd##_evt */
 static struct hci_stp_init_cmd init_table[] =
 {
-    /* do init in sequence, cmd and cmd##_evt array */
-    hci_stp_init_entry(bt_bd_addr),
-    hci_stp_init_entry(bt_link_key_type),
-    hci_stp_init_entry(bt_unit_key),
-    hci_stp_init_entry(bt_encrypt),
-    hci_stp_init_entry(bt_pin_code_type),
-    hci_stp_init_entry(bt_voice),
-    hci_stp_init_entry(bt_codec),
-    hci_stp_init_entry(bt_radio),
-    hci_stp_init_entry(bt_tx_pwr_offset),
-    hci_stp_init_entry(bt_sleep),
-    hci_stp_init_entry(bt_feature),
-    hci_stp_init_entry(bt_OSC),
-    hci_stp_init_entry(bt_LPO),
-    hci_stp_init_entry(bt_legacy_PTA),
-    hci_stp_init_entry(bt_BLE_PTA),
-    hci_stp_init_entry(bt_RF_desence),
+    hci_stp_init_entry(bt_get_bd_addr),
+    hci_stp_init_entry(bt_set_bd_addr),
+    hci_stp_init_entry(bt_set_link_key_type),
+    hci_stp_init_entry(bt_set_unit_key),
+    hci_stp_init_entry(bt_set_encrypt),
+    hci_stp_init_entry(bt_set_pin_code_type),
+    hci_stp_init_entry(bt_set_voice),
+    hci_stp_init_entry(bt_set_codec),
+    hci_stp_init_entry(bt_set_radio),
+    hci_stp_init_entry(bt_set_tx_pwr_offset),
+    hci_stp_init_entry(bt_set_sleep),
+    hci_stp_init_entry(bt_set_feature),
+    hci_stp_init_entry(bt_set_OSC),
+    hci_stp_init_entry(bt_set_LPO),
+    hci_stp_init_entry(bt_set_legacy_PTA),
+    hci_stp_init_entry(bt_set_BLE_PTA),
+    hci_stp_init_entry(bt_set_RF_desence),
     hci_stp_init_entry(bt_reset),
-    hci_stp_init_entry(bt_intern_PTA_1),
-    hci_stp_init_entry(bt_intern_PTA_2),
-    hci_stp_init_entry(bt_SLP_control_reg),
-    hci_stp_init_entry(bt_SLP_LDOD_reg),
-    hci_stp_init_entry(bt_RF_reg),
+    hci_stp_init_entry(bt_set_intern_PTA_1),
+    hci_stp_init_entry(bt_set_intern_PTA_2),
+    hci_stp_init_entry(bt_set_SLP_control_reg),
+    hci_stp_init_entry(bt_set_SLP_LDOD_reg),
+    hci_stp_init_entry(bt_set_RF_reg_100),
 };
-#endif
 
 /*******************************************************************************
 *                             D A T A   T Y P E S
@@ -270,12 +238,12 @@ static struct hci_stp_init_cmd init_table[] =
 ********************************************************************************
 */
 
-#define BT_LOUD_FUNC(fmt, arg...)    if(gHciStpDbgLevel >= BT_LOG_LOUD){ printk(PFX "[L]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define BT_DBG_FUNC(fmt, arg...)    if(gHciStpDbgLevel >= BT_LOG_DBG){ printk(PFX "[D]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define BT_INFO_FUNC(fmt, arg...)   if(gHciStpDbgLevel >= BT_LOG_INFO){ printk(PFX "[I]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define BT_WARN_FUNC(fmt, arg...)   if(gHciStpDbgLevel >= BT_LOG_WARN){ printk(PFX "[W]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define BT_ERR_FUNC(fmt, arg...)    if(gHciStpDbgLevel >= BT_LOG_ERR){  printk(PFX "[E]%s:"   fmt, __FUNCTION__ ,##arg);}
-#define BT_TRC_FUNC(f)              if(gHciStpDbgLevel >= BT_LOG_LOUD){printk(PFX "[T]%s:%d\n", __FUNCTION__, __LINE__);}
+#define BT_LOUD_FUNC(fmt, arg...)   if(gDbgLevel >= BT_LOG_LOUD){printk(PFX "[L]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define BT_DBG_FUNC(fmt, arg...)    if(gDbgLevel >= BT_LOG_DBG){printk(PFX "[D]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define BT_INFO_FUNC(fmt, arg...)   if(gDbgLevel >= BT_LOG_INFO){printk(PFX "[I]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define BT_WARN_FUNC(fmt, arg...)   if(gDbgLevel >= BT_LOG_WARN){printk(PFX "[W]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define BT_ERR_FUNC(fmt, arg...)    if(gDbgLevel >= BT_LOG_ERR){printk(PFX "[E]%s:"   fmt, __FUNCTION__ ,##arg);}
+#define BT_TRC_FUNC(f)              if(gDbgLevel >= BT_LOG_LOUD){printk(PFX "[T]%s:%d\n", __FUNCTION__, __LINE__);}
 
 #if HCI_STP_SAFE_RESET
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39)
@@ -315,6 +283,143 @@ static int hci_stp_tx_thrd_func (void *pdata);
 *                              F U N C T I O N S
 ********************************************************************************
 */
+
+static ssize_t file_read(char *filename, char *buf, size_t len, loff_t *offset)
+{
+    struct file *fp;
+    mm_segment_t old_fs;
+    ssize_t retLen;
+
+    fp = filp_open(filename, O_RDONLY, 0);
+    if (IS_ERR(fp)) {
+        BT_WARN_FUNC("Failed to open %s!\n", filename);
+        return -1;
+    }
+
+    old_fs = get_fs();
+    set_fs(KERNEL_DS);
+
+    if ((fp->f_op == NULL) || (fp->f_op->read == NULL)){
+        BT_WARN_FUNC("File can not be read!\n");
+        set_fs(old_fs);
+        filp_close(fp, NULL);
+        return -1;
+    }
+
+    retLen = fp->f_op->read(fp, buf, len, offset);
+
+    set_fs(old_fs);
+    filp_close(fp, NULL);
+
+    return retLen;
+}
+
+static ssize_t file_write(char *filename, char *buf, size_t len, loff_t *offset)
+{
+    struct file *fp;
+    mm_segment_t old_fs;
+    ssize_t retLen;
+
+    fp = filp_open(filename, O_WRONLY | O_CREAT, 0644);
+    if (IS_ERR(fp)) {
+        BT_WARN_FUNC("Failed to open %s!\n", filename);
+        return -1;
+    }
+
+    old_fs = get_fs();
+    set_fs(KERNEL_DS);
+
+    if ((fp->f_op == NULL) || (fp->f_op->write == NULL)){
+        BT_WARN_FUNC("File can not be write!\n");
+        set_fs(old_fs);
+        filp_close(fp, NULL);
+        return -1;
+    }
+
+    retLen = fp->f_op->write(fp, buf, len, offset);
+
+    set_fs(old_fs);
+    filp_close(fp, NULL);
+
+    return retLen;
+}
+
+int load_custom_bt_conf(struct btradio_conf_data *cfg)
+{
+   /*
+    This method depends on customer's platform configuration data
+    store machenism.
+    Customer may use NVRAM, data file, or other patterns.
+    Here RECOMMEND and GIVE AN EXAMPLE to push configuration data
+    under /data/BT.cfg
+    */
+
+    struct btradio_conf_data temp;
+    loff_t pos = 0;
+    ssize_t retLen;
+
+    retLen = file_read(CUSTOM_BT_CFG_FILE,
+                       (char*)&temp,
+                       sizeof(temp),
+                       &pos);
+
+    if (retLen < 0)
+        return -1;
+
+    if(retLen < sizeof(temp)){
+        BT_ERR_FUNC("File read error len: %d\n", retLen);
+        return -1;
+    }
+    else{
+        memcpy(cfg, &temp, retLen);
+        return 0;
+    }
+}
+
+int load_internal_bt_conf(struct btradio_conf_data *cfg)
+{
+    struct btradio_conf_data temp;
+    loff_t pos = 0;
+    ssize_t retLen;
+    ssize_t written;
+
+    retLen = file_read(INTERNAL_BT_CFG_FILE,
+                       (char*)&temp,
+                       sizeof(temp),
+                       &pos);
+
+    if (retLen < 0){
+        BT_INFO_FUNC("No internal BT config, generate from default value\n");
+        memcpy(&temp, &sDefaultCfg, sizeof(struct btradio_conf_data));
+
+        // Generate internal BT config file
+        pos = 0;
+        written = file_write(INTERNAL_BT_CFG_FILE,
+                             (char*)&temp,
+                             sizeof(temp),
+                             &pos);
+        if (written < 0){
+            BT_ERR_FUNC("Try to create internal BT config, error\n");
+            return -1;
+        }
+        else if(written < sizeof(temp)){
+            BT_ERR_FUNC("File write error len: %d\n", written);
+        }
+        else{
+            BT_INFO_FUNC("Internal BT config generated\n");
+        }
+
+        memcpy(cfg, &temp, sizeof(temp));
+        return 0;
+    }
+    else if(retLen < sizeof(temp)){
+        BT_ERR_FUNC("File read error len: %d\n", retLen);
+    }
+
+    memcpy(cfg, &temp, retLen);
+    return 0;
+}
+
 
 static inline void hci_stp_tx_skb_comp (struct hci_stp *hu, struct sk_buff *skb)
 {
@@ -508,8 +613,6 @@ END:
 
 void hci_stp_tx_init (struct hci_stp *hu)
 {
-    BT_DBG_FUNC("start:0x%p\n", hu);
-
     spin_lock_init(&hci_stp_txqlock);
     init_waitqueue_head(&hci_stp_tx_thrd_wq);
 
@@ -519,18 +622,14 @@ void hci_stp_tx_init (struct hci_stp *hu)
     }
     wake_up_process(hci_stp_tx_thrd);
 
-    BT_DBG_FUNC("done\n");
     return;
 }
 
 void hci_stp_tx_deinit (struct hci_stp *hu)
 {
-    BT_DBG_FUNC("start:0x%p\n", hu);
-
     kthread_stop(hci_stp_tx_thrd);
     hci_stp_tx_thrd = NULL;
 
-    BT_DBG_FUNC("done\n");
     return;
 }
 
@@ -582,14 +681,14 @@ hci_stp_tx_thrd_func (void *pdata)
         return -1;
     }
 
-    smp_mb(); /* sync shared data */
-
     for (;;) {
+        smp_rmb(); /* sync shared data */
+
         wait_event_interruptible(hci_stp_tx_thrd_wq,
             (!skb_queue_empty(&hu->txq) || kthread_should_stop()));
 
         if (unlikely(kthread_should_stop())) {
-            BT_INFO_FUNC("hci_stpd thread should stop now... \n");
+            BT_DBG_FUNC("hci_stpd thread should stop now... \n");
             break;
         }
 
@@ -632,12 +731,13 @@ hci_stp_tx_thrd_func (void *pdata)
         /* back to wait */
     }
 
-    BT_INFO_FUNC("hci_stpd stop!\n");
+    BT_INFO_FUNC("tx thread stop!\n");
     return 0;
 }
 
 void hci_stp_tx_kick (void)
 {
+    smp_wmb();
     wake_up_interruptible(&hci_stp_tx_thrd_wq);
 }
 
@@ -645,123 +745,6 @@ void hci_stp_tx_kick (void)
 #error "Not implemented HCI_STP_TX"
 #endif
 
-#if (HCI_STP_DEV_INIT == HCI_STP_DEV_INIT_OPEN_CTX)
-static int hci_stp_dev_init (struct hci_stp *phu)
-{
-    BT_INFO_FUNC("Reset bd_addr =>\n");
-    mtk_wcn_stp_send_data(bt_bd_addr, 10, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bd_addr <=\n");
-
-    BT_INFO_FUNC("Reset bt_link_key_type =>\n");
-    mtk_wcn_stp_send_data(bt_link_key_type, 5, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_link_key_type <=\n");
-
-    BT_INFO_FUNC("Reset bt_unit_key =>\n");
-    mtk_wcn_stp_send_data(bt_unit_key, 20, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_unit_key <=\n");
-
-    BT_INFO_FUNC("Reset bt_encrypt =>\n");
-    mtk_wcn_stp_send_data(bt_encrypt, 7, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_encrypt <=\n");
-
-    BT_INFO_FUNC("Reset bt_pin_code_type =>\n");
-    mtk_wcn_stp_send_data(bt_pin_code_type, 5, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_pin_code_type <=\n");
-
-    BT_INFO_FUNC("Reset bt_voice =>\n");
-    mtk_wcn_stp_send_data(bt_voice, 6, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_voice <=\n");
-
-    BT_INFO_FUNC("Reset bt_codec =>\n");
-    mtk_wcn_stp_send_data(bt_codec, 8, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_codec <=\n");
-
-    BT_INFO_FUNC("Reset bt_radio =>\n");
-    mtk_wcn_stp_send_data(bt_radio, 10, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_radio <=\n");
-
-    BT_INFO_FUNC("Reset bt_tx_pwr_offset =>\n");
-    mtk_wcn_stp_send_data(bt_tx_pwr_offset, 7, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_tx_pwr_offset <=\n");
-
-    BT_INFO_FUNC("Reset bt_sleep =>\n");
-    mtk_wcn_stp_send_data(bt_sleep, 11, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_sleep <=\n");
-
-    BT_INFO_FUNC("Reset bt_feature =>\n");
-    mtk_wcn_stp_send_data(bt_feature, 6, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_feature <=\n");
-
-    BT_INFO_FUNC("Reset bt_OSC =>\n");
-    mtk_wcn_stp_send_data(bt_OSC, 9, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_OSC <=\n");
-
-    BT_INFO_FUNC("Reset bt_LPO =>\n");
-    mtk_wcn_stp_send_data(bt_LPO, 14, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_LPO <=\n");
-
-    BT_INFO_FUNC("Reset bt_legacy_PTA =>\n");
-    mtk_wcn_stp_send_data(bt_legacy_PTA, 14, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_legacy_PTA <=\n");
-
-    BT_INFO_FUNC("Reset bt_BLE_PTA =>\n");
-    mtk_wcn_stp_send_data(bt_BLE_PTA, 9, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_BLE_PTA <=\n");
-
-    BT_INFO_FUNC("Reset bt_RF_desence =>\n");
-    mtk_wcn_stp_send_data(bt_RF_desence, 10, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_RF_desence <=\n");
-
-    BT_INFO_FUNC("Reset bt_reset =>\n");
-    mtk_wcn_stp_send_data(bt_reset, 4, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_RESET);
-    BT_INFO_FUNC("Reset bt_reset <=\n");
-
-    BT_INFO_FUNC("Reset bt_intern_PTA_1 =>\n");
-    mtk_wcn_stp_send_data(bt_intern_PTA_1, 19, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_intern_PTA_1 <=\n");
-
-    BT_INFO_FUNC("Reset bt_intern_PTA_2 =>\n");
-    mtk_wcn_stp_send_data(bt_intern_PTA_2, 11, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_intern_PTA_2 <=\n");
-
-    BT_INFO_FUNC("Reset bt_SLP_control_reg =>\n");
-    mtk_wcn_stp_send_data(bt_SLP_control_reg, 12, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_SLP_control_reg <=\n");
-
-    BT_INFO_FUNC("Reset bt_SLP_LDOD_reg =>\n");
-    mtk_wcn_stp_send_data(bt_SLP_LDOD_reg, 12, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_SLP_LDOD_reg <=\n");
-
-    BT_INFO_FUNC("Reset bt_RF_reg =>\n");
-    mtk_wcn_stp_send_data(bt_RF_reg, 10, BT_TASK_INDX);
-    msleep(BT_CMD_DELAY_MS_COMM);
-    BT_INFO_FUNC("Reset bt_RF_reg <=\n");
-
-    return 0;
-}
-
-#elif (HCI_STP_DEV_INIT == HCI_STP_DEV_INIT_THRD)
 
 void hci_stp_dev_init_rx_cb (const UINT8 *data, INT32 count)
 {
@@ -781,25 +764,29 @@ void hci_stp_dev_init_rx_cb (const UINT8 *data, INT32 count)
     hu = (struct hci_stp *)hdev->driver_data;
     idx = hu->init_cmd_idx;
 
-    if (unlikely(count != init_table[idx].evtSz)) {
+    if (unlikely(count != init_table[idx].evtSz)){
         hu->init_evt_rx_flag = -1; /* size mismatch */
     }
-    else if (unlikely(memcmp(data, init_table[idx].hci_evt, count))) {
+    else if (unlikely(memcmp(data, init_table[idx].hci_evt, 7))){
         hu->init_evt_rx_flag = -2; /* content mismatch */
     }
-    else {
+    else{
         hu->init_evt_rx_flag = 1; /* ok */
-        BT_DBG_FUNC("EVT i(%d),rx(%d) ok\n", idx, count);
+        BT_DBG_FUNC("EVT(%d) len(%d) ok\n", idx, count);
+        if (idx == 0) {
+            /* store the returned eFUSE address */
+            memcpy(&bt_get_bd_addr_evt[7], &data[7], 6);
+        }
     }
 
     if (unlikely(1 != hu->init_evt_rx_flag)) {
         int i;
-        BT_WARN_FUNC("EVT i(%d),rx(%d)buf:[", idx, count);
+        BT_WARN_FUNC("EVT(%d) len(%d) buf:[", idx, count);
         for (i = 0; i < count; ++i) {
             printk("0x%02x ", data[i]);
         }
         printk("]\n");
-        BT_WARN_FUNC("EVT i(%d),exp(%d)buf:[", idx, init_table[idx].evtSz);
+        BT_WARN_FUNC("EVT(%d) exp(%d) buf:[", idx, init_table[idx].evtSz);
         for (i = 0; i < count; ++i) {
             printk("0x%02x ", init_table[idx].hci_evt[i]);
         }
@@ -807,30 +794,108 @@ void hci_stp_dev_init_rx_cb (const UINT8 *data, INT32 count)
 
     }
 
-    smp_mb(); /* sync shared data */
-    wake_up(hu->p_init_evt_wq); /* wake up dev_init_work */
+    smp_wmb(); /* sync shared data */
+
+    spin_lock(&hu->init_lock);
+    if (likely(hu->p_init_evt_wq)) {
+        wake_up(hu->p_init_evt_wq); /* wake up dev_init_work */
+    }
+    else {
+        int i;
+        BT_WARN_FUNC("late EVT(%d) len(%d) buf:[", idx, count);
+        for (i = 0; i < count; ++i) {
+            printk("0x%02x ", data[i]);
+        }
+        printk("]\n");
+        BT_WARN_FUNC("Please check if uart rx data is returned or processed in time for BT init!\n");
+        BT_WARN_FUNC("Possibly caused by a very busy system, or stp_uart rx priority too low...\n");
+        BT_WARN_FUNC("Check which one is the real case and try to raise stp_uart rx priority.\n");
+    }
+    spin_unlock(&hu->init_lock);
 }
 
 static void hci_stp_dev_init_work (struct work_struct *work)
 {
     struct hci_stp *phu;
     unsigned int idx;
-    long ret;
-    long to;
+    long ret, to;
 
-    BT_DBG_FUNC("++\n");
+    struct btradio_conf_data cfg = {
+        {0x00, 0x00, 0x46, 0x66, 0x20, 0x01},
+        {0x60, 0x00},
+        {0x23, 0x10, 0x00, 0x00},
+        {0x06, 0x80, 0x00, 0x06, 0x03, 0x06},
+        {0x03, 0x40, 0x1F, 0x40, 0x1F, 0x00, 0x04},
+        {0x80, 0x00},
+        {0xFF, 0xFF, 0xFF}};
 
     /* get client's information */
     phu = container_of(work, struct hci_stp, init_work);
 
-    for (idx = 0; idx < ARRAY_SIZE(init_table); ++idx) {
+    if (load_custom_bt_conf(&cfg) < 0){
+        BT_INFO_FUNC("No custom BT config\n");
+
+        if (load_internal_bt_conf(&cfg) < 0){
+            BT_ERR_FUNC("Load internal BT config failed!\n");
+        }
+        else{
+            BT_INFO_FUNC("Load internal BT config success\n");
+
+            if (0 == memcmp(cfg.addr, sDefaultCfg.addr, 6)){
+                /* BD address default value, want to retrieve module eFUSE */
+                fgetEFUSE = true;
+                /* retrieve eFUSE address in init command loop */
+            }
+        }
+    }
+    else{
+        BT_INFO_FUNC("Load custom BT config success\n");
+    }
+
+    BT_DBG_FUNC("Read BT config data:\n");
+    BT_DBG_FUNC("[BD address %02x-%02x-%02x-%02x-%02x-%02x]\n",
+        cfg.addr[0], cfg.addr[1], cfg.addr[2], cfg.addr[3], cfg.addr[4], cfg.addr[5]);
+    BT_DBG_FUNC("[voice %02x %02x][codec %02x %02x %02x %02x]\n",
+        cfg.voice[0], cfg.voice[1], cfg.codec[0], cfg.codec[1], cfg.codec[2], cfg.codec[3]);
+    BT_DBG_FUNC("[radio %02x %02x %02x %02x %02x %02x]\n",
+        cfg.radio[0], cfg.radio[1], cfg.radio[2], cfg.radio[3], cfg.radio[4], cfg.radio[5]);
+    BT_DBG_FUNC("[sleep %02x %02x %02x %02x %02x %02x %02x]\n",
+        cfg.sleep[0], cfg.sleep[1], cfg.sleep[2], cfg.sleep[3], cfg.sleep[4], cfg.sleep[5], cfg.sleep[6]);
+    BT_DBG_FUNC("[feature %02x %02x]\n",
+        cfg.feature[0], cfg.feature[1]);
+    BT_DBG_FUNC("[tx power offset %02x %02x %02x]\n",
+        cfg.tx_pwr_offset[0], cfg.tx_pwr_offset[1], cfg.tx_pwr_offset[2]);
+
+    bt_set_bd_addr[4] = cfg.addr[5];
+    bt_set_bd_addr[5] = cfg.addr[4];
+    bt_set_bd_addr[6] = cfg.addr[3];
+    bt_set_bd_addr[7] = cfg.addr[2];
+    bt_set_bd_addr[8] = cfg.addr[1];
+    bt_set_bd_addr[9] = cfg.addr[0];
+
+    memcpy(&bt_set_voice[4], cfg.voice, 2);
+    memcpy(&bt_set_codec[4], cfg.codec, 4);
+    memcpy(&bt_set_radio[4], cfg.radio, 6);
+    memcpy(&bt_set_tx_pwr_offset[4], cfg.tx_pwr_offset, 3);
+    memcpy(&bt_set_sleep[4], cfg.sleep, 7);
+    memcpy(&bt_set_feature[4], cfg.feature, 2);
+
+    /*
+     * INIT command loop starts
+     */
+    if (fgetEFUSE == true)
+        idx = 0;
+    else // skip bt_get_bd_addr
+        idx = 1;
+
+    for (; idx < ARRAY_SIZE(init_table); ++idx) {
         phu->init_cmd_idx = idx;
         phu->init_evt_rx_flag = 0;
         to = (init_table[idx].hci_cmd == bt_reset) ? BT_CMD_DELAY_MS_RESET : BT_CMD_DELAY_MS_COMM;
         /* safe waiting time in case running on a busy system */
         to = msecs_to_jiffies(to * BT_CMD_DELAY_SAFE_GUARD);
 
-        BT_DBG_FUNC("CMD(%d),(%s),t/o(%ld))=>\n", idx, init_table[idx].str, to);
+        BT_DBG_FUNC("CMD(%d) (%s) t/o(%ld))\n", idx, init_table[idx].str, to);
         smp_wmb(); /* sync shared data */
 
         /* Send hci command */
@@ -843,14 +908,61 @@ static void hci_stp_dev_init_work (struct work_struct *work)
 
         /* Check result */
         if (likely(1 == phu->init_evt_rx_flag)) {
-            BT_DBG_FUNC("EVT(%d) ret(%u) ok<=\n", idx, jiffies_to_msecs(ret));
-            /* process next cmd */
+            if (idx == 0) 
+            { // bt_get_bd_addr event handler
+                unsigned long randNum;
+                loff_t pos = 0;
+                ssize_t written;
+
+                BT_DBG_FUNC("Retrieve eFUSE address %02x-%02x-%02x-%02x-%02x-%02x\n",
+                    bt_get_bd_addr_evt[12], bt_get_bd_addr_evt[11], bt_get_bd_addr_evt[10], bt_get_bd_addr_evt[9], bt_get_bd_addr_evt[8], bt_get_bd_addr_evt[7]);
+
+                cfg.addr[0] = bt_get_bd_addr_evt[12];
+                cfg.addr[1] = bt_get_bd_addr_evt[11];
+                cfg.addr[2] = bt_get_bd_addr_evt[10];
+                cfg.addr[3] = bt_get_bd_addr_evt[9];
+                cfg.addr[4] = bt_get_bd_addr_evt[8];
+                cfg.addr[5] = bt_get_bd_addr_evt[7];
+
+                if (0 == memcmp(cfg.addr, sDefaultCfg.addr, 6)){
+                #if BD_ADDR_AUTOGEN
+                    /* eFUSE address default value, enable auto-gen */
+                    BT_DBG_FUNC("eFUSE address default value, enable auto-gen!\n");
+                    get_random_bytes(&randNum, sizeof(unsigned long));
+                    BT_DBG_FUNC("Get random number: %lu\n", randNum);
+
+                    bt_get_bd_addr_evt[12] = (((randNum>>24 | randNum>>16) & (0xFE)) | (0x02));
+                    bt_get_bd_addr_evt[11] = ((randNum>>8) & 0xFF);
+                    bt_get_bd_addr_evt[7] = (randNum & 0xFF);
+                    
+                    cfg.addr[0] = bt_get_bd_addr_evt[12];
+                    cfg.addr[1] = bt_get_bd_addr_evt[11];
+                    cfg.addr[5] = bt_get_bd_addr_evt[7];
+                #endif
+                }
+                else {
+                    /* eFUSE address has valid value */
+                }
+
+                memcpy(&bt_set_bd_addr[4], &bt_get_bd_addr_evt[7], 6);
+
+                /* Update BD address in internal BT config file */
+                pos = 0;
+                written = file_write(INTERNAL_BT_CFG_FILE,
+                                     (char*)&cfg,
+                                     6,
+                                     &pos);
+
+                /* Clear flag */
+                fgetEFUSE = false;
+            }
+            /* Process next cmd */
             continue;
         }
         else {
-            BT_WARN_FUNC("EVT(%d) ret(%u) to(%ld) fg(%d)<=\n",
-                idx, jiffies_to_msecs(ret), to, phu->init_evt_rx_flag);
-            /* stop processing and skip next cmd */
+            BT_ERR_FUNC("EVT(%d) ret(%u) rx_flag(%d)<=\n",
+                idx, jiffies_to_msecs(ret), phu->init_evt_rx_flag);
+            /* Stop processing and skip next cmd */
             break;
         }
     }
@@ -858,8 +970,6 @@ static void hci_stp_dev_init_work (struct work_struct *work)
     if (phu->p_init_comp) {
         complete(phu->p_init_comp);
     }
-
-    BT_DBG_FUNC("--\n");
 }
 
 static int hci_stp_dev_init (struct hci_stp *phu)
@@ -884,7 +994,6 @@ static int hci_stp_dev_init (struct hci_stp *phu)
      */
     schedule_work(&phu->init_work);
 
-    //ret = wait_for_completion_interruptible_timeout(&hci_stp_dev_init_comp, msecs_to_jiffies(HCI_STP_INIT_TO_MSEC)); /* 3 seconds? */
     wait_for_completion(&hci_stp_dev_init_comp);
 
     spin_lock(&phu->init_lock);
@@ -907,171 +1016,6 @@ static int hci_stp_dev_init (struct hci_stp *phu)
         /* return non-zero value for error */
         return (phu->init_evt_rx_flag + 256);
     }
-}
-#else
-#error "Not implemented HCI_STP_DEV_INIT"
-#endif
-
-
-static ssize_t file_read(char *filename, char *buf, size_t len, loff_t *offset)
-{
-    struct file *fp;
-    mm_segment_t old_fs;
-    ssize_t retLen;
-
-    fp = filp_open(filename, O_RDONLY, 0);
-    if (IS_ERR(fp)) {
-        BT_ERR_FUNC("Failed to open %s!\n", filename);
-        return -1;
-    }
-
-    old_fs = get_fs();
-    set_fs(KERNEL_DS);
-
-    if ((fp->f_op == NULL) || (fp->f_op->read == NULL)){
-        BT_ERR_FUNC("File can not be read!\n");
-        set_fs(old_fs);
-        filp_close(fp, NULL);
-        return -1;
-    }
-
-    retLen = fp->f_op->read(fp, buf, len, offset);
-
-    set_fs(old_fs);
-    filp_close(fp, NULL);
-
-    return retLen;
-}
-
-static ssize_t file_write(char *filename, char *buf, size_t len, loff_t *offset)
-{
-    struct file *fp;
-    mm_segment_t old_fs;
-    ssize_t retLen;
-
-    fp = filp_open(filename, O_WRONLY | O_CREAT, 0644);
-    if (IS_ERR(fp)) {
-        BT_ERR_FUNC("Failed to open %s!\n", filename);
-        return -1;
-    }
-
-    old_fs = get_fs();
-    set_fs(KERNEL_DS);
-
-    if ((fp->f_op == NULL) || (fp->f_op->write == NULL)){
-        BT_ERR_FUNC("File can not be write!\n");
-        set_fs(old_fs);
-        filp_close(fp, NULL);
-        return -1;
-    }
-
-    retLen = fp->f_op->write(fp, buf, len, offset);
-
-    set_fs(old_fs);
-    filp_close(fp, NULL);
-
-    return retLen;
-}
-
-int load_custom_bt_conf(struct btradio_conf_data *cfg)
-{
-   /*
-    This method depends on customer's platform configuration data
-    store machenism.
-    Customer may use NVRAM, data file, or other patterns.
-    Here RECOMMEND and GIVE AN EXAMPLE to push configuration data
-    under /data/BT.cfg
-    */
-
-    struct btradio_conf_data temp;
-    loff_t pos = 0;
-    ssize_t retLen;
-
-    retLen = file_read(CUSTOM_BT_CFG_FILE,
-                       (char*)&temp,
-                       sizeof(temp),
-                       &pos);
-
-    if (retLen < 0)
-        return -1;
-
-    if(retLen < sizeof(temp)){
-        BT_ERR_FUNC("File read length error %d\n", retLen);
-        return -1;
-    }
-
-    memcpy(cfg, &temp, retLen);
-
-    return 0;
-}
-
-int load_internal_bt_conf(struct btradio_conf_data *cfg)
-{
-    struct btradio_conf_data temp;
-    loff_t pos = 0;
-    ssize_t retLen;
-    ssize_t written;
-
-    // default BD_ADDR
-    unsigned char addr[6] = {0x00, 0x00, 0x46, 0x66, 0x20, 0x01};
-    unsigned long randNum;
-
-    retLen = file_read(INTERNAL_BT_CFG_FILE,
-                       (char*)&temp,
-                       sizeof(temp),
-                       &pos);
-
-    if (retLen < 0){
-        BT_INFO_FUNC("No internal BT config file, generate from built-in BT config\n");
-
-        pos = 0;
-        retLen = file_read(BUILTIN_BT_CFG_FILE,
-                           (char*)&temp,
-                           sizeof(temp),
-                           &pos);
-        if (retLen < 0){
-            BT_ERR_FUNC("Try to read built-in BT config, error\n");
-            return -1;
-        }
-        else if(retLen < sizeof(temp)){
-            BT_ERR_FUNC("File read length error %d\n", retLen);
-            return -1;
-        }
-
-        if (0 == memcmp(temp.addr, addr, 6)){
-            BT_DBG_FUNC("Built-in config use default BD address, enable auto-gen mechanism!\n");
-            get_random_bytes(&randNum, sizeof(unsigned long));
-            BT_DBG_FUNC("Get random number: %lu\n", randNum);
-
-            temp.addr[0] = (((randNum>>24 | randNum>>16) & (0xFE)) | (0x02));
-            temp.addr[1] = ((randNum>>8) & 0xFF);
-            temp.addr[5] = (randNum & 0xFF);
-
-            // Generate internal BT config file
-            pos = 0;
-            written = file_write(INTERNAL_BT_CFG_FILE,
-                                 (char*)&temp,
-                                 sizeof(temp),
-                                 &pos);
-            if (written < 0){
-                BT_ERR_FUNC("Try to create internal BT config, error\n");
-            }
-            else if(written < sizeof(temp)){
-                BT_ERR_FUNC("File write length error %d\n", written);
-            }
-            else{
-                BT_INFO_FUNC("Internal BT config generated\n");
-            }
-        }
-    }
-    else if(retLen < sizeof(temp)){
-        BT_ERR_FUNC("File read length error %d\n", retLen);
-        return -1;
-    }
-
-    memcpy(cfg, &temp, retLen);
-
-    return 0;
 }
 
 /* Invoked when there is ONE received BT packet */
@@ -1313,7 +1257,6 @@ void stp_rx_event_cb_directly(const UINT8 *data, INT32 count)
 static int hci_stp_open(struct hci_dev *hdev)
 {
     struct hci_stp *hu;
-    struct btradio_conf_data cfg;
     int ret;
 
     if (unlikely(!hdev)) {
@@ -1343,67 +1286,10 @@ static int hci_stp_open(struct hci_dev *hdev)
     BT_INFO_FUNC("WMT turn on BT OK!\n");
 
     if (likely(mtk_wcn_stp_is_ready())) {
-
-        BT_LOUD_FUNC("STP is ready!\n");
-
-        memset(&cfg, 0, sizeof(struct btradio_conf_data));
-        if (load_custom_bt_conf(&cfg) < 0){
-            BT_INFO_FUNC("No custom BT config\n");
-
-            if (load_internal_bt_conf(&cfg) < 0){
-                BT_ERR_FUNC("Load internal BT config failed!\n");
-                goto init_start;
-            }
-            else{
-                BT_INFO_FUNC("Load internal BT config success\n");
-            }
-        }
-        else{
-            BT_INFO_FUNC("Load custom BT config success\n");
-        }
-#if 1 /* refine output format */
-        BT_DBG_FUNC("Read BT config data:\n");
-        BT_DBG_FUNC("[BD addr %02x-%02x-%02x-%02x-%02x-%02x]\n",
-            cfg.addr[0], cfg.addr[1], cfg.addr[2], cfg.addr[3], cfg.addr[4], cfg.addr[5]);
-        BT_DBG_FUNC("[voice %02x %02x][codec %02x %02x %02x %02x]\n",
-            cfg.voice[0], cfg.voice[1],
-            cfg.codec[0], cfg.codec[1], cfg.codec[2], cfg.codec[3]);
-        BT_DBG_FUNC("[radio %02x %02x %02x %02x %02x %02x]\n",
-            cfg.radio[0], cfg.radio[1], cfg.radio[2], cfg.radio[3], cfg.radio[4], cfg.radio[5]);
-        BT_DBG_FUNC("[sleep %02x %02x %02x %02x %02x %02x %02x]\n",
-            cfg.sleep[0], cfg.sleep[1], cfg.sleep[2], cfg.sleep[3], cfg.sleep[4], cfg.sleep[5], cfg.sleep[6]);
-        BT_DBG_FUNC("[feature %02x %02x][tx power offset %02x %02x %02x]\n",
-            cfg.feature[0], cfg.feature[1],
-            cfg.tx_pwr_offset[0], cfg.tx_pwr_offset[1], cfg.tx_pwr_offset[2]);
-#else
-        BT_DBG_FUNC("Read BT config data: [BD addr %02x-%02x-%02x-%02x-%02x-%02x][voice %02x %02x] \
-                    [codec %02x %02x %02x %02x][radio %02x %02x %02x %02x %02x %02x] \
-                    [sleep %02x %02x %02x %02x %02x %02x %02x][feature %02x %02x] \
-                    [tx power offset %02x %02x %02x]\n",
-                    cfg.addr[0], cfg.addr[1], cfg.addr[2], cfg.addr[3], cfg.addr[4], cfg.addr[5],
-                    cfg.voice[0], cfg.voice[1], cfg.codec[0], cfg.codec[1], cfg.codec[2], cfg.codec[3],
-                    cfg.radio[0], cfg.radio[1], cfg.radio[2], cfg.radio[3], cfg.radio[4], cfg.radio[5],
-                    cfg.sleep[0], cfg.sleep[1], cfg.sleep[2], cfg.sleep[3], cfg.sleep[4], cfg.sleep[5], cfg.sleep[6],
-                    cfg.feature[0], cfg.feature[1],
-                    cfg.tx_pwr_offset[0], cfg.tx_pwr_offset[1], cfg.tx_pwr_offset[2]);
-#endif
-        bt_bd_addr[4] = cfg.addr[5];
-        bt_bd_addr[5] = cfg.addr[4];
-        bt_bd_addr[6] = cfg.addr[3];
-        bt_bd_addr[7] = cfg.addr[2];
-        bt_bd_addr[8] = cfg.addr[1];
-        bt_bd_addr[9] = cfg.addr[0];
-        memcpy(&bt_voice[4], cfg.voice, 2);
-        memcpy(&bt_codec[4], cfg.codec, 4);
-        memcpy(&bt_radio[4], cfg.radio, 6);
-        memcpy(&bt_tx_pwr_offset[4], cfg.tx_pwr_offset, 3);
-        memcpy(&bt_sleep[4], cfg.sleep, 7);
-        memcpy(&bt_feature[4], cfg.feature, 2);
-
-init_start:
+        BT_DBG_FUNC("STP is ready!\n");
 
         ret = hci_stp_dev_init(hu);
-        /* error handling: turn of BT */
+        /* error handling: turn off BT */
         if (unlikely(ret)) {
             BT_WARN_FUNC("hci_stp_dev_init fail(%d)!\n", ret);
             if (MTK_WCN_BOOL_FALSE == mtk_wcn_wmt_func_off(WMTDRV_TYPE_BT)) {
@@ -1419,13 +1305,13 @@ init_start:
 
         set_bit(HCI_RUNNING, &hdev->flags);
 
-        /*registered tx/rx path*/
+        /* registered tx/rx path */
         mtk_wcn_stp_register_if_rx(stp_rx_event_cb_directly);
 
         mtk_wcn_stp_register_event_cb(BT_TASK_INDX, NULL);
         mtk_wcn_stp_register_tx_event_cb(BT_TASK_INDX, stp_tx_event_cb);
 
-        /*use bluez*/
+        /* use bluez */
         mtk_wcn_stp_set_bluez(1);
 
         return 0;
@@ -1503,13 +1389,13 @@ static int hci_stp_close(struct hci_dev *hdev)
     skb_queue_purge(&hu->txq);
     hci_stp_txq_unlock(HCI_STP_TXQ_IN_BLZ);
 
-    /*unregistered tx/rx path*/
+    /* unregistered tx/rx path */
     mtk_wcn_stp_register_if_rx(NULL);
 
     mtk_wcn_stp_register_event_cb(BT_TASK_INDX, NULL);
     mtk_wcn_stp_register_tx_event_cb(BT_TASK_INDX, NULL);
 
-    /*not use bluez*/
+    /* not use bluez */
     mtk_wcn_stp_set_bluez(0);
 
     if (MTK_WCN_BOOL_FALSE == mtk_wcn_wmt_func_off(WMTDRV_TYPE_BT)) {
@@ -1528,7 +1414,6 @@ static int hci_stp_send_frame(struct sk_buff *skb)
     struct hci_dev* hdev = (struct hci_dev *) skb->dev;
     struct hci_stp *hu;
 
-    BT_TRC_FUNC();
     if (!hdev) {
         BT_ERR_FUNC("Null hdev in skb\n");
         return -ENODEV;
@@ -1541,15 +1426,15 @@ static int hci_stp_send_frame(struct sk_buff *skb)
 
     hu = (struct hci_stp *) hdev->driver_data;
 
-    BT_LOUD_FUNC("%s:type(%d)len(%d)\n",
+    BT_LOUD_FUNC("%s: type(%d) len(%d)\n",
         hdev->name, bt_cb(skb)->pkt_type, skb->len);
 
 #if 0 /* just timestamp?? */
-    if (gHciStpDbgLevel >= BT_LOG_DBG)
+    if (gDbgLevel >= BT_LOG_DBG)
     {
         struct timeval now;
         do_gettimeofday(&now);
-        printk("%s:  sec = %ld, --> usec --> %ld\n",
+        printk("%s: sec = %ld, --> usec --> %ld\n",
              __FUNCTION__, now.tv_sec, now.tv_usec);
     }
 #endif
@@ -1573,7 +1458,8 @@ static int hci_stp_send_frame(struct sk_buff *skb)
 
 static void hci_stp_destruct(struct hci_dev *hdev)
 {
-    BT_INFO_FUNC("start hdev(0x%p)\n", hdev);
+    BT_TRC_FUNC();
+
     if (!hdev) {
         return;
     }
@@ -1581,17 +1467,13 @@ static void hci_stp_destruct(struct hci_dev *hdev)
     BT_DBG_FUNC("%s\n", hdev->name);
     hci_stp_tx_deinit((struct hci_stp *)hdev->driver_data);
     kfree(hdev->driver_data);
-
-    BT_DBG_FUNC("done\n");
 }
 
 static int __init hci_stp_init(void)
 {
     struct hci_stp *hu = NULL;
 
-    BT_DBG_FUNC("HCI STP driver ver %s\n", VERSION);
-
-    if (!(hu = kzalloc(sizeof(struct hci_stp), /*GFP_KERNEL*/GFP_ATOMIC))) {
+    if (!(hu = kzalloc(sizeof(struct hci_stp), GFP_ATOMIC))) {
         BT_ERR_FUNC("Can't allocate control structure\n");
         return -ENOMEM;
     }
@@ -1657,23 +1539,23 @@ static int __init hci_stp_init(void)
     /* George: adapt different tx_init function */
     hci_stp_tx_init(hu);
 
-#if (HCI_STP_DEV_INIT == HCI_STP_DEV_INIT_THRD)
     /* init_work in heap */
     INIT_WORK(&hu->init_work, hci_stp_dev_init_work);
     spin_lock_init(&hu->init_lock);
-#endif
 
     mtk_wcn_stp_register_if_rx(NULL);
     mtk_wcn_stp_register_event_cb(BT_TASK_INDX, NULL);
     mtk_wcn_stp_register_tx_event_cb(BT_TASK_INDX, NULL);
 
-    BT_INFO_FUNC("HCI-STP Drv(%s),dev(0x%p),data(0x%p) init done\n", VERSION, hdev, hdev->driver_data);
+    BT_INFO_FUNC("HCI STP driver ver %s, hdev(0x%p), init done\n", VERSION, hdev);
+
     return 0;
 }
 
 static void __exit hci_stp_exit(void)
 {
     struct hci_stp *hu = (struct hci_stp *)hdev->driver_data;
+
     BT_TRC_FUNC();
 
     mtk_wcn_stp_register_event_cb(BT_TASK_INDX, NULL);
@@ -1691,7 +1573,6 @@ static void __exit hci_stp_exit(void)
     hci_free_dev(hdev);
 
     hdev = NULL;
-    BT_INFO_FUNC("done\n");
 }
 
 module_init(hci_stp_init);

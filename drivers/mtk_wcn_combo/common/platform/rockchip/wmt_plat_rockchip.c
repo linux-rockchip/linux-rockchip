@@ -92,6 +92,11 @@
 *                                 M A C R O S
 ********************************************************************************
 */
+#include <asm/mach-types.h>
+#include <linux/delay.h>
+#include <mach/gpio.h>
+#include <mach/io.h>
+#include <linux/platform_device.h>
 
 #if CONFIG_HAS_WAKELOCK
 #include <linux/wakelock.h>
@@ -110,9 +115,10 @@
 ********************************************************************************
 */
 
-/*s5p headers*/
+/*header files*/
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/spinlock.h>
 
 /* MTK_WCN_COMBO header files */
 #include "wmt_plat.h"
@@ -124,6 +130,11 @@
 ********************************************************************************
 */
 
+
+#define GPIO_MT6620_PMUEN		XXX
+#define GPIO_MT6620_SYSRST		XXX
+#define GPIO_MT6620_LDO_EN     XXX
+#define INT_6620              XXX
 
 /*******************************************************************************
 *                             D A T A   T Y P E S
@@ -160,7 +171,11 @@ static INT32 wmt_plat_dump_pin_conf (VOID);
 *                            P U B L I C   D A T A
 ********************************************************************************
 */
+UINT32 gWmtDbgLvl = WMT_LOG_INFO;
 
+unsigned int g_balance_flag;
+spinlock_t g_balance_lock;
+unsigned int g_bgf_irq = 69;//INT_6620;//bgf eint number
 /*******************************************************************************
 *                           P R I V A T E   D A T A
 ********************************************************************************
@@ -174,6 +189,8 @@ static OSAL_SLEEPABLE_LOCK gOsSLock;
 static struct wake_lock wmtWakeLock;
 #endif
 
+irq_cb wmt_plat_bgf_irq_cb = NULL;
+device_audio_if_cb wmt_plat_audio_if_cb = NULL;
 const static fp_set_pin gfp_set_pin_table[] =
 {
     [PIN_LDO] = wmt_plat_ldo_ctrl,
@@ -266,24 +283,22 @@ INT32 wmt_plat_audio_ctrl (CMB_STUB_AIF_X state, CMB_STUB_AIF_CTRL ctrl)
     if (CMB_STUB_AIF_CTRL_EN == ctrl) {
         WMT_INFO_FUNC("call chip aif setting \n");
         /* need to control chip side GPIO */
-        iRet += wmt_lib_set_aif(state, (pinShare) ? MTK_WCN_BOOL_TRUE : MTK_WCN_BOOL_FALSE);
+        //iRet += wmt_lib_set_aif(state, (pinShare) ? MTK_WCN_BOOL_TRUE : MTK_WCN_BOOL_FALSE);
+		if (NULL != wmt_plat_audio_if_cb)
+		{
+		    iRet += (*wmt_plat_audio_if_cb)(state, (pinShare) ? MTK_WCN_BOOL_TRUE : MTK_WCN_BOOL_FALSE);
+		}
+		else
+		{
+		    WMT_WARN_FUNC("wmt_plat_audio_if_cb is not registered \n");
+		    iRet -= 1;
+		}
     }
     else {
         WMT_INFO_FUNC("skip chip aif setting \n");
     }
     return iRet;
 
-}
-
-static VOID wmt_plat_func_ctrl (UINT32 type, UINT32 on)
-{
-    if (on) {
-        mtk_wcn_wmt_func_on((ENUM_WMTDRV_TYPE_T)type);
-    }
-    else {
-        mtk_wcn_wmt_func_off((ENUM_WMTDRV_TYPE_T)type);
-    }
-    return;
 }
 
 #if CFG_WMT_PS_SUPPORT
@@ -297,31 +312,53 @@ irqreturn_t irq_handler(int i, void *arg)
 static VOID
 wmt_plat_bgf_eirq_cb (VOID)
 {
+	
 #if CFG_WMT_PS_SUPPORT
-//#error "need to disable EINT here"
-    WMT_INFO_FUNC("WMT-PLAT:BGFInt (++) \n");
-    wmt_lib_ps_irq_cb();
-    WMT_INFO_FUNC("WMT-PLAT:BGFInt (++) \n");
-
+	//#error "need to disable EINT here"
+		//wmt_lib_ps_irq_cb();
+		if (NULL != wmt_plat_bgf_irq_cb)
+		{
+			(*(wmt_plat_bgf_irq_cb))();
+		}
+		else
+		{
+			WMT_WARN_FUNC("WMT-PLAT: wmt_plat_bgf_irq_cb not registered\n");
+		}
 #else
-    return;
+		return;
 #endif
-
 }
+
+
+
+VOID wmt_lib_plat_irq_cb_reg (irq_cb bgf_irq_cb)
+{
+    wmt_plat_bgf_irq_cb = bgf_irq_cb;
+}
+
+VOID wmt_lib_plat_aif_cb_reg (device_audio_if_cb aif_ctrl_cb)
+{
+    wmt_plat_audio_if_cb = aif_ctrl_cb;
+}
+
+
+
+
+
 
 INT32
 wmt_plat_init (P_PWR_SEQ_TIME pPwrSeqTime)
 {
-    CMB_STUB_CB stub_cb;
+    //CMB_STUB_CB stub_cb;
     /*PWR_SEQ_TIME pwr_seq_time;*/
     INT32 iret;
 
-    stub_cb.aif_ctrl_cb = wmt_plat_audio_ctrl;
-    stub_cb.func_ctrl_cb = wmt_plat_func_ctrl;
-    stub_cb.size = sizeof(stub_cb);
+    //stub_cb.aif_ctrl_cb = wmt_plat_audio_ctrl;
+    //stub_cb.func_ctrl_cb = wmt_plat_func_ctrl;
+    //stub_cb.size = sizeof(stub_cb);
 
     /* register to cmb_stub */
-    iret = mtk_wcn_cmb_stub_reg(&stub_cb);
+    //iret = mtk_wcn_cmb_stub_reg(&stub_cb);
 
     /* init cmb_hw */
     iret += mtk_wcn_cmb_hw_init(pPwrSeqTime);
@@ -331,6 +368,8 @@ wmt_plat_init (P_PWR_SEQ_TIME pPwrSeqTime)
     wake_lock_init(&wmtWakeLock, WAKE_LOCK_SUSPEND, "wmtFuncCtrl");
     osal_sleepable_lock_init(&gOsSLock);
     #endif
+
+    spin_lock_init(&g_balance_lock);
 
     WMT_DBG_FUNC("WMT-PLAT: ALPS platform init (%d)\n", iret);
 
@@ -375,6 +414,7 @@ INT32 wmt_plat_sdio_ctrl (WMT_SDIO_SLOT_NUM sdioPortType, ENUM_FUNC_STATE on)
     return 0;
 }
 
+#if 0
 INT32
 wmt_plat_irq_ctrl (
     ENUM_FUNC_STATE state
@@ -382,7 +422,7 @@ wmt_plat_irq_ctrl (
 {
     return -1;
 }
-
+#endif
 
 static INT32
 wmt_plat_dump_pin_conf (VOID)
@@ -434,7 +474,7 @@ wmt_plat_eirq_ctrl (
     )
 {
     INT32 iRet;
-
+    unsigned int flags;
     // TODO: [ChangeFeature][GeorgeKuo]: use another function to handle this, as done in gpio_ctrls
 
     if ( (PIN_STA_INIT != state )
@@ -450,17 +490,50 @@ wmt_plat_eirq_ctrl (
     switch (id) {
     case PIN_BGF_EINT:
         if (PIN_STA_INIT == state) {
-
-        	  WMT_INFO_FUNC("WMT-PLAT:BGFInt (init) \n");
+            /*request irq,low level triggered*/
+	//iRet = request_irq(INT_6620, irq_handler,  IRQF_TRIGGER_LOW | IRQF_DISABLED, "MTK6620_BT", NULL);
+		
+	    
+	    g_balance_flag = 1;//do not modify this value
+            WMT_INFO_FUNC("WMT-PLAT:BGFInt (init) \n");
         }
         else if (PIN_STA_EINT_EN == state) {
-            WMT_INFO_FUNC("WMT-PLAT:BGFInt (en) \n");
+            /*enable irq*/
+	    spin_lock_irqsave(&g_balance_lock,flags);
+	    if(g_balance_flag)
+	    {
+		/*if enter this case, the bgf eint has been enabled,so skip it.*/
+		WMT_INFO_FUNC("BGF_EINT has been enabled,g_balance_flag(%d)!\n",g_balance_flag);
+	    }
+	    else
+	    {
+		/*do real irq enable implement is this case*/
+		    //enable_irq(INT_6620);
+	        g_balance_flag++;
+                WMT_INFO_FUNC("WMT-PLAT:BGFInt (en),g_balance_flag(%d)\n",g_balance_flag);
+	    }
+	    spin_unlock_irqrestore(&g_balance_lock,flags);
         }
         else if (PIN_STA_EINT_DIS == state) {
-            WMT_INFO_FUNC("WMT-PLAT:BGFInt (dis) \n");
+            /*disable irq*/
+	    spin_lock_irqsave(&g_balance_lock,flags);
+ 	    if(!g_balance_flag)
+	    {
+		/*if enter this case, the bgf eint has been disabled,so skip it.*/
+	        WMT_INFO_FUNC("BGF_EINT has been disabled,g_balance_flag(%d)!\n",g_balance_flag);
+            }
+	    else
+	    {
+		/*do real irq disable implement is this case*/
+		    //disable_irq_nosync(INT_6620);
+	        g_balance_flag--;
+                WMT_INFO_FUNC("WMT-PLAT:BGFInt (dis) g_balance_flag(%d)\n",g_balance_flag);
+	    }
+	    spin_unlock_irqrestore(&g_balance_lock,flags);
         }
         else {
-            /* de-init: nothing to do in ALPS, such as un-registration... */
+            /* de-init: free irq*/
+            //free_irq(INT_6620,NULL);
             WMT_INFO_FUNC("WMT-PLAT:BGFInt (deinit) \n");
 
         }
@@ -497,6 +570,7 @@ wmt_plat_eirq_ctrl (
     }
 
     return iRet;
+
 }
 
 INT32 wmt_plat_gpio_ctrl (
@@ -562,25 +636,29 @@ wmt_plat_pmu_ctrl (
     {
     case PIN_STA_INIT:
         /*set to gpio output low, disable pull*/
-        WMT_DBG_FUNC("WMT-PLAT:PMU init (out 0) \n");
+	
+	printk("WMT-PLAT:PMU init (out 0) \n");
         break;
 
     case PIN_STA_OUT_H:
-        WMT_DBG_FUNC("WMT-PLAT:PMU (out 1) \n");
+	
+        printk("WMT-PLAT:PMU (out 1) \n");
         break;
 
     case PIN_STA_OUT_L:
-        WMT_DBG_FUNC("WMT-PLAT:PMU (out 0) \n");
+	
+        printk("WMT-PLAT:PMU (out 0) \n");
         break;
 
     case PIN_STA_IN_L:
     case PIN_STA_DEINIT:
         /*set to gpio input low, pull down enable*/
-        WMT_DBG_FUNC("WMT-PLAT:PMU deinit (in pd) \n");
+	
+        printk("WMT-PLAT:PMU deinit (in pd) \n");
         break;
 
     default:
-        WMT_WARN_FUNC("WMT-PLAT:Warnning, invalid state(%d) on PMU\n", state);
+        printk("WMT-PLAT:Warnning, invalid state(%d) on PMU\n", state);
         break;
     }
 
@@ -615,25 +693,29 @@ wmt_plat_rst_ctrl (
     {
         case PIN_STA_INIT:
             /*set to gpio output low, disable pull*/
-            WMT_DBG_FUNC("WMT-PLAT:RST init (out 0) \n");
+
+            printk("WMT-PLAT:RST init (out 0) \n");
             break;
 
         case PIN_STA_OUT_H:
-            WMT_DBG_FUNC("WMT-PLAT:RST (out 1) \n");
+
+            printk("WMT-PLAT:RST (out 1) \n");
             break;
 
         case PIN_STA_OUT_L:
-            WMT_DBG_FUNC("WMT-PLAT:RST (out 0) \n");
+
+            printk("WMT-PLAT:RST (out 0) \n");
             break;
 
         case PIN_STA_IN_L:
         case PIN_STA_DEINIT:
             /*set to gpio input low, pull down enable*/
-            WMT_DBG_FUNC("WMT-PLAT:RST deinit (in pd) \n");
+
+            printk("WMT-PLAT:RST deinit (in pd) \n");
             break;
 
         default:
-            WMT_WARN_FUNC("WMT-PLAT:Warnning, invalid state(%d) on RST\n", state);
+            printk("WMT-PLAT:Warnning, invalid state(%d) on RST\n", state);
             break;
     }
 
@@ -645,21 +727,44 @@ wmt_plat_bgf_eint_ctrl (
     ENUM_PIN_STATE state
     )
 {
+
     switch(state)
     {
         case PIN_STA_INIT:
             /*set to gpio input low, pull down eanble*/
+
             WMT_DBG_FUNC("WMT-PLAT:BGFInt init(in pd) \n");
             break;
 
         case PIN_STA_MUX:
-        	  /*set to gpio EINT mode, pull down enable*/
+            /* first: set to EINT mode,interrupt input, pull up enable*/
+
             WMT_DBG_FUNC("WMT-PLAT:BGFInt mux (eint) \n");
+
+	    /* second: enable bgf irq wake up host function*/
+            do {
+                int iret;
+                //iret = enable_irq_wake(g_bgf_irq);//enable bgf irq wake up host function
+                //WMT_INFO_FUNC("enable_irq_wake(bgf:%d)++, ret(%d)\n", g_bgf_irq, iret);
+            } while (0);
             break;
 
         case PIN_STA_IN_L:
         case PIN_STA_DEINIT:
-            /*set to gpio input low, pull down enable*/
+	    /* first: disable bgf irq wake up host function*/
+            do {
+                int iret;
+                //iret = disable_irq_wake(g_bgf_irq);//disable bgf irq wake up host function
+                if (iret) {
+                    //WMT_WARN_FUNC("disable_irq_wake(bgf:%d) fail(%d)\n", g_bgf_irq, iret);
+                    iret = 0;
+                }
+                else {
+                    //WMT_INFO_FUNC("disable_irq_wake(bgf:%d)--, ret(%d)\n", g_bgf_irq, iret);
+                }
+            } while (0);
+
+ 	    /* second: set to gpio input low, pull down enable*/
             WMT_DBG_FUNC("WMT-PLAT:BGFInt deinit(in pd) \n");
             break;
 
@@ -667,6 +772,7 @@ wmt_plat_bgf_eint_ctrl (
             WMT_WARN_FUNC("WMT-PLAT:Warnning, invalid state(%d) on BGF EINT\n", state);
             break;
     }
+
     return 0;
 }
 

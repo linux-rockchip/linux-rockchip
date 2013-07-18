@@ -30,6 +30,14 @@ config MTK_COMBO_PLAT_PATH
 	  Specify platform folder under common driver platform folder: 
 	  mtk_wcn_combo/common/platform/*
 
+config MTK_COMBO_DRIVER_VERSION_JB2
+       depends on MTK_COMBO
+       bool "MediaTek Connectivity Combo Driver version is JB2 V1.0"
+       default n
+
+       help
+          MTK driver V3.1 will use a different configuration about SDIO.
+
 #
 # MTK COMBO Chip Configuration
 #
@@ -58,11 +66,11 @@ config MTK_COMBO_COMM_UART
 #	help
 #	  Use SDIO for common part interface type
 
-config MTK_COMBO_BT_HW_TEST
-	tristate "MediaTek Combo Chip BT Hardware Test driver"
+config MTK_COMBO_BT
+	tristate "MediaTek Combo Chip BT driver"
 	depends on MTK_COMBO
 	help
-	  MTK BT /dev/stpbt driver for autobt hardware test tool (mtk_stp_bt.ko)
+	  MTK BT /dev/stpbt driver for Bluedroid (mtk_stp_bt.ko)
         
 config MTK_COMBO_BT_HCI
 	tristate "MediaTek Combo Chip BlueZ driver"

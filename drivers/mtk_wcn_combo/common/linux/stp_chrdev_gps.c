@@ -1,39 +1,3 @@
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
- * MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
-
 /** $Log: stp_chrdev_gps.c $
  *
  * 12 13 2010 Sean.Wang
@@ -71,7 +35,7 @@ MODULE_LICENSE("GPL");
 
 #define COMBO_IOC_GPS_HWVER           6
 
-unsigned int gDbgLevel = GPS_LOG_INFO;/*GPS_LOG_DBG*/
+unsigned int gDbgLevel = GPS_LOG_DBG;
 
 #define GPS_DBG_FUNC(fmt, arg...)    if(gDbgLevel >= GPS_LOG_DBG){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
 #define GPS_INFO_FUNC(fmt, arg...)   if(gDbgLevel >= GPS_LOG_INFO){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
@@ -111,7 +75,7 @@ ssize_t GPS_write(struct file *filp, const char __user *buf, size_t count, loff_
             goto out;
         }
         //printk("%02x ", val);
-#if GPS_DEBUG_TRACE_GPIO
+#if GPS_DEBUG_TRACE_GPIO        
         mtk_wcn_stp_debug_gpio_assert(IDX_GPS_TX, DBG_TIE_LOW);
 #endif
         written = mtk_wcn_stp_send_data(&o_buf[0], copy_size, GPS_TASK_INDX);
@@ -120,22 +84,22 @@ ssize_t GPS_write(struct file *filp, const char __user *buf, size_t count, loff_
 #endif
 
 #if GPS_DEBUG_DUMP
-{
-    unsigned char *buf_ptr = &o_buf[0];
-    int k=0;
-    printk("--[GPS-WRITE]--");
-    for(k=0; k < 10 ; k++){
-    if(k%16 == 0)  printk("\n");
-        printk("0x%02x ", o_buf[k]);
-    }
-    printk("\n");
+{            
+    unsigned char *buf_ptr = &o_buf[0];            
+    int k=0;            
+    printk("--[GPS-WRITE]--");            
+    for(k=0; k < 10 ; k++){  
+    if(k%16 == 0)  printk("\n");                
+        printk("0x%02x ", o_buf[k]);            
+    }            
+    printk("\n");        
 }
 #endif
         /*
             If cannot send successfully, enqueue again
-
+        
         if (written != copy_size) {
-            // George: FIXME! Move GPS retry handling from app to driver
+            // George: FIXME! Move GPS retry handling from app to driver 
         }
         */
         if(0 == written)
@@ -172,8 +136,8 @@ ssize_t GPS_read(struct file *filp, char __user *buf, size_t count, loff_t *f_po
     {
         count = MTKSTP_BUFFER_SIZE;
     }
-
-#if GPS_DEBUG_TRACE_GPIO
+    
+#if GPS_DEBUG_TRACE_GPIO    
     mtk_wcn_stp_debug_gpio_assert(IDX_GPS_RX, DBG_TIE_LOW);
 #endif
     retval = mtk_wcn_stp_receive_data(i_buf, count, GPS_TASK_INDX);
@@ -186,7 +150,7 @@ ssize_t GPS_read(struct file *filp, char __user *buf, size_t count, loff_t *f_po
         /*wait_event(GPS_wq, flag != 0);*/ /* George: let signal wake up */
         val = wait_event_interruptible(GPS_wq, flag != 0);
         flag = 0;
-
+            
 #if GPS_DEBUG_TRACE_GPIO
         mtk_wcn_stp_debug_gpio_assert(IDX_GPS_RX, DBG_TIE_LOW);
 #endif
@@ -208,16 +172,16 @@ ssize_t GPS_read(struct file *filp, char __user *buf, size_t count, loff_t *f_po
         }
     }
 
-#if GPS_DEBUG_DUMP
-{
-    unsigned char *buf_ptr = &i_buf[0];
-    int k=0;
-    printk("--[GPS-READ]--");
-    for(k=0; k < 10 ; k++){
-    if(k%16 == 0)  printk("\n");
-    printk("0x%02x ", i_buf[k]);
-    }
-    printk("--\n");
+#if GPS_DEBUG_DUMP    
+{   
+    unsigned char *buf_ptr = &i_buf[0];        
+    int k=0;        
+    printk("--[GPS-READ]--");       
+    for(k=0; k < 10 ; k++){       
+    if(k%16 == 0)  printk("\n");            
+    printk("0x%02x ", i_buf[k]);        
+    }        
+    printk("--\n");    
 }
 #endif
 
@@ -248,33 +212,50 @@ long GPS_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     int retval = 0;
     ENUM_WMTHWVER_TYPE_T hw_ver_sym = WMTHWVER_INVALID;
 
-    GPS_DBG_FUNC("cmd (0x%x)\n", cmd);
+    printk("GPS_ioctl(): cmd (%d)\n", cmd);
 
-    switch (cmd)
+    switch(cmd)
     {
-    case COMBO_IOC_GPS_HWVER:
-        /*get combo hw version*/
-        hw_ver_sym = mtk_wcn_wmt_hwver_get();
-        GPS_INFO_FUNC("get hw version = %d, sizeof(hw_ver_sym) = %d\n", hw_ver_sym, sizeof(hw_ver_sym));
-        if (copy_to_user((int __user *)arg, &hw_ver_sym, sizeof(hw_ver_sym))) {
-           retval = -EFAULT;
-        }
-        break;
+        case 0: // enable/disable STP
+            GPS_INFO_FUNC(KERN_INFO "GPS_ioctl(): disable STP control from GPS dev\n");
+            retval = -EINVAL;
+#if 1
+#else
+             /* George: STP is controlled by WMT only */
+            mtk_wcn_stp_enable(arg);
+#endif
+            break;
 
-    default:
-        retval = -EFAULT;
-        GPS_DBG_FUNC(KERN_INFO "GPS_ioctl(): unknown cmd (0x%x)\n", cmd);
-        break;
+        case 1: // send raw data
+            GPS_INFO_FUNC(KERN_INFO "GPS_ioctl(): disable raw data from GPS dev \n");
+            retval = -EINVAL;
+            break;
+
+        case COMBO_IOC_GPS_HWVER:             
+            /*get combo hw version*/            
+            hw_ver_sym = mtk_wcn_wmt_hwver_get();
+
+            GPS_INFO_FUNC(KERN_INFO "GPS_ioctl(): get hw version = %d, sizeof(hw_ver_sym) = %d\n", hw_ver_sym, sizeof(hw_ver_sym));
+            if(copy_to_user((int __user *)arg, &hw_ver_sym, sizeof(hw_ver_sym))){
+               retval = -EFAULT;
+            }
+            break;
+            
+        default:
+            retval = -EFAULT;
+            GPS_INFO_FUNC(KERN_INFO "GPS_ioctl(): unknown cmd (%d)\n", cmd);
+            break;
     }
 
+/*OUT:*/
     return retval;
 }
 
 static void gps_cdev_rst_cb(
-    ENUM_WMTDRV_TYPE_T src,
-    ENUM_WMTDRV_TYPE_T dst,
-    ENUM_WMTMSG_TYPE_T type,
-    void *buf,
+    ENUM_WMTDRV_TYPE_T src, 
+    ENUM_WMTDRV_TYPE_T dst, 
+    ENUM_WMTMSG_TYPE_T type, 
+    void *buf, 
     unsigned int sz){
 
     /*
@@ -283,17 +264,17 @@ static void gps_cdev_rst_cb(
     ENUM_WMTRSTMSG_TYPE_T rst_msg;
 
     GPS_INFO_FUNC("sizeof(ENUM_WMTRSTMSG_TYPE_T) = %d\n", sizeof(ENUM_WMTRSTMSG_TYPE_T));
-    if(sz <= sizeof(ENUM_WMTRSTMSG_TYPE_T)){
+    if(sz <= sizeof(ENUM_WMTRSTMSG_TYPE_T)){ 
         memcpy((char *)&rst_msg, (char *)buf, sz);
         GPS_INFO_FUNC("src = %d, dst = %d, type = %d, buf = 0x%x sz = %d, max = %d\n", src, dst, type, rst_msg, sz, WMTRSTMSG_RESET_MAX);
-        if((src==WMTDRV_TYPE_WMT) &&
+        if((src==WMTDRV_TYPE_WMT) && 
             (dst == WMTDRV_TYPE_GPS) &&
-                (type == WMTMSG_TYPE_RESET)){
+                (type == WMTMSG_TYPE_RESET)){                
                     if(rst_msg == WMTRSTMSG_RESET_START){
                         GPS_INFO_FUNC("gps restart start!\n");
 
                         /*reset_start message handling*/
-
+                        
                     } else if(rst_msg == WMTRSTMSG_RESET_END){
                         GPS_INFO_FUNC("gps restart end!\n");
 
@@ -307,11 +288,13 @@ static void gps_cdev_rst_cb(
 
 static int GPS_open(struct inode *inode, struct file *file)
 {
-    GPS_INFO_FUNC("major %d minor %d (pid %d)\n",
+    printk("%s: major %d minor %d (pid %d)\n", __func__,
         imajor(inode),
         iminor(inode),
         current->pid
         );
+	if(current->pid ==1)
+			return 0;
 
 #if 1 /* GeorgeKuo: turn on function before check stp ready */
      /* turn on BT */
@@ -334,9 +317,9 @@ static int GPS_open(struct inode *inode, struct file *file)
         GPS_INFO_FUNC("WMT turn on GPS OK!\n");
 #endif
         mtk_wcn_stp_register_event_cb(GPS_TASK_INDX, GPS_event_cb);
-    }  else {
+    }  else {        
         GPS_ERR_FUNC("STP is not ready, Cannot open GPS Devices\n\r");
-
+        
         /*return error code*/
         return -ENODEV;
     }
@@ -345,27 +328,29 @@ static int GPS_open(struct inode *inode, struct file *file)
     sema_init(&wr_mtx, 1);
     //init_MUTEX(&rd_mtx);
     sema_init(&rd_mtx, 1);
-
+    
     return 0;
 }
 
 static int GPS_close(struct inode *inode, struct file *file)
 {
-    GPS_INFO_FUNC("major %d minor %d (pid %d)\n",
+    printk("%s: major %d minor %d (pid %d)\n", __func__,
         imajor(inode),
         iminor(inode),
         current->pid
         );
+	if(current->pid ==1)
+			return 0;
 
     /*Flush Rx Queue*/
     mtk_wcn_stp_register_event_cb(GPS_TASK_INDX, 0x0);  // unregister event callback function
     mtk_wcn_wmt_msgcb_unreg(WMTDRV_TYPE_GPS);
-
+    
     if (MTK_WCN_BOOL_FALSE == mtk_wcn_wmt_func_off(WMTDRV_TYPE_GPS)) {
         GPS_WARN_FUNC("WMT turn off GPS fail!\n");
         return -EIO;    //mostly, native programer does not care this return vlaue, but we still return error code.
     }
-    else {
+    else {       
         GPS_INFO_FUNC("WMT turn off GPS OK!\n");
     }
 
@@ -412,7 +397,7 @@ static int GPS_init(void)
         goto error;
 
     printk(KERN_ALERT "%s driver(major %d) installed.\n", GPS_DRIVER_NAME, GPS_major);
-
+    
     return 0;
 
 error:
