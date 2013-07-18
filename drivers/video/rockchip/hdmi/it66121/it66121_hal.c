@@ -220,3 +220,7 @@ SYS_STATUS CEC_ToggleBit(BYTE Reg,BYTE n)
 	return ER_SUCCESS ;
 }
 
+void delay1ms(int ms)
+{
+	usleep_range(1000*ms, 1000*ms);
+}

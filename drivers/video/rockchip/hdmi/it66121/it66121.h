@@ -10,7 +10,6 @@
 #endif
 
 #define IT66121_I2C_RATE	100 * 1000
-#define delay1ms	msleep
 
 #ifdef CONFIG_HDMI_DEBUG
 #define DBG(format, ...) \
@@ -68,4 +67,5 @@ extern int it66121_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio);
 extern int it66121_set_output(struct hdmi *hdmi, int enable);
 extern BOOL i2c_write_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device );
 extern BOOL i2c_read_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device );
+extern void delay1ms(int ms);
 #endif
