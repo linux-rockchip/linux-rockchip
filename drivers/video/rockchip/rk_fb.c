@@ -878,7 +878,10 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 	}
 	else if((lcdc_id == 1)&&(inf->num_lcdc == 2))
 	{
-		info = inf->fb[dev_drv->num_layer]; //the main fb of lcdc2
+		if(dev_drv->screen_ctr_info->prop == PRMRY)
+			info = inf->fb[0];
+		else
+			info = inf->fb[dev_drv->num_layer]; //the main fb of lcdc2
 	}
 	
 	layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
