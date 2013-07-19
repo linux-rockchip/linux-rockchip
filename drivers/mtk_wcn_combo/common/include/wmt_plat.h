@@ -1,86 +1,10 @@
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
- * MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
-
 /*! \file
     \brief  Declaration of library functions
 
     Any definitions in this file will be shared among GLUE Layer and internal Driver Stack.
 */
 
-/*******************************************************************************
-* Copyright (c) 2009 MediaTek Inc.
-*
-* All rights reserved. Copying, compilation, modification, distribution
-* or any other use whatsoever of this material is strictly prohibited
-* except in accordance with a Software License Agreement with
-* MediaTek Inc.
-********************************************************************************
-*/
 
-/*******************************************************************************
-* LEGAL DISCLAIMER
-*
-* BY OPENING THIS FILE, BUYER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND
-* AGREES THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK
-* SOFTWARE") RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE
-* PROVIDED TO BUYER ON AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY
-* DISCLAIMS ANY AND ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-* LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-* PARTICULAR PURPOSE OR NONINFRINGEMENT. NEITHER DOES MEDIATEK PROVIDE
-* ANY WARRANTY WHATSOEVER WITH RESPECT TO THE SOFTWARE OF ANY THIRD PARTY
-* WHICH MAY BE USED BY, INCORPORATED IN, OR SUPPLIED WITH THE MEDIATEK
-* SOFTWARE, AND BUYER AGREES TO LOOK ONLY TO SUCH THIRD PARTY FOR ANY
-* WARRANTY CLAIM RELATING THERETO. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE
-* FOR ANY MEDIATEK SOFTWARE RELEASES MADE TO BUYER'S SPECIFICATION OR TO
-* CONFORM TO A PARTICULAR STANDARD OR OPEN FORUM.
-*
-* BUYER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND CUMULATIVE
-* LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL
-* BE, AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT
-* ISSUE, OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY
-* BUYER TO MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
-*
-* THE TRANSACTION CONTEMPLATED HEREUNDER SHALL BE CONSTRUED IN ACCORDANCE
-* WITH THE LAWS OF THE STATE OF CALIFORNIA, USA, EXCLUDING ITS CONFLICT
-* OF LAWS PRINCIPLES.  ANY DISPUTES, CONTROVERSIES OR CLAIMS ARISING
-* THEREOF AND RELATED THERETO SHALL BE SETTLED BY ARBITRATION IN SAN
-* FRANCISCO, CA, UNDER THE RULES OF THE INTERNATIONAL CHAMBER OF COMMERCE
-* (ICC).
-********************************************************************************
-*/
 
 #ifndef _WMT_PLAT_H_
 #define _WMT_PLAT_H_
@@ -99,6 +23,20 @@
 *                                 M A C R O S
 ********************************************************************************
 */
+
+
+
+
+#if (CONFIG_ARCH_MT6589)
+    #if defined(MTK_MERGE_INTERFACE_SUPPORT) && defined(MT6628)
+        #define MTK_WCN_CMB_MERGE_INTERFACE_SUPPORT 1
+	#else
+	    #define MTK_WCN_CMB_MERGE_INTERFACE_SUPPORT 0
+    #endif
+#else
+    #define MTK_WCN_CMB_MERGE_INTERFACE_SUPPORT 0
+#endif
+
 
 /*******************************************************************************
 *                              C O N S T A N T S
@@ -125,9 +63,10 @@
 */
 
 typedef enum _ENUM_FUNC_STATE_{
-    FUNC_OFF = 0,
-    FUNC_ON = 1,
+    FUNC_ON = 0,
+    FUNC_OFF = 1,
     FUNC_RST = 2,
+    FUNC_STAT = 3,
     FUNC_CTRL_MAX,
 } ENUM_FUNC_STATE, *P_ENUM_FUNC_STATE;
 
@@ -157,6 +96,7 @@ typedef enum _ENUM_PIN_STATE_{
     PIN_STA_EINT_EN = 5,
     PIN_STA_EINT_DIS = 6,
     PIN_STA_DEINIT = 7,
+    PIN_STA_SHOW = 8,
     PIN_STA_MAX
 } ENUM_PIN_STATE, *P_ENUM_PIN_STATE;
 
@@ -175,6 +115,9 @@ typedef enum _ENUM_WL_OP_{
     WL_OP_PUT = 1,
     WL_OP_MAX
 } ENUM_WL_OP, *P_ENUM_WL_OP;
+
+typedef VOID (*irq_cb)(VOID);
+typedef INT32 (*device_audio_if_cb) (CMB_STUB_AIF_X aif, MTK_WCN_BOOL share);
 
 
 /*******************************************************************************
@@ -204,12 +147,10 @@ wmt_plat_init (P_PWR_SEQ_TIME pPwrSeqTime);
 INT32
 wmt_plat_deinit (VOID);
 
-#if 0
 INT32
 wmt_plat_irq_ctrl (
     ENUM_FUNC_STATE state
     );
-#endif
 
 INT32
 wmt_plat_pwr_ctrl (
@@ -234,12 +175,6 @@ wmt_plat_eirq_ctrl (
     );
 
 INT32
-wmt_plat_audio_ctrl (
-    CMB_STUB_AIF_X state,
-    CMB_STUB_AIF_CTRL ctrl
-    );
-
-INT32
 wmt_plat_sdio_ctrl (
     UINT32 sdioPortNum,
     ENUM_FUNC_STATE on
@@ -250,6 +185,23 @@ INT32
 wmt_plat_wake_lock_ctrl(
     ENUM_WL_OP opId
     );
+
+VOID wmt_lib_plat_irq_cb_reg (irq_cb bgf_irq_cb);
+
+INT32
+wmt_plat_audio_ctrl (
+    CMB_STUB_AIF_X state,
+    CMB_STUB_AIF_CTRL ctrl
+    );
+
+VOID wmt_lib_plat_aif_cb_reg (device_audio_if_cb aif_ctrl_cb);
+
+INT32
+wmt_plat_merge_if_flag_ctrl (UINT32 enagle);
+
+INT32
+wmt_plat_merge_if_flag_get (VOID);
+
 
 /*******************************************************************************
 *                              F U N C T I O N S

@@ -1,38 +1,3 @@
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
- * MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -62,7 +27,10 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 #define COMBO_IOC_BT_HWVER           6
 
-unsigned int gDbgLevel = BT_LOG_ERR;//BT_LOG_INFO; //Modify loglevel
+#define COMBO_IOC_MAGIC        0xb0
+#define COMBO_IOCTL_FW_ASSERT  _IOWR(COMBO_IOC_MAGIC, 0, void*)
+
+unsigned int gDbgLevel = BT_LOG_INFO;
 
 #define BT_DBG_FUNC(fmt, arg...)    if(gDbgLevel >= BT_LOG_DBG){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
 #define BT_INFO_FUNC(fmt, arg...)   if(gDbgLevel >= BT_LOG_INFO){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
@@ -240,12 +208,12 @@ ssize_t BT_write(struct file *filp, const char __user *buf, size_t count, loff_t
         if (retflag == 1) //reset start
         {
             retval = -88;
-            BT_INFO_FUNC("MT6620 reset Write: start\n");
+            BT_INFO_FUNC("MT662x reset Write: start\n");
         }
         else if (retflag == 2) // reset end
         {
           retval = -99;
-            BT_INFO_FUNC("MT6620 reset Write: end\n");
+            BT_INFO_FUNC("MT662x reset Write: end\n");
         }
     goto OUT;
     }
@@ -295,12 +263,12 @@ ssize_t BT_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos
         if (retflag == 1) //reset start
         {
             retval = -88;
-            BT_INFO_FUNC("MT6620 reset Read: start\n");
+            BT_INFO_FUNC("MT662x reset Read: start\n");
         }
         else if (retflag == 2) // reset end
         {
-          retval = -99;
-      BT_INFO_FUNC("MT6620 reset Read: end\n");
+            retval = -99;
+            BT_INFO_FUNC("MT662x reset Read: end\n");
         }
     goto OUT;
     }
@@ -345,7 +313,7 @@ OUT:
 long BT_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     int retval = 0;
-
+    MTK_WCN_BOOL bRet = MTK_WCN_BOOL_TRUE;
 
     ENUM_WMTHWVER_TYPE_T hw_ver_sym = WMTHWVER_INVALID;
     BT_DBG_FUNC("BT_ioctl(): cmd (%d)\n", cmd);
@@ -371,6 +339,20 @@ long BT_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                retval = -EFAULT;
             }
             break;
+
+        case COMBO_IOCTL_FW_ASSERT:
+            /* BT trigger fw assert for debug*/
+            BT_INFO_FUNC("BT Set fw assert......\n");
+            bRet = mtk_wcn_wmt_assert();
+            if (bRet == MTK_WCN_BOOL_TRUE) {
+                BT_INFO_FUNC("BT Set fw assert OK\n");
+                retval = 0;
+            } else {
+                BT_INFO_FUNC("BT Set fw assert Failed\n");
+                retval = (-1000);
+            }
+            break;
+            
         default:
             retval = -EFAULT;
             BT_DBG_FUNC("BT_ioctl(): unknown cmd (%d)\n", cmd);
@@ -387,7 +369,8 @@ static int BT_open(struct inode *inode, struct file *file)
         iminor(inode),
         current->pid
         );
-
+	if(current->pid ==1)
+		return 0;
 #if 1 /* GeorgeKuo: turn on function before check stp ready */
      /* turn on BT */
     if (MTK_WCN_BOOL_FALSE == mtk_wcn_wmt_func_on(WMTDRV_TYPE_BT)) {
@@ -422,6 +405,7 @@ static int BT_open(struct inode *inode, struct file *file)
             g_nvram_btdata[6], g_nvram_btdata[7]);
 
         mtk_wcn_stp_register_event_cb(BT_TASK_INDX, BT_event_cb);
+		BT_INFO_FUNC("mtk_wcn_stp_register_event_cb finish\n");
     }
     else {
         BT_ERR_FUNC("STP is not ready\n");
@@ -434,6 +418,7 @@ static int BT_open(struct inode *inode, struct file *file)
     sema_init(&wr_mtx, 1);
 //    init_MUTEX(&rd_mtx);
     sema_init(&rd_mtx, 1);
+	BT_INFO_FUNC("finish\n");
 
     return 0;
 }
@@ -445,6 +430,8 @@ static int BT_close(struct inode *inode, struct file *file)
         iminor(inode),
         current->pid
         );
+	if(current->pid ==1)
+		return 0;
     retflag = 0;
     mtk_wcn_wmt_msgcb_unreg(WMTDRV_TYPE_BT);
     mtk_wcn_stp_register_event_cb(BT_TASK_INDX, NULL);

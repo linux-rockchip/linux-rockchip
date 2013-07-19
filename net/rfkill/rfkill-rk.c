@@ -45,7 +45,7 @@
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
 
-#if 1
+#if 0
 #define DBG(x...)   printk(KERN_INFO "[BT_RFKILL]: "x)
 #else
 #define DBG(x...)

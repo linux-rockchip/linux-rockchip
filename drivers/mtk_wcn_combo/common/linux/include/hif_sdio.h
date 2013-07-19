@@ -1,74 +1,3 @@
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
- * MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
-
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- */
-/* MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
 /*
 ** $Id: $
 */
@@ -101,13 +30,25 @@
 ********************************************************************************
 */
 #define HIF_SDIO_DEBUG  (0) /* 0:trun off debug msg and assert, 1:trun off debug msg and assert */
-#define SDIO_TAG "[HIF-SDIO]"
 
 /*******************************************************************************
 *                    E X T E R N A L   R E F E R E N C E S
 ********************************************************************************
 */
-#include "osal_linux.h"
+#include <linux/mmc/card.h>
+#include <linux/mmc/host.h>
+#include <linux/mmc/sdio_func.h>
+#include <linux/mmc/sdio_ids.h>
+	
+#include <linux/mm.h>
+#include <linux/firmware.h>
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/vmalloc.h>
+
+
+#include "osal_typedef.h"
 #include "osal.h"
 #include "wmt_exp.h"
 
@@ -116,7 +57,7 @@
 *                              C O N S T A N T S
 ********************************************************************************
 */
-#define CFG_CLIENT_COUNT  (9)
+#define CFG_CLIENT_COUNT  (11)
 
 #define HIF_DEFAULT_BLK_SIZE  (256)
 #define HIF_DEFAULT_VENDOR    (0x037A)
@@ -172,7 +113,7 @@ typedef struct _MTK_WCN_HIF_SDIO_PROBEINFO {
     struct sdio_func* func;  /* probed sdio function pointer */
     void* private_data_p;  /* clt's private data pointer */
     MTK_WCN_BOOL on_by_wmt;   /* TRUE: on by wmt, FALSE: not on by wmt */
-    /* added for sdio irq sync and mmc single_irq workaround */
+	/* added for sdio irq sync and mmc single_irq workaround */
     MTK_WCN_BOOL sdio_irq_enabled; /* TRUE: can handle sdio irq; FALSE: no sdio irq handling */
     INT8 clt_idx;   /* registered function table info element number (initial value is -1) */
 } MTK_WCN_HIF_SDIO_PROBEINFO;
@@ -203,8 +144,14 @@ typedef enum {
     HIF_SDIO_ERR_NOT_PROBED = HIF_SDIO_ERR_INVALID_BLK_SZ - 1,
     HIF_SDIO_ERR_ALRDY_ON = HIF_SDIO_ERR_NOT_PROBED -1,
     HIF_SDIO_ERR_ALRDY_OFF = HIF_SDIO_ERR_ALRDY_ON -1,
-    HIF_SDIO_ERR_CLT_NOT_REG = HIF_SDIO_ERR_ALRDY_OFF - 1,
+    HIF_SDIO_ERR_CLT_NOT_REG = HIF_SDIO_ERR_ALRDY_OFF - 1,   
 } MTK_WCN_HIF_SDIO_ERR ;
+
+typedef struct _MTK_WCN_HIF_SDIO_CHIP_INFO_
+{
+    struct sdio_device_id deviceId;
+	UINT32 chipId;
+}MTK_WCN_HIF_SDIO_CHIP_INFO, *P_MTK_WCN_HIF_SDIO_CHIP_INFO;
 
 /*******************************************************************************
 *                            P U B L I C   D A T A
@@ -236,11 +183,17 @@ typedef enum {
 #define MTK_WCN_HIF_SDIO_FUNC(manf, card, func, b_sz) \
     .manf_id = (manf), .card_id = (card), .func_num = (func), .blk_sz = (b_sz)
 
-#define HIF_SDIO_LOUD_FUNC(fmt, arg...)   if (gHifSdioDbgLvl >= HIF_SDIO_LOG_LOUD) { printk(KERN_INFO SDIO_TAG"[L]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define HIF_SDIO_DBG_FUNC(fmt, arg...)    if (gHifSdioDbgLvl >= HIF_SDIO_LOG_DBG) { printk(KERN_INFO SDIO_TAG"[D]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define HIF_SDIO_INFO_FUNC(fmt, arg...)   if (gHifSdioDbgLvl >= HIF_SDIO_LOG_INFO) { printk(KERN_INFO SDIO_TAG"[I]%s:"  fmt, __FUNCTION__ ,##arg);}
-#define HIF_SDIO_WARN_FUNC(fmt, arg...)   if (gHifSdioDbgLvl >= HIF_SDIO_LOG_WARN) { printk(KERN_WARNING SDIO_TAG"[W]%s(%d):"  fmt, __FUNCTION__ , __LINE__, ##arg);}
-#define HIF_SDIO_ERR_FUNC(fmt, arg...)    if (gHifSdioDbgLvl >= HIF_SDIO_LOG_ERR) { printk(KERN_WARNING SDIO_TAG"[E]%s(%d):"  fmt, __FUNCTION__ , __LINE__, ##arg);}
+#ifndef DFT_TAG
+#define DFT_TAG         "[HIF-SDIO]"
+#endif
+
+extern UINT32 gHifSdioDbgLvl;
+
+#define HIF_SDIO_LOUD_FUNC(fmt, arg...)   if (gHifSdioDbgLvl >= HIF_SDIO_LOG_LOUD) { osal_dbg_print(DFT_TAG"[L]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define HIF_SDIO_DBG_FUNC(fmt, arg...)    if (gHifSdioDbgLvl >= HIF_SDIO_LOG_DBG) { osal_dbg_print(DFT_TAG"[D]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define HIF_SDIO_INFO_FUNC(fmt, arg...)   if (gHifSdioDbgLvl >= HIF_SDIO_LOG_INFO) { osal_dbg_print(DFT_TAG"[I]%s:"  fmt, __FUNCTION__ ,##arg);}
+#define HIF_SDIO_WARN_FUNC(fmt, arg...)   if (gHifSdioDbgLvl >= HIF_SDIO_LOG_WARN) { osal_dbg_print(DFT_TAG"[W]%s(%d):"  fmt, __FUNCTION__ , __LINE__, ##arg);}
+#define HIF_SDIO_ERR_FUNC(fmt, arg...)    if (gHifSdioDbgLvl >= HIF_SDIO_LOG_ERR) { osal_dbg_print(DFT_TAG"[E]%s(%d):"  fmt, __FUNCTION__ , __LINE__, ##arg);}
 
 /*!
  * \brief ASSERT function definition.
@@ -248,9 +201,9 @@ typedef enum {
  */
 #if HIF_SDIO_DEBUG
 #define HIF_SDIO_ASSERT(expr)    if ( !(expr) ) { \
-                            printk("assertion failed! %s[%d]: %s\n",\
+                            osal_dbg_print("assertion failed! %s[%d]: %s\n",\
                                 __FUNCTION__, __LINE__, #expr); \
-                            BUG_ON( !(expr) );\
+                            osal_bug_on( !(expr) );\
                         }
 #else
 #define HIF_SDIO_ASSERT(expr)    do {} while(0)
@@ -331,15 +284,23 @@ extern INT32 mtk_wcn_hif_sdio_wmt_control(
     MTK_WCN_BOOL is_on
     );
 
+extern INT32 mtk_wcn_hif_sdio_bus_set_power (
+    MTK_WCN_HIF_SDIO_CLTCTX ctx,
+    UINT32 pwrState
+    );
+
 extern void mtk_wcn_hif_sdio_get_dev(
     MTK_WCN_HIF_SDIO_CLTCTX ctx,
     struct device **dev
     );
 
-extern void mtk_wcn_hif_sdio_enable_irq(
-    MTK_WCN_HIF_SDIO_CLTCTX ctx,
-    MTK_WCN_BOOL enable
+extern INT32 mtk_wcn_hif_sdio_update_cb_reg(
+    int (*ts_update)(void)
     );
+
+
+INT32 mtk_wcn_hif_sdio_tell_chipid(INT32 chipId);
+INT32 mtk_wcn_hif_sdio_query_chipid(INT32 waitFlag);
 
 /*******************************************************************************
 *                              F U N C T I O N S

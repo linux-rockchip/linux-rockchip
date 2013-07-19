@@ -1,38 +1,3 @@
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
- * MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OWIFIAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -47,11 +12,16 @@
 #include <linux/time.h>
 #include <linux/delay.h>
 #include "wmt_exp.h"
+#include "stp_exp.h"
 
 MODULE_LICENSE("Dual BSD/GPL");
 
 #define WIFI_DRIVER_NAME "mtk_wmt_WIFI_chrdev"
+#if WMT_PLAT_APEX
 #define WIFI_DEV_MAJOR 194 // never used number
+#else
+#define WIFI_DEV_MAJOR 153 // never used number
+#endif
 
 #define PFX                         "[MTK-WIFI] "
 #define WIFI_LOG_DBG                  3
@@ -60,13 +30,13 @@ MODULE_LICENSE("Dual BSD/GPL");
 #define WIFI_LOG_ERR                  0
 
 
-unsigned int gDbgLevel = WIFI_LOG_ERR;//WIFI_LOG_INFO;//modify loglevel
+unsigned int gDbgLevel = WIFI_LOG_INFO;
 
-#define WIFI_DBG_FUNC(fmt, arg...)    if (gDbgLevel >= WIFI_LOG_DBG) { printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
-#define WIFI_INFO_FUNC(fmt, arg...)   if (gDbgLevel >= WIFI_LOG_INFO) { printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
-#define WIFI_WARN_FUNC(fmt, arg...)   if (gDbgLevel >= WIFI_LOG_WARN) { printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
-#define WIFI_ERR_FUNC(fmt, arg...)    if (gDbgLevel >= WIFI_LOG_ERR) { printk(PFX "%s: "   fmt, __FUNCTION__ ,##arg);}
-#define WIFI_TRC_FUNC(f)              if (gDbgLevel >= WIFI_LOG_DBG) {printk(PFX "<%s> <%d>\n", __FUNCTION__, __LINE__);}
+#define WIFI_DBG_FUNC(fmt, arg...)    if(gDbgLevel >= WIFI_LOG_DBG){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
+#define WIFI_INFO_FUNC(fmt, arg...)   if(gDbgLevel >= WIFI_LOG_INFO){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
+#define WIFI_WARN_FUNC(fmt, arg...)   if(gDbgLevel >= WIFI_LOG_WARN){ printk(PFX "%s: "  fmt, __FUNCTION__ ,##arg);}
+#define WIFI_ERR_FUNC(fmt, arg...)    if(gDbgLevel >= WIFI_LOG_ERR){ printk(PFX "%s: "   fmt, __FUNCTION__ ,##arg);}
+#define WIFI_TRC_FUNC(f)              if(gDbgLevel >= WIFI_LOG_DBG){printk(PFX "<%s> <%d>\n", __FUNCTION__, __LINE__);}
 
 #define VERSION "1.0"
 
@@ -125,7 +95,7 @@ ssize_t WIFI_write(struct file *filp, const char __user *buf, size_t count, loff
                     retval = count;
                 }
             }
-            else if (local[0] == '1' && opened == 0) {
+            else if (local[0] == '1') {
                 //TODO
                 //Disable EINT(external interrupt), and set the GPIO to EINT mode.
 

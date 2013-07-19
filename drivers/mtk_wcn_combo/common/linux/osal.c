@@ -1,86 +1,10 @@
-/* Copyright Statement:
- *
- * This software/firmware and related documentation ("MediaTek Software") are
- * protected under relevant copyright laws. The information contained herein
- * is confidential and proprietary to MediaTek Inc. and/or its licensors.
- * Without the prior written permission of MediaTek inc. and/or its licensors,
- * any reproduction, modification, use or disclosure of MediaTek Software,
- * and information contained herein, in whole or in part, shall be strictly prohibited.
- *
- * MediaTek Inc. (C) 2010. All rights reserved.
- *
- * BY OPENING THIS FILE, RECEIVER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND AGREES
- * THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK SOFTWARE")
- * RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE PROVIDED TO RECEIVER ON
- * AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY DISCLAIMS ANY AND ALL WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT.
- * NEITHER DOES MEDIATEK PROVIDE ANY WARRANTY WHATSOEVER WITH RESPECT TO THE
- * SOFTWARE OF ANY THIRD PARTY WHICH MAY BE USED BY, INCORPORATED IN, OR
- * SUPPLIED WITH THE MEDIATEK SOFTWARE, AND RECEIVER AGREES TO LOOK ONLY TO SUCH
- * THIRD PARTY FOR ANY WARRANTY CLAIM RELATING THERETO. RECEIVER EXPRESSLY ACKNOWLEDGES
- * THAT IT IS RECEIVER'S SOLE RESPONSIBILITY TO OBTAIN FROM ANY THIRD PARTY ALL PROPER LICENSES
- * CONTAINED IN MEDIATEK SOFTWARE. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE FOR ANY MEDIATEK
- * SOFTWARE RELEASES MADE TO RECEIVER'S SPECIFICATION OR TO CONFORM TO A PARTICULAR
- * STANDARD OR OPEN FORUM. RECEIVER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND
- * CUMULATIVE LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL BE,
- * AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT ISSUE,
- * OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY RECEIVER TO
- * MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
- *
- * The following software/firmware and/or related documentation ("MediaTek Software")
- * have been modified by MediaTek Inc. All revisions are subject to any receiver's
- * applicable license agreements with MediaTek Inc.
- */
-
-
 /*! \file
     \brief  Declaration of library functions
 
     Any definitions in this file will be shared among GLUE Layer and internal Driver Stack.
 */
 
-/*******************************************************************************
-* Copyright (c) 2009 MediaTek Inc.
-*
-* All rights reserved. Copying, compilation, modification, distribution
-* or any other use whatsoever of this material is strictly prohibited
-* except in accordance with a Software License Agreement with
-* MediaTek Inc.
-********************************************************************************
-*/
 
-/*******************************************************************************
-* LEGAL DISCLAIMER
-*
-* BY OPENING THIS FILE, BUYER HEREBY UNEQUIVOCALLY ACKNOWLEDGES AND
-* AGREES THAT THE SOFTWARE/FIRMWARE AND ITS DOCUMENTATIONS ("MEDIATEK
-* SOFTWARE") RECEIVED FROM MEDIATEK AND/OR ITS REPRESENTATIVES ARE
-* PROVIDED TO BUYER ON AN "AS-IS" BASIS ONLY. MEDIATEK EXPRESSLY
-* DISCLAIMS ANY AND ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-* LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-* PARTICULAR PURPOSE OR NONINFRINGEMENT. NEITHER DOES MEDIATEK PROVIDE
-* ANY WARRANTY WHATSOEVER WITH RESPECT TO THE SOFTWARE OF ANY THIRD PARTY
-* WHICH MAY BE USED BY, INCORPORATED IN, OR SUPPLIED WITH THE MEDIATEK
-* SOFTWARE, AND BUYER AGREES TO LOOK ONLY TO SUCH THIRD PARTY FOR ANY
-* WARRANTY CLAIM RELATING THERETO. MEDIATEK SHALL ALSO NOT BE RESPONSIBLE
-* FOR ANY MEDIATEK SOFTWARE RELEASES MADE TO BUYER'S SPECIFICATION OR TO
-* CONFORM TO A PARTICULAR STANDARD OR OPEN FORUM.
-*
-* BUYER'S SOLE AND EXCLUSIVE REMEDY AND MEDIATEK'S ENTIRE AND CUMULATIVE
-* LIABILITY WITH RESPECT TO THE MEDIATEK SOFTWARE RELEASED HEREUNDER WILL
-* BE, AT MEDIATEK'S OPTION, TO REVISE OR REPLACE THE MEDIATEK SOFTWARE AT
-* ISSUE, OR REFUND ANY SOFTWARE LICENSE FEES OR SERVICE CHARGE PAID BY
-* BUYER TO MEDIATEK FOR SUCH MEDIATEK SOFTWARE AT ISSUE.
-*
-* THE TRANSACTION CONTEMPLATED HEREUNDER SHALL BE CONSTRUED IN ACCORDANCE
-* WITH THE LAWS OF THE STATE OF CALIFORNIA, USA, EXCLUDING ITS CONFLICT
-* OF LAWS PRINCIPLES.  ANY DISPUTES, CONTROVERSIES OR CLAIMS ARISING
-* THEREOF AND RELATED THERETO SHALL BE SETTLED BY ARBITRATION IN SAN
-* FRANCISCO, CA, UNDER THE RULES OF THE INTERNATIONAL CHAMBER OF COMMERCE
-* (ICC).
-********************************************************************************
-*/
 
 
 /*******************************************************************************
@@ -99,7 +23,7 @@
 *                    E X T E R N A L   R E F E R E N C E S
 ********************************************************************************
 */
-#include "osal_linux.h"
+#include "osal_typedef.h"
 #include "osal.h"
 
 /*******************************************************************************
@@ -127,6 +51,41 @@
 ********************************************************************************
 */
 
+/* CRC table for the CRC-16. The poly is 0x8005 (x^16 + x^15 + x^2 + 1) */
+static UINT16 const crc16_table[256] = {
+    0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
+    0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
+    0xCC01, 0x0CC0, 0x0D80, 0xCD41, 0x0F00, 0xCFC1, 0xCE81, 0x0E40,
+    0x0A00, 0xCAC1, 0xCB81, 0x0B40, 0xC901, 0x09C0, 0x0880, 0xC841,
+    0xD801, 0x18C0, 0x1980, 0xD941, 0x1B00, 0xDBC1, 0xDA81, 0x1A40,
+    0x1E00, 0xDEC1, 0xDF81, 0x1F40, 0xDD01, 0x1DC0, 0x1C80, 0xDC41,
+    0x1400, 0xD4C1, 0xD581, 0x1540, 0xD701, 0x17C0, 0x1680, 0xD641,
+    0xD201, 0x12C0, 0x1380, 0xD341, 0x1100, 0xD1C1, 0xD081, 0x1040,
+    0xF001, 0x30C0, 0x3180, 0xF141, 0x3300, 0xF3C1, 0xF281, 0x3240,
+    0x3600, 0xF6C1, 0xF781, 0x3740, 0xF501, 0x35C0, 0x3480, 0xF441,
+    0x3C00, 0xFCC1, 0xFD81, 0x3D40, 0xFF01, 0x3FC0, 0x3E80, 0xFE41,
+    0xFA01, 0x3AC0, 0x3B80, 0xFB41, 0x3900, 0xF9C1, 0xF881, 0x3840,
+    0x2800, 0xE8C1, 0xE981, 0x2940, 0xEB01, 0x2BC0, 0x2A80, 0xEA41,
+    0xEE01, 0x2EC0, 0x2F80, 0xEF41, 0x2D00, 0xEDC1, 0xEC81, 0x2C40,
+    0xE401, 0x24C0, 0x2580, 0xE541, 0x2700, 0xE7C1, 0xE681, 0x2640,
+    0x2200, 0xE2C1, 0xE381, 0x2340, 0xE101, 0x21C0, 0x2080, 0xE041,
+    0xA001, 0x60C0, 0x6180, 0xA141, 0x6300, 0xA3C1, 0xA281, 0x6240,
+    0x6600, 0xA6C1, 0xA781, 0x6740, 0xA501, 0x65C0, 0x6480, 0xA441,
+    0x6C00, 0xACC1, 0xAD81, 0x6D40, 0xAF01, 0x6FC0, 0x6E80, 0xAE41,
+    0xAA01, 0x6AC0, 0x6B80, 0xAB41, 0x6900, 0xA9C1, 0xA881, 0x6840,
+    0x7800, 0xB8C1, 0xB981, 0x7940, 0xBB01, 0x7BC0, 0x7A80, 0xBA41,
+    0xBE01, 0x7EC0, 0x7F80, 0xBF41, 0x7D00, 0xBDC1, 0xBC81, 0x7C40,
+    0xB401, 0x74C0, 0x7580, 0xB541, 0x7700, 0xB7C1, 0xB681, 0x7640,
+    0x7200, 0xB2C1, 0xB381, 0x7340, 0xB101, 0x71C0, 0x7080, 0xB041,
+    0x5000, 0x90C1, 0x9181, 0x5140, 0x9301, 0x53C0, 0x5280, 0x9241,
+    0x9601, 0x56C0, 0x5780, 0x9741, 0x5500, 0x95C1, 0x9481, 0x5440,
+    0x9C01, 0x5CC0, 0x5D80, 0x9D41, 0x5F00, 0x9FC1, 0x9E81, 0x5E40,
+    0x5A00, 0x9AC1, 0x9B81, 0x5B40, 0x9901, 0x59C0, 0x5880, 0x9841,
+    0x8801, 0x48C0, 0x4980, 0x8941, 0x4B00, 0x8BC1, 0x8A81, 0x4A40,
+    0x4E00, 0x8EC1, 0x8F81, 0x4F40, 0x8D01, 0x4DC0, 0x4C80, 0x8C41,
+    0x4400, 0x84C1, 0x8581, 0x4540, 0x8701, 0x47C0, 0x4680, 0x8641,
+    0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
+};
 
 
 
@@ -145,55 +104,58 @@
 */
 
 /*string operations*/
-UINT32  osal_strlen(const char *str)
+_osal_inline_ UINT32  osal_strlen(const char *str)
 {
     return strlen(str);
 }
 
-INT32 osal_strcmp(const char *dst, const char *src)
+_osal_inline_ INT32 osal_strcmp(const char *dst, const char *src)
 {
     return strcmp(dst, src);
 }
 
-INT32 osal_strncmp(const char *dst, const char *src, UINT32 len)
+_osal_inline_ INT32 osal_strncmp(const char *dst, const char *src, UINT32 len)
 {
     return strncmp(dst, src, len);
 }
 
-char * osal_strcpy(char *dst, const char *src)
+_osal_inline_ char * osal_strcpy(char *dst, const char *src)
 {
     return strcpy(dst, src);
 }
 
-char * osal_strncpy(char *dst, const char *src, UINT32 len)
+_osal_inline_ char * osal_strncpy(char *dst, const char *src, UINT32 len)
 {
     return strncpy(dst, src, len);
 }
 
 
-char * osal_strcat(char *dst, const char *src)
+_osal_inline_ char * osal_strcat(char *dst, const char *src)
 {
     return strcat(dst, src);
 }
 
-char * osal_strncat(char *dst, const char *src, UINT32 len)
+_osal_inline_ char * osal_strncat(char *dst, const char *src, UINT32 len)
 {
     return strncat(dst, src, len);
 }
 
-char * osal_strchr(const char *str, UINT8 c)
+_osal_inline_ char * osal_strchr(const char *str, UINT8 c)
 {
     return strchr(str, c);
 }
 
 
-char * osal_strsep(char **str, const char *c)
+_osal_inline_ char * osal_strsep(char **str, const char *c)
 {
     return strsep(str, c);
 }
 
-
-LONG osal_strtol(const char *str, char **c, UINT32 adecimal)
+_osal_inline_ void osal_bug_on(unsigned long val)
+{
+	BUG_ON(val);
+}
+_osal_inline_ LONG osal_strtol(const char *str, char **c, UINT32 adecimal)
 {
     return simple_strtol(str, c, adecimal);
 }
@@ -241,68 +203,6 @@ INT32 osal_dbg_print(const char *str, ...)
     return 0;
 }
 
-INT32 osal_err_print(const char *str, ...)
-{
-    va_list  args;
-    char tempString[DBG_LOG_STR_SIZE];
-
-    va_start(args, str);
-    vsnprintf(tempString, DBG_LOG_STR_SIZE, str, args);
-    va_end(args);
-
-    printk(KERN_ERR "%s",tempString);
-
-    return 0;
-}
-
-INT32 osal_info_print(const char *str, ...)
-{
-    va_list  args;
-    char tempString[DBG_LOG_STR_SIZE];
-
-    va_start(args, str);
-    vsnprintf(tempString, DBG_LOG_STR_SIZE, str, args);
-    va_end(args);
-
-    printk(KERN_INFO "%s",tempString);
-
-    return 0;
-}
-
-INT32 osal_warn_print(const char *str, ...)
-{
-    va_list  args;
-    char tempString[DBG_LOG_STR_SIZE];
-
-    va_start(args, str);
-    vsnprintf(tempString, DBG_LOG_STR_SIZE, str, args);
-    va_end(args);
-
-    printk(KERN_WARNING "%s",tempString);
-
-    return 0;
-}
-
-INT32 osal_loud_print(const char *str, ...)
-{
-    va_list  args;
-    char tempString[DBG_LOG_STR_SIZE];
-
-    va_start(args, str);
-    vsnprintf(tempString, DBG_LOG_STR_SIZE, str, args);
-    va_end(args);
-
-    printk(KERN_DEBUG "%s",tempString);
-
-    return 0;
-}
-/*
-EXPORT_SYMBOL(osal_dbg_print);
-EXPORT_SYMBOL(osal_err_print);
-EXPORT_SYMBOL(osal_info_print);
-EXPORT_SYMBOL(osal_warn_print);
-EXPORT_SYMBOL(osal_loud_print);
-*/
 
 INT32 osal_dbg_assert(INT32 expr, const char *file, INT32 line)
 {
@@ -325,12 +225,12 @@ INT32 osal_dbg_assert(INT32 expr, const char *file, INT32 line)
 
 INT32 osal_dbg_assert_aee(const char *module, const char *detail_description){
     osal_err_print("[WMT-ASSERT]""[E][Module]:%s, [INFO]%s\n", module, detail_description);
-#ifdef WMT_PLAT_ALPS
+
+#if WMT_PLAT_ALPS
     aee_kernel_warning(
         module,
         detail_description);
 #endif
-
     return 0;
 }
 
@@ -346,48 +246,49 @@ INT32 osal_sprintf(char *str, const char *format, ...)
     return iRet;
 }
 
-VOID* osal_malloc(UINT32 size)
+_osal_inline_ VOID* osal_malloc(UINT32 size)
 {
     return vmalloc(size);
 }
 
 
-VOID osal_vfree(const VOID *dst)
+_osal_inline_ VOID osal_free(const VOID *dst)
 {
     vfree(dst);
 }
 
-VOID osal_kfree(const VOID *dst)
-{
-    kfree(dst);
-}
-
-VOID* osal_memset(VOID *buf, INT32 i, UINT32 len)
+_osal_inline_ VOID* osal_memset(VOID *buf, INT32 i, UINT32 len)
 {
     return memset(buf, i, len);
 }
 
 
-VOID* osal_memcpy(VOID *dst, const VOID *src, UINT32 len)
+_osal_inline_ VOID* osal_memcpy(VOID *dst, const VOID *src, UINT32 len)
 {
     return memcpy(dst, src, len);
 }
 
 
-INT32 osal_memcmp(const VOID *buf1, const VOID *buf2, UINT32 len)
+_osal_inline_ INT32 osal_memcmp(const VOID *buf1, const VOID *buf2, UINT32 len)
 {
     return memcmp(buf1, buf2, len);
 }
 
-VOID* osal_kzalloc_sleep(UINT32 size)
+_osal_inline_ UINT16 osal_crc16(const UINT8 *buffer, const UINT32 length)
 {
-    return kzalloc(size,GFP_KERNEL);
+    UINT16 crc = 0;
+    UINT32 i = 0;
+
+    //FIXME: Add STP checksum feature
+    crc = 0;
+    for (i = 0; i < length; i++, buffer++)
+    {
+        crc = (crc >> 8) ^ crc16_table[(crc ^ (*buffer)) & 0xff];
+    }
+    return crc;
 }
 
-VOID* osal_kzalloc_unsleep(UINT32 size)
-{
-    return kzalloc(size,GFP_ATOMIC);
-}
+
 
 
 /*
@@ -395,34 +296,26 @@ VOID* osal_kzalloc_unsleep(UINT32 size)
   *
   *
 */
-INT32
+_osal_inline_ INT32
 osal_thread_create (
     P_OSAL_THREAD pThread
     )
 {
-    //pThread->pThread = NULL; /* [FIXME] why? */
-    if(pThread)
-    {
-        pThread->pThread = (struct task_struct *)kthread_create(pThread->pThreadFunc,
-            pThread->pThreadData,
-            pThread->threadName);
-        if (NULL == pThread->pThread) {
-            return -1;
-        }
-        return 0;
+    pThread->pThread = kthread_create(pThread->pThreadFunc,
+        pThread->pThreadData,
+        pThread->threadName);
+    if (NULL == pThread->pThread) {
+        return -1;
     }
-    else
-    {
-        return -2;
-    }
+    return 0;
 }
-INT32
+_osal_inline_ INT32
 osal_thread_run (
     P_OSAL_THREAD pThread
     )
 {
     if (pThread->pThread) {
-        wake_up_process((struct task_struct *)pThread->pThread);
+        wake_up_process(pThread->pThread);
         return 0;
     }
     else {
@@ -430,14 +323,14 @@ osal_thread_run (
     }
 }
 
-INT32
+_osal_inline_ INT32
 osal_thread_stop (
     P_OSAL_THREAD pThread
     )
 {
     INT32 iRet;
     if ( (pThread) && (pThread->pThread) ) {
-        iRet = kthread_stop((struct task_struct *)pThread->pThread);
+        iRet = kthread_stop(pThread->pThread);
         //pThread->pThread = NULL;
         return iRet;
     }
@@ -445,7 +338,7 @@ osal_thread_stop (
 }
 
 
-INT32
+_osal_inline_ INT32
 osal_thread_should_stop (
     P_OSAL_THREAD pThread
     )
@@ -459,7 +352,7 @@ osal_thread_should_stop (
 }
 
 
-INT32
+_osal_inline_ INT32
 osal_thread_wait_for_event (
     P_OSAL_THREAD pThread,
     P_OSAL_EVENT pEvent,
@@ -470,19 +363,19 @@ osal_thread_wait_for_event (
 
     if ( (pThread) && (pThread->pThread) && (pEvent) && (pChecker)) {
 /*        pDevWmt = (P_DEV_WMT)(pThread->pThreadData);*/
-        return wait_event_interruptible((*(wait_queue_head_t *)pEvent->pWaitQueue),
+        return wait_event_interruptible(pEvent->waitQueue,
             (/*!RB_EMPTY(&pDevWmt->rActiveOpQ) ||*/ osal_thread_should_stop(pThread) || (*pChecker)(pThread)));
     }
     return -1;
 }
 
-INT32
+_osal_inline_ INT32
 osal_thread_destroy (
     P_OSAL_THREAD pThread
     )
 {
     if (pThread && (pThread->pThread)) {
-        kthread_stop((struct task_struct *)pThread->pThread);
+        kthread_stop(pThread->pThread);
         pThread->pThread = NULL;
     }
     return 0;
@@ -498,33 +391,13 @@ osal_thread_destroy (
   *
 */
 
-INT32
+_osal_inline_ INT32
 osal_signal_init (
     P_OSAL_SIGNAL pSignal
     )
 {
     if (pSignal) {
-        //pSignal->pComp = NULL;
-        pSignal->pComp = kzalloc(sizeof(struct completion),GFP_KERNEL);
-        if (!pSignal->pComp){
-            osal_info_print("%s:completion memory allocate fail!\n",__func__);
-            return -1;
-        }
-        init_completion((struct completion *)pSignal->pComp);
-        return 0;
-    }
-    else {
-        return -2;
-    }
-}
-
-INT32
-osal_wait_for_signal (
-    P_OSAL_SIGNAL pSignal
-    )
-{
-    if (pSignal) {
-        wait_for_completion_interruptible((struct completion *)pSignal->pComp);
+        init_completion(&pSignal->comp);
         return 0;
     }
     else {
@@ -532,7 +405,21 @@ osal_wait_for_signal (
     }
 }
 
-INT32
+_osal_inline_ INT32
+osal_wait_for_signal (
+    P_OSAL_SIGNAL pSignal
+    )
+{
+    if (pSignal) {
+        wait_for_completion_interruptible(&pSignal->comp);
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+_osal_inline_ INT32
 osal_wait_for_signal_timeout (
     P_OSAL_SIGNAL pSignal
     )
@@ -542,44 +429,27 @@ osal_wait_for_signal_timeout (
      * Avoid using *interruptible" version in order to complete our jobs, such
      * as function off gracefully.
      */
-    return wait_for_completion_timeout((struct completion *)pSignal->pComp, msecs_to_jiffies(pSignal->timeoutValue));
+    return wait_for_completion_timeout(&pSignal->comp, msecs_to_jiffies(pSignal->timeoutValue));
 }
 
-INT32
+_osal_inline_ INT32
 osal_raise_signal (
     P_OSAL_SIGNAL pSignal
     )
 {
     // TODO:[FixMe][GeorgeKuo]: DO sanity check here!!!
-    if(pSignal && pSignal->pComp){
-        complete((struct completion *)pSignal->pComp);
-        return 0;
-    }
-    else
-    {
-        return -1;
-    }
+    complete(&pSignal->comp);
+    return 0;
 }
 
-INT32
+_osal_inline_ INT32
 osal_signal_deinit (
     P_OSAL_SIGNAL pSignal
     )
 {
     // TODO:[FixMe][GeorgeKuo]: DO sanity check here!!!
-    if(pSignal)
-    {
-        if (pSignal->pComp){
-            kfree(pSignal->pComp);
-            pSignal->pComp = NULL;
-        }
-        pSignal->timeoutValue = 0;
-        return 0;
-    }
-    else
-    {
-        return -1;
-    }
+    pSignal->timeoutValue = 0;
+    return 0;
 }
 
 
@@ -597,24 +467,18 @@ INT32 osal_event_init (
     P_OSAL_EVENT pEvent
     )
 {
-    //pEvent->pWaitQueue = NULL; /* [FIXME] why? */
-    pEvent->pWaitQueue = kzalloc(sizeof(wait_queue_head_t),GFP_KERNEL);
-    if (!pEvent->pWaitQueue){
-        osal_info_print("%s:waitqueue memory allocate fail!\n",__func__);
-        return -1;
-    }
-    init_waitqueue_head((wait_queue_head_t *)pEvent->pWaitQueue);
-
+    init_waitqueue_head(&pEvent->waitQueue);    
+    
     return 0;
 }
 
 INT32 osal_wait_for_event(
-    P_OSAL_EVENT pEvent,
+    P_OSAL_EVENT pEvent, 
     INT32 (*condition)(PVOID),
     void *cond_pa
     )
 {
-    return  wait_event_interruptible((*(wait_queue_head_t *)pEvent->pWaitQueue), condition(cond_pa));
+    return  wait_event_interruptible(pEvent->waitQueue, condition(cond_pa)); 
 }
 
 INT32 osal_wait_for_event_timeout(
@@ -623,7 +487,7 @@ INT32 osal_wait_for_event_timeout(
        void *cond_pa
        )
 {
-    return wait_event_interruptible_timeout((*(wait_queue_head_t *)pEvent->pWaitQueue), condition(cond_pa), msecs_to_jiffies(pEvent->timeoutValue));
+    return wait_event_interruptible_timeout(pEvent->waitQueue, condition(cond_pa), msecs_to_jiffies(pEvent->timeoutValue));
 }
 
 INT32 osal_trigger_event(
@@ -631,46 +495,42 @@ INT32 osal_trigger_event(
     )
 {
     INT32 ret = 0;
-    wake_up_interruptible((wait_queue_head_t *)pEvent->pWaitQueue);
+    wake_up_interruptible(&pEvent->waitQueue);
     return ret;
 }
-
+                                                        
 INT32
 osal_event_deinit (
     P_OSAL_EVENT pEvent
     )
 {
-    if (pEvent->pWaitQueue){
-        kfree(pEvent->pWaitQueue);
-        pEvent->pWaitQueue = NULL;
-    }
     return 0;
 }
 
-LONG osal_wait_for_event_bit_set(P_OSAL_EVENT pEvent, PULONG pState, UINT32 bitOffset)
+_osal_inline_ LONG osal_wait_for_event_bit_set(P_OSAL_EVENT pEvent, PULONG pState, UINT32 bitOffset)
 {
      UINT32 ms = pEvent->timeoutValue;
     if (ms != 0)
     {
-        return wait_event_interruptible_timeout((*(wait_queue_head_t *)pEvent->pWaitQueue),  test_bit(bitOffset, pState), msecs_to_jiffies(ms));
+        return wait_event_interruptible_timeout(pEvent->waitQueue,  test_bit(bitOffset, pState), msecs_to_jiffies(ms));
     }
     else
     {
-        return wait_event_interruptible((*(wait_queue_head_t *)pEvent->pWaitQueue),  test_bit(bitOffset, pState));
+        return wait_event_interruptible(pEvent->waitQueue,  test_bit(bitOffset, pState));
     }
 
 }
 
-LONG osal_wait_for_event_bit_clr(P_OSAL_EVENT pEvent, PULONG pState, UINT32 bitOffset)
+_osal_inline_ LONG osal_wait_for_event_bit_clr(P_OSAL_EVENT pEvent, PULONG pState, UINT32 bitOffset)
 {
     UINT32 ms = pEvent->timeoutValue;
     if (ms != 0)
     {
-        return wait_event_interruptible_timeout((*(wait_queue_head_t *)pEvent->pWaitQueue),  !test_bit(bitOffset, pState), msecs_to_jiffies(ms));
+        return wait_event_interruptible_timeout(pEvent->waitQueue,  !test_bit(bitOffset, pState), msecs_to_jiffies(ms));
     }
     else
     {
-        return wait_event_interruptible((*(wait_queue_head_t *)pEvent->pWaitQueue),  !test_bit(bitOffset, pState));
+        return wait_event_interruptible(pEvent->waitQueue,  !test_bit(bitOffset, pState));
     }
 
 }
@@ -680,24 +540,24 @@ LONG osal_wait_for_event_bit_clr(P_OSAL_EVENT pEvent, PULONG pState, UINT32 bitO
   *
   *
 */
-#if OS_BIT_OPS_SUPPORT
-#define osal_bit_op_lock(x)
-#define osal_bit_op_unlock(x)
+#if    OS_BIT_OPS_SUPPORT
+#define osal_bit_op_lock(x) 
+#define osal_bit_op_unlock(x) 
 #else
 
-INT32 osal_bit_op_lock(P_OSAL_UNSLEEPABLE_LOCK pLock)
+_osal_inline_ INT32 osal_bit_op_lock(P_OSAL_UNSLEEPABLE_LOCK pLock)
 {
-
+    
     return 0;
 }
 
-INT32 osal_bit_op_unlock(P_OSAL_UNSLEEPABLE_LOCK pLock)
+_osal_inline_ INT32 osal_bit_op_unlock(P_OSAL_UNSLEEPABLE_LOCK pLock)
 {
-
+    
     return 0;
 }
 #endif
-INT32 osal_clear_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
+_osal_inline_ INT32 osal_clear_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 {
     osal_bit_op_lock(&(pData->opLock));
     clear_bit(bitOffset, &pData->data);
@@ -705,7 +565,7 @@ INT32 osal_clear_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
     return 0;
 }
 
-INT32 osal_set_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
+_osal_inline_ INT32 osal_set_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 {
     osal_bit_op_lock(&(pData->opLock));
     set_bit(bitOffset, &pData->data);
@@ -713,7 +573,7 @@ INT32 osal_set_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
     return 0;
 }
 
-INT32 osal_test_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
+_osal_inline_ INT32 osal_test_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 {
     UINT32 iRet = 0;
     osal_bit_op_lock(&(pData->opLock));
@@ -722,7 +582,7 @@ INT32 osal_test_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
     return iRet;
 }
 
-INT32 osal_test_and_clear_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
+_osal_inline_ INT32 osal_test_and_clear_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 {
     UINT32 iRet = 0;
     osal_bit_op_lock(&(pData->opLock));
@@ -732,7 +592,7 @@ INT32 osal_test_and_clear_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 
 }
 
-INT32 osal_test_and_set_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
+_osal_inline_ INT32 osal_test_and_set_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 {
     UINT32 iRet = 0;
     osal_bit_op_lock(&(pData->opLock));
@@ -754,53 +614,39 @@ INT32 osal_test_and_set_bit(UINT32 bitOffset, P_OSAL_BIT_OP_VAR pData)
 
 INT32 osal_timer_create(P_OSAL_TIMER pTimer)
 {
-    struct timer_list *timer = NULL;
-    pTimer->pTimer = kzalloc(sizeof(struct timer_list),GFP_KERNEL);
-    if (!pTimer->pTimer){
-        osal_info_print("%s:timer memory allocate fail!\n",__func__);
-        return -1;
-    }
-    timer = (struct timer_list *)pTimer->pTimer;
+    struct timer_list *timer = &pTimer->timer;
     init_timer(timer);
     timer->function = pTimer->timeoutHandler;
-    timer->data = (unsigned long)pTimer->timeroutHandlerData;
+    timer->data = (ULONG)pTimer->timeroutHandlerData;
     return 0;
 }
 INT32 osal_timer_start(P_OSAL_TIMER pTimer, UINT32 ms)
 {
 
-    struct timer_list *timer = (struct timer_list *)pTimer->pTimer;
-    timer->expires = jiffies + msecs_to_jiffies(ms);
+    struct timer_list *timer = &pTimer->timer;
+    timer->expires = jiffies + (ms/(1000/HZ));
     add_timer(timer);
     return 0;
 }
 
 INT32 osal_timer_stop(P_OSAL_TIMER pTimer)
 {
-    struct timer_list *timer = (struct timer_list *)pTimer->pTimer;
+    struct timer_list *timer = &pTimer->timer;
     del_timer(timer);
     return 0;
 }
 
 INT32 osal_timer_stop_sync(P_OSAL_TIMER pTimer)
 {
-    struct timer_list *timer = (struct timer_list *)pTimer->pTimer;
+    struct timer_list *timer = &pTimer->timer;
     del_timer_sync(timer);
     return 0;
 }
 
 INT32 osal_timer_modify(P_OSAL_TIMER pTimer, UINT32 ms)
 {
-    mod_timer((struct timer_list *)pTimer->pTimer, jiffies + msecs_to_jiffies(ms));
-    return 0;
-}
 
-INT32 osal_timer_delete(P_OSAL_TIMER pTimer)
-{
-    if (pTimer->pTimer){
-        kfree(pTimer->pTimer);
-        pTimer->pTimer = NULL;
-    }
+    mod_timer(&pTimer->timer, jiffies + (ms)/(1000/HZ));
     return 0;
 }
 
@@ -809,52 +655,43 @@ INT32 _osal_fifo_init(OSAL_FIFO *pFifo, UINT8 *buf, UINT32 size)
     struct kfifo *fifo = NULL;
     INT32  ret = -1;
 
-    if (!pFifo || pFifo->pFifoBody)
+    if(!pFifo || pFifo->pFifoBody)
     {
         printk (KERN_ERR "pFifo must be !NULL, pFifo->pFifoBody must be NULL\n");
         printk (KERN_ERR "pFifo(0x%p), pFifo->pFifoBody(0x%p)\n", pFifo, pFifo->pFifoBody);
         return -1;
     }
 
-    pFifo->fifoSpinlock = NULL;
-
-    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
-    pFifo->fifoSpinlock = kzalloc(sizeof(spinlock_t),GFP_ATOMIC);
-    if (!pFifo->fifoSpinlock){
-        osal_info_print("%s:fifo spinlock allocate memory fail!",__func__);
-        return -2;
-    }
-    spin_lock_init((spinlock_t *)pFifo->fifoSpinlock);
-    fifo = kfifo_alloc(size, /*GFP_KERNEL*/GFP_ATOMIC, (spinlock_t *)pFifo->fifoSpinlock);
-    if (NULL == fifo)
-    {
-        ret = -3;
-    }
-    else
-    {
-        ret = 0;
-    }
+    
+    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+            spin_lock_init(&pFifo->fifoSpinlock);
+            fifo = kfifo_alloc(size, /*GFP_KERNEL*/GFP_ATOMIC, &pFifo->fifoSpinlock);
+            if (NULL == fifo)
+            {
+                ret = -2;
+            }else
+            {
+                ret = 0;
+            }
     #else
-    fifo = kzalloc(sizeof(struct kfifo), GFP_ATOMIC);
-    if (!buf)
-    {
-      /*fifo's buffer is not ready, we allocate automatically*/
-        ret = kfifo_alloc(fifo, size, /*GFP_KERNEL*/GFP_ATOMIC);
-    }
-    else
-    {
-        if (is_power_of_2(size))
+        fifo = kzalloc(sizeof(struct kfifo), GFP_ATOMIC);
+        if (!buf){
+          /*fifo's buffer is not ready, we allocate automatically*/
+            ret = kfifo_alloc(fifo, size, /*GFP_KERNEL*/GFP_ATOMIC);
+        }else
         {
-            kfifo_init(fifo, buf, size);
-            ret = 0;
-        }
-        else
-        {
-            kfifo_free(fifo);
-            fifo = NULL;
-            ret = -1;
-        }
-    }
+            if(is_power_of_2(size))
+            {
+                kfifo_init(fifo, buf, size);
+                ret = 0;
+            }
+            else
+            {
+                kfifo_free(fifo);
+                fifo = NULL;
+                ret = -1;
+            }
+        } 
     #endif
     pFifo->pFifoBody = fifo;
     return (ret < 0) ? (-1) : (0);
@@ -864,7 +701,7 @@ INT32 _osal_fifo_deinit(OSAL_FIFO *pFifo)
 {
     struct kfifo *fifo = NULL;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -872,18 +709,12 @@ INT32 _osal_fifo_deinit(OSAL_FIFO *pFifo)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
         kfifo_free(fifo);
+    
     }
 
-    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
-    if (pFifo->fifoSpinlock)
-    {
-        kfree(pFifo->fifoSpinlock);
-        pFifo->fifoSpinlock = NULL;
-    }
-    #endif
     return 0;
 }
 
@@ -892,7 +723,7 @@ INT32 _osal_fifo_size(OSAL_FIFO *pFifo)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -900,14 +731,14 @@ INT32 _osal_fifo_size(OSAL_FIFO *pFifo)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
-    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
+    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
         ret = fifo->size;
     #else
         ret = kfifo_size(fifo);
     #endif
-
+    
     }
 
     return ret;
@@ -919,7 +750,7 @@ INT32 _osal_fifo_avail_size(OSAL_FIFO *pFifo)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -927,9 +758,9 @@ INT32 _osal_fifo_avail_size(OSAL_FIFO *pFifo)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
-    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
+    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
         ret = fifo->size - kfifo_len(fifo);
     #else
         ret = kfifo_avail(fifo);
@@ -945,7 +776,7 @@ INT32 _osal_fifo_len(OSAL_FIFO *pFifo)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -953,7 +784,7 @@ INT32 _osal_fifo_len(OSAL_FIFO *pFifo)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
         ret = kfifo_len(fifo);
     }
@@ -966,7 +797,7 @@ INT32 _osal_fifo_is_empty(OSAL_FIFO *pFifo)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -974,9 +805,9 @@ INT32 _osal_fifo_is_empty(OSAL_FIFO *pFifo)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
-    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
+    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
         ret = (fifo->in == fifo->out);
     #else
         ret = kfifo_is_empty(fifo);
@@ -991,7 +822,7 @@ INT32 _osal_fifo_is_full(OSAL_FIFO *pFifo)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -999,9 +830,9 @@ INT32 _osal_fifo_is_full(OSAL_FIFO *pFifo)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
-    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
+    #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
         ret = (fifo->size == _osal_fifo_len(pFifo));
     #else
         ret = kfifo_is_full(fifo);
@@ -1016,7 +847,7 @@ INT32 _osal_fifo_data_in(OSAL_FIFO *pFifo, const VOID *buf, UINT32 len)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -1024,18 +855,18 @@ INT32 _osal_fifo_data_in(OSAL_FIFO *pFifo, const VOID *buf, UINT32 len)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo && buf && (len <= _osal_fifo_avail_size(pFifo)))
-    {
+    if(fifo && buf && (len <= _osal_fifo_avail_size(pFifo)))
+    {       
     #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
         ret = kfifo_put(fifo, buf, len);
     #else
         ret = kfifo_in(fifo, buf, len);
     #endif
-
+        
     }
     else
     {
-        printk("%s: kfifo_in, error, len = %d, _osal_fifo_avail_size = %d, buf=%p\n",
+        printk("%s: kfifo_in, error, len = %d, _osal_fifo_avail_size = %d, buf=%p\n", 
             __func__, len,  _osal_fifo_avail_size(pFifo), buf);
 
         ret = 0;
@@ -1049,7 +880,7 @@ INT32 _osal_fifo_data_out(OSAL_FIFO *pFifo, void *buf, UINT32 len)
     struct kfifo *fifo = NULL;
     INT32  ret = 0;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
@@ -1057,7 +888,7 @@ INT32 _osal_fifo_data_out(OSAL_FIFO *pFifo, void *buf, UINT32 len)
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo && buf && (len <= _osal_fifo_len(pFifo)))
+    if(fifo && buf && (len <= _osal_fifo_len(pFifo)))
     {
     #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
         ret = kfifo_get(fifo, buf, len);
@@ -1067,9 +898,9 @@ INT32 _osal_fifo_data_out(OSAL_FIFO *pFifo, void *buf, UINT32 len)
     }
     else
     {
-        printk("%s: kfifo_out, error, len = %d, osal_fifo_len = %d, buf=%p\n",
+        printk("%s: kfifo_out, error, len = %d, osal_fifo_len = %d, buf=%p\n", 
             __func__, len,  _osal_fifo_len(pFifo), buf);
-
+        
         ret = 0;
     }
 
@@ -1080,15 +911,15 @@ INT32 _osal_fifo_reset(OSAL_FIFO *pFifo)
 {
     struct kfifo *fifo = NULL;
 
-    if (!pFifo || !pFifo->pFifoBody)
+    if(!pFifo || !pFifo->pFifoBody)
     {
         printk("%s:pFifo = NULL or pFifo->pFifoBody = NULL, error\n", __func__);
         return -1;
-    }
+    } 
 
     fifo = (struct kfifo *)pFifo->pFifoBody;
 
-    if (fifo)
+    if(fifo)
     {
         kfifo_reset(fifo);
     }
@@ -1098,24 +929,24 @@ INT32 _osal_fifo_reset(OSAL_FIFO *pFifo)
 
 INT32 osal_fifo_init(P_OSAL_FIFO pFifo, UINT8 *buffer, UINT32 size)
 {
-    if (!pFifo)
+    if(!pFifo)
     {
         printk("%s:pFifo = NULL, error\n", __func__);
         return -1;
     }
-
+    
     pFifo->FifoInit = _osal_fifo_init;
     pFifo->FifoDeInit = _osal_fifo_deinit;
     pFifo->FifoSz = _osal_fifo_size;
     pFifo->FifoAvailSz = _osal_fifo_avail_size;
-    pFifo->FifoLen = _osal_fifo_len;
-    pFifo->FifoIsEmpty = _osal_fifo_is_empty;
-    pFifo->FifoIsFull = _osal_fifo_is_full;
+    pFifo->FifoLen = _osal_fifo_len; 
+    pFifo->FifoIsEmpty = _osal_fifo_is_empty; 
+    pFifo->FifoIsFull = _osal_fifo_is_full; 
     pFifo->FifoDataIn =  _osal_fifo_data_in;
     pFifo->FifoDataOut =  _osal_fifo_data_out;
     pFifo->FifoReset = _osal_fifo_reset;
 
-    if (NULL != pFifo->pFifoBody)
+    if(NULL != pFifo->pFifoBody)
     {
         printk("%s:Becasue pFifo room is avialable, we clear the room and allocate them again.\n", __func__);
         pFifo->FifoDeInit(pFifo->pFifoBody);
@@ -1129,19 +960,19 @@ INT32 osal_fifo_init(P_OSAL_FIFO pFifo, UINT8 *buffer, UINT32 size)
 
 VOID osal_fifo_deinit(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         pFifo->FifoDeInit(pFifo);
-    }
+    } 
     else
     {
         printk("%s:pFifo = NULL, error\n", __func__);
     }
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,33))
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35))
+    
 #else
 
-    if (pFifo->pFifoBody)
+    if(pFifo->pFifoBody)
     {
         kfree(pFifo->pFifoBody);
     }
@@ -1150,7 +981,7 @@ VOID osal_fifo_deinit(P_OSAL_FIFO pFifo)
 
 INT32 osal_fifo_reset(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoReset(pFifo);
     }
@@ -1163,12 +994,12 @@ INT32 osal_fifo_reset(P_OSAL_FIFO pFifo)
 
 UINT32 osal_fifo_in(P_OSAL_FIFO pFifo, PUINT8 buffer, UINT32 size)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoDataIn(pFifo, buffer, size);
     }
-    else
-    {
+    else 
+    {   
         printk("%s:pFifo = NULL, error\n", __func__);
         return 0;
     }
@@ -1176,9 +1007,9 @@ UINT32 osal_fifo_in(P_OSAL_FIFO pFifo, PUINT8 buffer, UINT32 size)
 
 UINT32 osal_fifo_out(P_OSAL_FIFO pFifo, PUINT8 buffer, UINT32 size)
 {
-    if (pFifo)
+    if(pFifo)
     {
-        return pFifo->FifoDataOut(pFifo, buffer, size);
+        return pFifo->FifoDataOut(pFifo, buffer, size);    
     }
     else
     {
@@ -1189,11 +1020,11 @@ UINT32 osal_fifo_out(P_OSAL_FIFO pFifo, PUINT8 buffer, UINT32 size)
 
 UINT32 osal_fifo_len(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoLen(pFifo);
     }
-    else
+    else 
     {
         printk("%s:pFifo = NULL, error\n", __func__);
         return 0;
@@ -1202,11 +1033,11 @@ UINT32 osal_fifo_len(P_OSAL_FIFO pFifo)
 
 UINT32 osal_fifo_sz(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoSz(pFifo);
     }
-    else
+    else 
     {
         printk("%s:pFifo = NULL, error\n", __func__);
         return 0;
@@ -1215,11 +1046,11 @@ UINT32 osal_fifo_sz(P_OSAL_FIFO pFifo)
 
 UINT32 osal_fifo_avail(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoAvailSz(pFifo);
     }
-    else
+    else 
     {
         printk("%s:pFifo = NULL, error\n", __func__);
         return 0;
@@ -1228,11 +1059,11 @@ UINT32 osal_fifo_avail(P_OSAL_FIFO pFifo)
 
 UINT32 osal_fifo_is_empty(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoIsEmpty(pFifo);
     }
-    else
+    else 
     {
         printk("%s:pFifo = NULL, error\n", __func__);
         return 0;
@@ -1241,11 +1072,11 @@ UINT32 osal_fifo_is_empty(P_OSAL_FIFO pFifo)
 
 UINT32 osal_fifo_is_full(P_OSAL_FIFO pFifo)
 {
-    if (pFifo)
+    if(pFifo)
     {
         return pFifo->FifoIsFull(pFifo);
     }
-    else
+    else 
     {
         printk("%s:pFifo = NULL, error\n", __func__);
         return 0;
@@ -1254,51 +1085,27 @@ UINT32 osal_fifo_is_full(P_OSAL_FIFO pFifo)
 
 INT32  osal_wake_lock_init(P_OSAL_WAKE_LOCK pLock)
 {
-    if (!pLock)
+    if(!pLock)
     {
         return -1;
-    }
-    else
+    } 
+    else 
     {
-        pLock->pWakeLock = kzalloc(sizeof(struct wake_lock), GFP_KERNEL);
-        if (!pLock->pWakeLock)
-        {
-            osal_info_print("%s:wake lock memory allocate fail!\n",__func__);
-            return -2;
-        }
-        wake_lock_init((struct wake_lock *)pLock->pWakeLock, WAKE_LOCK_SUSPEND, pLock->name);
-
-        return 0;
-    }
-}
-
-INT32  osal_wake_lock_deinit(P_OSAL_WAKE_LOCK pLock)
-{
-    if (!pLock)
-    {
-        return -1;
-    }
-    else
-    {
-        wake_lock_destroy((struct wake_lock *)pLock->pWakeLock);
-        if (pLock->pWakeLock)
-        {
-            kfree(pLock->pWakeLock);
-            pLock->pWakeLock = NULL;
-        }
+        wake_lock_init(&pLock->wake_lock, WAKE_LOCK_SUSPEND, pLock->name);
+        
         return 0;
     }
 }
 
 INT32  osal_wake_lock(P_OSAL_WAKE_LOCK pLock)
 {
-    if (!pLock)
+    if(!pLock)
     {
         return -1;
     }
     else
     {
-        wake_lock((struct wake_lock *)pLock->pWakeLock);
+        wake_lock(&pLock->wake_lock);
 
         return 0;
     }
@@ -1307,13 +1114,13 @@ INT32  osal_wake_lock(P_OSAL_WAKE_LOCK pLock)
 
 INT32  osal_wake_unlock(P_OSAL_WAKE_LOCK pLock)
 {
-    if (!pLock)
+    if(!pLock)
     {
         return -1;
     }
     else
     {
-        wake_unlock((struct wake_lock *)pLock->pWakeLock);
+        wake_unlock(&pLock->wake_lock);
 
         return 0;
     }
@@ -1323,13 +1130,13 @@ INT32  osal_wake_lock_count(P_OSAL_WAKE_LOCK pLock)
 {
     INT32 count = 0;
 
-    if (!pLock)
+    if(!pLock)
     {
         return -1;
     }
-    else
+    else 
     {
-        count = wake_lock_active((struct wake_lock *)pLock->pWakeLock);
+        count = wake_lock_active(&pLock->wake_lock);    
         return count;
     }
 }
@@ -1343,65 +1150,27 @@ INT32  osal_wake_lock_count(P_OSAL_WAKE_LOCK pLock)
   *
 */
 
+#if !defined(CONFIG_PROVE_LOCKING)
 INT32 osal_unsleepable_lock_init (P_OSAL_UNSLEEPABLE_LOCK pUSL)
 {
-    /* sanity check on input parameter */
-    if (!pUSL || pUSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pUSL(0x%p)->pLock(0x%p)!\n",
-            pUSL, (pUSL) ? pUSL->pLock : 0x0);
-        return -1;
-    }
-
-    pUSL->pLock = kzalloc(sizeof(spinlock_t),GFP_ATOMIC);
-    if (!pUSL->pLock){
-        osal_info_print("%s:spinlock memory allocate fail!\n",__func__);
-        return -1;
-    }
-
-    spin_lock_init((spinlock_t *)pUSL->pLock);
+    spin_lock_init(&(pUSL->lock));
     return 0;
 }
+#endif
 
 INT32 osal_lock_unsleepable_lock (P_OSAL_UNSLEEPABLE_LOCK pUSL)
 {
-    /* sanity check on input parameter */
-    if (!pUSL || !pUSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pUSL(0x%p)->pLock(0x%p)!\n",
-            pUSL, (pUSL) ? pUSL->pLock : 0x0);
-        return -1;
-    }
-
-    spin_lock_irqsave((spinlock_t *)pUSL->pLock, pUSL->flag);
+    spin_lock_irqsave(&(pUSL->lock), pUSL->flag);
     return 0;
 }
-
 INT32 osal_unlock_unsleepable_lock (P_OSAL_UNSLEEPABLE_LOCK pUSL)
 {
-    /* sanity check on input parameter */
-    if (!pUSL || !pUSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pUSL(0x%p)->pLock(0x%p)!\n",
-            pUSL, (pUSL) ? pUSL->pLock : 0x0);
-        return -1;
-    }
-
-    spin_unlock_irqrestore((spinlock_t *)pUSL->pLock, pUSL->flag);
+    spin_unlock_irqrestore(&(pUSL->lock), pUSL->flag);
     return 0;
 }
 
 extern INT32 osal_unsleepable_lock_deinit (P_OSAL_UNSLEEPABLE_LOCK pUSL)
 {
-    /* sanity check on input parameter */
-    if (!pUSL || !pUSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pUSL(0x%p)->pLock(0x%p)!\n",
-            pUSL, (pUSL) ? pUSL->pLock : 0x0);
-        return -1;
-    }
-
-    if (pUSL->pLock){
-        kfree(pUSL->pLock);
-        pUSL->pLock = NULL;
-    }
-
     return 0;
 }
 
@@ -1415,67 +1184,29 @@ extern INT32 osal_unsleepable_lock_deinit (P_OSAL_UNSLEEPABLE_LOCK pUSL)
   *
 */
 
+#if !defined(CONFIG_PROVE_LOCKING)
 INT32 osal_sleepable_lock_init (P_OSAL_SLEEPABLE_LOCK pSL)
 {
-    /* sanity check on input parameter */
-    if (!pSL || pSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pSL(0x%p)->pLock(0x%p)!\n",
-            pSL, (pSL) ? pSL->pLock : 0x0);
-        return -1;
-    }
-
-    pSL->pLock = kzalloc(sizeof(struct mutex),GFP_KERNEL);
-    if (!pSL->pLock){
-        osal_info_print("%s:mutex memory allocate fail!\n",__func__);
-        return -1;
-    }
-
-    mutex_init ((struct mutex *)pSL->pLock);
+    mutex_init (&pSL->lock);
     return 0;
 }
+#endif
 
 INT32 osal_lock_sleepable_lock (P_OSAL_SLEEPABLE_LOCK pSL)
 {
-    /* sanity check on input parameter */
-    if (!pSL || !pSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pSL(0x%p)->pLock(0x%p)!\n",
-            pSL, (pSL) ? pSL->pLock : 0x0);
-        return -1;
-    }
-
-    return mutex_lock_interruptible((struct mutex *)pSL->pLock);
+   return mutex_lock_killable(&pSL->lock);
 }
 
 INT32 osal_unlock_sleepable_lock (P_OSAL_SLEEPABLE_LOCK pSL)
 {
-    /* sanity check on input parameter */
-    if (!pSL || !pSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pSL(0x%p)->pLock(0x%p)!\n",
-            pSL, (pSL) ? pSL->pLock : 0x0);
-        return -1;
-    }
-
-    mutex_unlock((struct mutex *)pSL->pLock);
+    mutex_unlock(&pSL->lock);
     return 0;
 }
 
 
 INT32 osal_sleepable_lock_deinit (P_OSAL_SLEEPABLE_LOCK pSL)
 {
-    /* sanity check on input parameter */
-    if (!pSL || !pSL->pLock) {
-        printk(KERN_WARNING "ERROR!!pSL(0x%p)->pLock(0x%p)!\n",
-            pSL, (pSL) ? pSL->pLock : 0x0);
-        return -1;
-    }
-
-    mutex_destroy ((struct mutex *)pSL->pLock);
-
-    if (pSL->pLock){
-        kfree(pSL->pLock);
-        pSL->pLock = NULL;
-    }
-
+    mutex_destroy (&pSL->lock);
     return 0;
 }
 
@@ -1492,12 +1223,12 @@ INT32 osal_gettimeofday(PINT32 sec, PINT32 usec)
 
     do_gettimeofday(&now);
 
-    if (sec != NULL)
+    if(sec != NULL)
         *sec = now.tv_sec;
     else
         ret = -1;
 
-    if (usec != NULL)
+    if(usec != NULL)
         *usec = now.tv_usec;
     else
         ret = -1;
@@ -1532,36 +1263,35 @@ osal_buffer_dump (
 
     dump_len = ((0 != limit) && (len > limit)) ? limit : len;
 #if 0
-    if (limit != 0)
+    if(limit != 0)
     {
         len = (len > limit)? (limit) : (len);
     }
 #endif
 
     for (k = 0; k < dump_len ; k++) {
-        if ((k != 0) && ( k % 16 == 0))  printk("\n");
+        if((k != 0) && ( k % 16 == 0))  printk("\n");
         printk("0x%02x ",  buf[k]);
     }
     printk("<end of dump\n");
 }
 
-UINT32 osal_op_get_id(P_OSAL_OP pOp)
+UINT32 osal_op_get_id(P_OSAL_OP pOp) 
 {
     return (pOp) ? pOp->op.opId : 0xFFFFFFFF;
 }
 
-MTK_WCN_BOOL osal_op_is_wait_for_signal(P_OSAL_OP pOp)
+MTK_WCN_BOOL osal_op_is_wait_for_signal(P_OSAL_OP pOp) 
 {
     return (pOp && pOp->signal.timeoutValue) ?  MTK_WCN_BOOL_TRUE : MTK_WCN_BOOL_FALSE;
 }
 
-VOID osal_op_raise_signal(P_OSAL_OP pOp, INT32 result)
+VOID osal_op_raise_signal(P_OSAL_OP pOp, INT32 result) 
 {
-    if (pOp)
+    if (pOp) 
     {
         pOp->result = result;
         osal_raise_signal(&pOp->signal);
     }
 }
-
 
