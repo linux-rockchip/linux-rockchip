@@ -44,6 +44,7 @@
 #define  SPKOUT_VOLUME    22 //0~31
 #define  HPOUT_VOLUME     21 //0~31
 
+
 struct rk616_codec_priv {
 	struct snd_soc_codec *codec;
 
@@ -558,7 +559,6 @@ bool get_hdmi_state(void)
 {
 	return is_hdmi_in;
 }
-
 #ifdef CONFIG_MACH_RK_FAC
 void rk616_codec_set_spk(bool on)
 #else
