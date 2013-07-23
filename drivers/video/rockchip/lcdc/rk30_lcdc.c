@@ -315,6 +315,10 @@ static int win0_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 		lcdc_dev->driver.layer_par[0]->state = open;
 		
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, m_W0_EN, v_W0_EN(open));
+		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(open));
+		lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(open));
+		#endif
 		if(!lcdc_dev->atv_layer_cnt)  //if no layer used,disable lcdc
 		{
 			printk(KERN_INFO "no layer of lcdc%d is used,go to standby!\n",lcdc_dev->id);
@@ -777,15 +781,7 @@ static int win1_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		lcdc_writel(lcdc_dev, WIN1_DSP_ST,v_DSP_STX(xpos) | v_DSP_STY(ypos));
 		lcdc_writel(lcdc_dev, WIN1_DSP_INFO,v_DSP_WIDTH(par->xsize) | v_DSP_HEIGHT(par->ysize));
 		// enable win1 color key and set the color to black(rgb=0)
-		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
-		if(fmt_cfg == 0 && lcdc_dev->atv_layer_cnt > 1) {
-			lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(1));
-			lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(1));
-			lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(0) | v_KEYCOLOR(0));
-		}
-		else
-		#endif
-		lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(1) | v_KEYCOLOR(0));
+		lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(0) | v_KEYCOLOR(0));
 		switch(par->format)
 	    	{
 	    		case XBGR888:

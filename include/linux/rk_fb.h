@@ -230,6 +230,7 @@ struct rk_lcdc_device_driver{
 	u32 pixclock;
 	int x_scale;
 	int y_scale;
+	int overlay;
 	
         char fb0_win_id;
         char fb1_win_id;
