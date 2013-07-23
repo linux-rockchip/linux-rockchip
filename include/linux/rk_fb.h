@@ -232,6 +232,7 @@ struct rk_lcdc_device_driver{
 //$_rbox_$_modify_$_zhengyang modified for box display system	
 	int x_scale;
 	int y_scale;
+	int overlay;
 //$_rbox_$_modify_$end
 	
         char fb0_win_id;

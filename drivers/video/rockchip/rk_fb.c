@@ -224,7 +224,8 @@ static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		case ARGB888:
 		case ABGR888:
 			#ifdef CONFIG_LCDC_OVERLAY_ENABLE
-			yoffset += (var->yres - screen->y_res) + (screen->y_res - screen->y_res*dev_drv->x_scale/100)/2;
+			if(dev_drv->overlay)
+				yoffset += (var->yres - screen->y_res) + (screen->y_res - screen->y_res*dev_drv->y_scale/100)/2;
 			#endif
 			par->y_offset = (yoffset*xvir + xoffset)*4;
 			break;
@@ -313,6 +314,14 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 		case RK_FBIOSET_ENABLE:
 			if (copy_from_user(&enable, argp, sizeof(enable)))
 				return -EFAULT;
+			
+			if(enable == 2) {
+				#if CONFIG_LCDC_OVERLAY_ENABLE
+				dev_drv->overlay = 1;
+				info->fbops->fb_set_par(info);
+				#endif
+			}
+			else			
 			dev_drv->open(dev_drv,layer_id,enable);
 			break;
 		case RK_FBIOGET_ENABLE:
@@ -493,19 +502,21 @@ static int rk_fb_set_par(struct fb_info *info)
 		xsize = screen->x_res;
 		ysize = screen->y_res;
 	}
+	if(xsize > screen->x_res)
+		xsize = screen->x_res;
+	if(ysize > screen->y_res)
+		ysize = screen->y_res;
 	
 	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
 	if(strcmp(info->fix.id, "fb1") == 0 )
 	{
 		if((xsize == screen->x_res) && (ysize == screen->y_res) )
-	#endif
 		{
        xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
        ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
        xsize = screen->x_res * dev_drv->x_scale/100;
        ysize = screen->y_res * dev_drv->y_scale/100;
 		}
-	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
 		else {
 			xsize = xsize * screen->x_res * dev_drv->x_scale/128000;
 			ysize = ysize * screen->y_res * dev_drv->y_scale/72000;
@@ -515,13 +526,20 @@ static int rk_fb_set_par(struct fb_info *info)
 			ypos += (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
 		}
 	}
-	else {
+	else if(dev_drv->overlay) {
 		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100) >> 1;
 		ypos = 0;
 		xsize = screen->x_res;
 		ysize = screen->y_res;
 	}
+	else 
 	#endif
+	{
+		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+		ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+		xsize = screen->x_res * dev_drv->x_scale/100;
+		ysize = screen->y_res * dev_drv->y_scale/100;
+	}
 #if defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF) || defined(CONFIG_NO_DUAL_DISP)
 	if(screen->screen_id == 0) //this is for device like rk2928 ,whic have one lcdc but two display outputs
 	{			   //save parameter set by android
@@ -617,7 +635,7 @@ static int rk_fb_set_par(struct fb_info *info)
 	par->smem_start =fix->smem_start;
 	par->cbr_start = fix->mmio_start;
 	#ifdef CONFIG_LCDC_OVERLAY_ENABLE
-	if(strcmp(info->fix.id, "fb0") == 0 ) {
+	if(dev_drv->overlay && strcmp(info->fix.id, "fb0") == 0 ) {
 		par->xact = xsize;              //winx active window height,is a part of vir
 		par->yact = ysize;
 	}
@@ -641,11 +659,11 @@ static int rk_fb_set_par(struct fb_info *info)
 					par2->format = par->format;
 					par2->smem_start = par->smem_start;
 					par2->cbr_start = par->cbr_start;
-					if(par2->xsize == 0)
-						par2->xsize = par->xsize;
-					if(par2->ysize == 0)
-						par2->ysize = par->ysize;
-//					if(par2->xvir == 0)
+					screen = dev_drv1->cur_screen;
+					par2->xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+					par2->ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+					par2->xsize = screen->x_res * dev_drv->x_scale/100;
+					par2->ysize = screen->y_res * dev_drv->y_scale/100;
 						par2->xvir = par->xvir;
 //					if(par2->yvir == 0)
 						par2->yvir = par->yvir;

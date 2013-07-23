@@ -364,7 +364,7 @@ static ssize_t set_scale(struct device *dev,struct device_attribute *attr,
 		}
 	}
 //	printk("scale rate x %d y %d\n", dev_drv->x_scale, dev_drv->y_scale);
-	
+#if 0	
 	var = &fbi->var;
 	xpos = (dev_drv->cur_screen->x_res - dev_drv->cur_screen->x_res*dev_drv->x_scale/100)>>1;
 	ypos = (dev_drv->cur_screen->y_res - dev_drv->cur_screen->y_res*dev_drv->y_scale/100)>>1;
@@ -378,6 +378,7 @@ static ssize_t set_scale(struct device *dev,struct device_attribute *attr,
 	var->grayscale |= (xsize << 8) + (ysize << 20);
 
 	fbi->fbops->fb_set_par(fbi);
+#endif
 	return count;
 }
 
