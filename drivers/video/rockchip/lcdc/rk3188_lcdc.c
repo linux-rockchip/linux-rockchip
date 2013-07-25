@@ -536,6 +536,7 @@ static int rk3188_load_screen(struct rk_lcdc_device_driver *dev_drv, bool initsc
 			    v_VASP(screen->vsync_len + screen->upper_margin));
 	}
  	spin_unlock(&lcdc_dev->reg_lock);
+	#ifdef CONFIG_ARCH_RK3026
 	if(dev_drv->screen0->type == SCREEN_RGB) //iomux for RGB screen
 	{
 		iomux_set(LCDC0_DCLK);
@@ -557,6 +558,7 @@ static int rk3188_load_screen(struct rk_lcdc_device_driver *dev_drv, bool initsc
 		iomux_set(LCDC0_D22);
 		iomux_set(LCDC0_D23);
 	}
+	#endif
 	ret = clk_set_rate(lcdc_dev->dclk, screen->pixclock);
 	if(ret)
 	{
