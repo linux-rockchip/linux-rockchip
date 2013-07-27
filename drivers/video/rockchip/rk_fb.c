@@ -318,6 +318,11 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			if(enable == 2) {
 				#if CONFIG_LCDC_OVERLAY_ENABLE
 				dev_drv->overlay = 1;
+				//For rk3188, layer win1 can not scale, initial fb0 map to win0. 
+				//Now need to switch to win1.
+				dev_drv->open(dev_drv,layer_id,0);
+				layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
+				dev_drv->open(dev_drv,layer_id,1);
 				info->fbops->fb_set_par(info);
 				#endif
 			}
