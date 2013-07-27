@@ -225,7 +225,7 @@ static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		case ABGR888:
 			#ifdef CONFIG_LCDC_OVERLAY_ENABLE
 			if(dev_drv->overlay)
-				yoffset += (var->yres - screen->y_res) + (screen->y_res - screen->y_res*dev_drv->y_scale/100)/2;
+				yoffset += (var->yres - screen->y_res) + (screen->y_res - screen->y_res*dev_drv->y_scale/100);
 			#endif
 			par->y_offset = (yoffset*xvir + xoffset)*4;
 			break;
@@ -512,10 +512,10 @@ static int rk_fb_set_par(struct fb_info *info)
 	{
 		if((xsize == screen->x_res) && (ysize == screen->y_res) )
 		{
-       xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
-       ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
-       xsize = screen->x_res * dev_drv->x_scale/100;
-       ysize = screen->y_res * dev_drv->y_scale/100;
+			xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+			ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+			xsize = screen->x_res * dev_drv->x_scale/100;
+			ysize = screen->y_res * dev_drv->y_scale/100;
 		}
 		else {
 			xsize = xsize * screen->x_res * dev_drv->x_scale/128000;
@@ -526,14 +526,8 @@ static int rk_fb_set_par(struct fb_info *info)
 			ypos += (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
 		}
 	}
-	else if(dev_drv->overlay) {
-		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100) >> 1;
-		ypos = 0;
-		xsize = screen->x_res;
-		ysize = screen->y_res;
-	}
-	else 
 	#endif
+	else
 	{
 		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
 		ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
@@ -889,19 +883,9 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 		return -ENODEV;
 		
 	}
-	
-	if((lcdc_id == 0) || (inf->num_lcdc == 1))
-	{
-		info = inf->fb[0];
-	}
-	else if((lcdc_id == 1)&&(inf->num_lcdc == 2))
-	{
-		if(dev_drv->screen_ctr_info->prop == PRMRY)
-			info = inf->fb[0];
-		else
-			info = inf->fb[dev_drv->num_layer]; //the main fb of lcdc2
-	}
-	
+
+	info = inf->fb[dev_drv->fb_index_base];
+		
 	layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
 	
 	if(!enable)
