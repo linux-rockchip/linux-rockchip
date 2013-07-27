@@ -531,8 +531,8 @@ static int rk_fb_set_par(struct fb_info *info)
 			ypos += (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
 		}
 	}
-	#endif
 	else
+	#endif
 	{
 		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
 		ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
