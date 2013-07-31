@@ -396,6 +396,15 @@ struct ft5306_platform_data {
     void    (*exit_platform_hw)(void);
 };
 #endif
+struct ft5406_platform_data {                                                                                                   
+    int     rest_pin;
+    int     irq_pin;
+    int     (*get_pendown_state)(void);
+    int     (*init_platform_hw)(void);
+    int     (*platform_sleep)(void);
+	int     (*platform_wakeup)(void);
+    void    (*exit_platform_hw)(void);
+};
 
 #if defined (CONFIG_EETI_EGALAX)
 struct eeti_egalax_platform_data {

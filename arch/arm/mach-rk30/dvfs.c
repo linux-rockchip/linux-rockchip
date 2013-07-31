@@ -77,15 +77,14 @@ static struct notifier_block rk_dvfs_clk_notifier = {
 	.notifier_call = rk_dvfs_clk_notifier_event,
 };
 #ifdef CONFIG_ARCH_RK3066B
-static int g_arm_high_logic = 50 * 1000;
-static int g_logic_high_arm = 100 * 1000;
+static int g_arm_high_logic = 0 * 1000;
+static int g_logic_high_arm = 50 * 1000;
 #else
 static int g_arm_high_logic = 150 * 1000;
 static int g_logic_high_arm = 100 * 1000;
 #endif
 
-
-#ifdef CONFIG_SOC_RK3168
+#if defined(CONFIG_SOC_RK3168) || defined(CONFIG_SOC_RK3028)
 static struct cpufreq_frequency_table arm_high_logic_table[] = {
         {.frequency = 1416 * DVFS_KHZ, .index = 0 * DVFS_MV},
         {.frequency = 1608 * DVFS_KHZ, .index = 0 * DVFS_MV},
@@ -121,7 +120,6 @@ static struct cpufreq_frequency_table logic_high_arm_table[] = {
         {.frequency = CPUFREQ_TABLE_END},
 };
 #endif
-
 
 int get_arm_logic_limit(unsigned long arm_rate, int *arm_high_logic, int *logic_high_arm)
 {
@@ -614,7 +612,6 @@ int rk_dvfs_init(void)
 
 /******************************rk30 avs**************************************************/
 
-#ifdef CONFIG_ARCH_RK3066B
 
 static void __iomem *rk30_nandc_base=NULL;
 
@@ -640,7 +637,13 @@ static u8 rk30_get_avs_val(void)
 	nandc_writel(nanc_save_reg[0] | 0x1 << 14, 0);
 	nandc_writel(0x5, 0x130);
 
+	/* Just break lock status */
+	nandc_writel(0x1, 0x158);
+#ifdef CONFIG_ARCH_RK3066B
 	nandc_writel(3, 0x158);
+#else
+	nandc_writel(7, 0x158);
+#endif
 	nandc_writel(1, 0x134);
 
 	while(count--) {
@@ -669,6 +672,5 @@ static struct avs_ctr_st rk30_avs_ctr= {
 	.avs_init 		=rk30_avs_init,
 	.avs_get_val	= rk30_get_avs_val,
 };
-#endif
 
 
