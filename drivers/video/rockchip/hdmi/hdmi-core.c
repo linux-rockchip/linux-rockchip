@@ -253,13 +253,13 @@ static void hdmi_work_queue(struct work_struct *work)
 				hpd = hdmi->ops->getStatus(hdmi);
 			DBG("hdmi_work_queue() - hpd is %d hotplug is %d", hpd, hdmi->hotplug);
 			if(hpd != hdmi->hotplug) {
-				hdmi->hotplug = hpd;
 				if(hpd == HDMI_HPD_ACTIVED) {
 					hdmi_wq_insert(hdmi);
 				}
-				else if(hdmi->hotplug == HDMI_HPD_REMOVED) {
+				else if(hdmi->hotplug == HDMI_HPD_ACTIVED) {
 					hdmi_wq_remove(hdmi);
 				}
+				hdmi->hotplug = hpd;
 			}
 			break;
 		case HDMI_SET_VIDEO:
