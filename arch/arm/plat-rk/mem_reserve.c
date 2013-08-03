@@ -9,8 +9,12 @@ phys_addr_t __init board_mem_reserve_add(char *name, size_t size)
 {
     phys_addr_t base = 0;
 
-    if(reserved_base_end == 0)
+    if (reserved_base_end == 0) {
         reserved_base_end = meminfo.bank[meminfo.nr_banks - 1].start + meminfo.bank[meminfo.nr_banks - 1].size;
+        /* Workaround for RGA driver, which may overflow on physical memory address parameter */
+        if (reserved_base_end > 0xA0000000)
+            reserved_base_end = 0xA0000000;
+    }
 
     reserved_size += size;
     base  = reserved_base_end - reserved_size;
