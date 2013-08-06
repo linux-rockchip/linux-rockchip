@@ -507,6 +507,22 @@ struct rk_hdmi_platform_data {
 #define BOOT_MODE_WATCHDOG		8
 int board_boot_mode(void);
 
+static inline const char *boot_mode_name(u32 mode)
+{
+	switch (mode) {
+	case BOOT_MODE_NORMAL: return "NORMAL";
+	case BOOT_MODE_FACTORY2: return "FACTORY2";
+	case BOOT_MODE_RECOVERY: return "RECOVERY";
+	case BOOT_MODE_CHARGE: return "CHARGE";
+	case BOOT_MODE_POWER_TEST: return "POWER_TEST";
+	case BOOT_MODE_OFFMODE_CHARGING: return "OFFMODE_CHARGING";
+	case BOOT_MODE_REBOOT: return "REBOOT";
+	case BOOT_MODE_PANIC: return "PANIC";
+	case BOOT_MODE_WATCHDOG: return "WATCHDOG";
+	default: return "";
+	}
+}
+
 /* for USB detection */
 #if defined(CONFIG_USB_GADGET) && !defined(CONFIG_RK_USB_DETECT_BY_OTG_BVALID)
 int __init board_usb_detect_init(unsigned gpio);
