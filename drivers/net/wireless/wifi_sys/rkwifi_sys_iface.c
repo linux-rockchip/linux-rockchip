@@ -123,9 +123,6 @@ static ssize_t wifi_chip_read(struct class *cls, char *_buf)
     printk("Current WiFi chip is ESP8089.\n");
 #endif
 	
-	
-
-#endif
     return count;
 }
 
