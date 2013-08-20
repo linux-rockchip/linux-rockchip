@@ -50,6 +50,8 @@
 #if defined(CONFIG_CT36X_TS)
 #include <linux/ct36x.h>
 #endif
+#include <plat/efuse.h>
+
 #if defined(CONFIG_MFD_RK610)
 #include <linux/mfd/rk610_core.h>
 #endif
@@ -2039,18 +2041,50 @@ static struct cpufreq_frequency_table dvfs_ddr_table[] = {
 	{.frequency = 400 * 1000 + DDR_FREQ_NORMAL,     .index = 1100 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
-
+static struct cpufreq_frequency_table dvfs_ddr_table_t[] = {
+	{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 950 * 1000},
+	{.frequency = 460 * 1000 + DDR_FREQ_NORMAL,     .index = 1150 * 1000},
+	{.frequency = CPUFREQ_TABLE_END},
+};
 //#define DVFS_CPU_TABLE_SIZE	(ARRAY_SIZE(dvfs_cpu_logic_table))
 //static struct cpufreq_frequency_table cpu_dvfs_table[DVFS_CPU_TABLE_SIZE];
 //static struct cpufreq_frequency_table dep_cpu2core_table[DVFS_CPU_TABLE_SIZE];
+int get_max_freq(struct cpufreq_frequency_table *table)
+{
+	int i,temp=0;
+	
+	for(i=0;table[i].frequency!= CPUFREQ_TABLE_END;i++)
+	{
+		if(temp<table[i].frequency)
+			temp=table[i].frequency;
+	}	
+	printk("get_max_freq=%d\n",temp);
+	return temp;
+}
 
 void __init board_clock_init(void)
 {
-	rk30_clock_data_init(periph_pll_default, codec_pll_default, RK30_CLOCKS_DEFAULT_FLAGS);
-	//dvfs_set_arm_logic_volt(dvfs_cpu_logic_table, cpu_dvfs_table, dep_cpu2core_table);
+	u32 flags=RK30_CLOCKS_DEFAULT_FLAGS;
+#if !defined(CONFIG_ARCH_RK3188)
+	if(get_max_freq(dvfs_gpu_table)<=(400*1000))
+	{	
+		flags=RK30_CLOCKS_DEFAULT_FLAGS|CLK_GPU_GPLL;
+	}
+	else
+		flags=RK30_CLOCKS_DEFAULT_FLAGS|CLK_GPU_CPLL;
+#endif	
+	rk30_clock_data_init(periph_pll_default, codec_pll_default, flags);
+	//dvfs_set_arm_logic_volt(dvfs_cpu_logic_table, cpu_dvfs_table, dep_cpu2core_table);	
 	dvfs_set_freq_volt_table(clk_get(NULL, "cpu"), dvfs_arm_table);
 	dvfs_set_freq_volt_table(clk_get(NULL, "gpu"), dvfs_gpu_table);
+#if defined(CONFIG_ARCH_RK3188)
+	if (rk_pll_flag() == 0)
+		dvfs_set_freq_volt_table(clk_get(NULL, "ddr"), dvfs_ddr_table);
+	else
+		dvfs_set_freq_volt_table(clk_get(NULL, "ddr"), dvfs_ddr_table_t);
+#else
 	dvfs_set_freq_volt_table(clk_get(NULL, "ddr"), dvfs_ddr_table);
+#endif
 }
 
 MACHINE_START(RK30, "RK30board")
