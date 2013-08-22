@@ -110,20 +110,20 @@ static int rk30_lcdc_init(struct rk_lcdc_device_driver *dev_drv)
               m_FRM_START_INT_EN | m_HOR_START_INT_EN,v_FRM_START_INT_CLEAR(1) | v_BUS_ERR_INT_CLEAR(0) |
               v_LINE_FLAG_INT_EN(0) | v_FRM_START_INT_EN(0) | v_HOR_START_INT_EN(0));  //enable frame start interrupt for sync
               
-        if(dev_drv->cur_screen->dsp_lut)
-        {
-        	lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_DSP_LUT_RAM_EN,v_DSP_LUT_RAM_EN(0));
+	if(dev_drv->dsp_lut)
+	{
+		lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_DSP_LUT_RAM_EN,v_DSP_LUT_RAM_EN(0));
 		lcdc_cfg_done(lcdc_dev);
 		msleep(25);
 		for(i=0;i<256;i++)
 		{
-			v = dev_drv->cur_screen->dsp_lut[i];
-			c = lcdc_dev->dsp_lut_addr_base+i;
+			v = dev_drv->dsp_lut[i];
+			c = lcdc_dev->dsp_lut_addr_base + i;
 			writel_relaxed(v,c);
 			
 		}
 		lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_DSP_LUT_RAM_EN,v_DSP_LUT_RAM_EN(1));
-        }
+	}
 	
 	lcdc_cfg_done(lcdc_dev);  // write any value to  REG_CFG_DONE let config become effective
 
@@ -899,14 +899,14 @@ static int rk30_lcdc_open(struct rk_lcdc_device_driver *dev_drv,int layer_id,boo
 		memcpy((u8*)lcdc_dev->regs, (u8*)lcdc_dev->regsbak, 0xc4);  //resume reg
 		rk30_load_screen(dev_drv,1);
 		spin_lock(&lcdc_dev->reg_lock);
-		if(dev_drv->cur_screen->dsp_lut)			//resume dsp lut
+		if(dev_drv->dsp_lut)			//resume dsp lut
 		{
 			lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_DSP_LUT_RAM_EN,v_DSP_LUT_RAM_EN(0));
 			lcdc_cfg_done(lcdc_dev);
 			mdelay(25);
 			for(i=0;i<256;i++)
 			{
-				v = dev_drv->cur_screen->dsp_lut[i];
+				v = dev_drv->dsp_lut[i];
 				c = lcdc_dev->dsp_lut_addr_base+i;
 				writel_relaxed(v,c);
 				
@@ -1449,14 +1449,15 @@ static int rk30_set_dsp_lut(struct rk_lcdc_device_driver *dev_drv,int *lut)
 	lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_DSP_LUT_RAM_EN,v_DSP_LUT_RAM_EN(0));
 	lcdc_cfg_done(lcdc_dev);
 	msleep(25);
-	if(dev_drv->cur_screen->dsp_lut)
+	if(!dev_drv->dsp_lut)
+		dev_drv->dsp_lut = (u32*)kmalloc(0x400, GFP_KERNEL);
+	if(dev_drv->dsp_lut)
 	{
 		for(i=0;i<256;i++)
 		{
-			v = dev_drv->cur_screen->dsp_lut[i] = lut[i];
+			v = dev_drv->dsp_lut[i] = lut[i];
 			c = lcdc_dev->dsp_lut_addr_base+i;
 			writel_relaxed(v,c);
-			
 		}
 	}
 	else
@@ -1517,14 +1518,14 @@ int rk30_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 	memcpy((u8*)lcdc_dev->regs, (u8*)lcdc_dev->regsbak, 0xc4);  //resume reg
 
 	spin_lock(&lcdc_dev->reg_lock);
-	if(dev_drv->cur_screen->dsp_lut)			//resume dsp lut
+	if(dev_drv->dsp_lut)			//resume dsp lut
 	{
 		lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_DSP_LUT_RAM_EN,v_DSP_LUT_RAM_EN(0));
 		lcdc_cfg_done(lcdc_dev);
 		mdelay(25);
 		for(i=0;i<256;i++)
 		{
-			v = dev_drv->cur_screen->dsp_lut[i];
+			v = dev_drv->dsp_lut[i];
 			c = lcdc_dev->dsp_lut_addr_base+i;
 			writel_relaxed(v,c);
 			

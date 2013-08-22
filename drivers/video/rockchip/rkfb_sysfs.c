@@ -289,6 +289,12 @@ static ssize_t set_dsp_lut(struct device *dev,struct device_attribute *attr,
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct rk_lcdc_device_driver * dev_drv = 
 		(struct rk_lcdc_device_driver * )fbi->par;
+		
+	#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+	struct rk_fb_inf *inf = dev_get_drvdata(fbi->device);
+	struct fb_info * info2;
+	struct rk_lcdc_device_driver * dev_drv1;
+	#endif
 	
 	for(i=0;i<256;i++)
 	{
@@ -321,7 +327,13 @@ static ssize_t set_dsp_lut(struct device *dev,struct device_attribute *attr,
 	}
 #endif
 	dev_drv->set_dsp_lut(dev_drv,dsp_lut);
-
+	#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+	if(inf->num_lcdc >= 2) {
+		info2 = inf->fb[inf->num_fb>>1];
+		dev_drv1  = (struct rk_lcdc_device_driver * )info2->par;
+		dev_drv1->set_dsp_lut(dev_drv1,dsp_lut);
+	}
+	#endif
 	return count;
 	
 }

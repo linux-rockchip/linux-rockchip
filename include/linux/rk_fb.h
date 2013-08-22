@@ -231,7 +231,7 @@ struct rk_lcdc_device_driver{
 	int x_scale;
 	int y_scale;
 	int overlay;
-	
+	int *dsp_lut;
         char fb0_win_id;
         char fb1_win_id;
         char fb2_win_id;
