@@ -222,7 +222,7 @@ int rk1000_register_display_YPbPr(struct device *parent)
 		ypbpr_monspecs.mode_set = TVOUT_YPbPr_1280x720p_60;
 	}
 	ypbpr_monspecs.ddev = rk_display_device_register(&display_rk1000_YPbPr, parent, NULL);
-	rk1000.cvbs = &ypbpr_monspecs;
+	rk1000.ypbpr = &ypbpr_monspecs;
 	if(rk1000.mode > TVOUT_CVBS_PAL)
 		rk_display_device_enable(ypbpr_monspecs.ddev);
 	return 0;
