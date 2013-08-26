@@ -80,6 +80,7 @@ static void option_instat_callback(struct urb *urb);
 #define OPTION_PRODUCT_GTM380_MODEM		0x7201
 
 #define HUAWEI_VENDOR_ID			0x12D1
+#define HUAWEI_PRODUCT_MU509                    0x1001
 #define HUAWEI_PRODUCT_E173			0x140C
 #define HUAWEI_PRODUCT_E140C                    0x140C
 #define HUAWEI_PRODUCT_K4505			0x1464
@@ -604,6 +605,7 @@ static const struct usb_device_id option_ids[] = {
 	{ USB_DEVICE(QUANTA_VENDOR_ID, QUANTA_PRODUCT_GLX) },
 	{ USB_DEVICE(QUANTA_VENDOR_ID, QUANTA_PRODUCT_GKE) },
 	{ USB_DEVICE(QUANTA_VENDOR_ID, QUANTA_PRODUCT_GLE) },
+	{ USB_DEVICE(HUAWEI_VENDOR_ID, HUAWEI_PRODUCT_MU509) },
         { USB_DEVICE_AND_INTERFACE_INFO(HUAWEI_VENDOR_ID, HUAWEI_PRODUCT_E140C, 0xff, 0xff, 0xff) },
 	//{ USB_DEVICE_AND_INTERFACE_INFO(HUAWEI_VENDOR_ID, HUAWEI_PRODUCT_E173, 0xff, 0xff, 0xff),
 	//	.driver_info = (kernel_ulong_t) &net_intf1_blacklist },
@@ -1329,6 +1331,8 @@ static const struct usb_device_id option_ids[] = {
 	{ USB_DEVICE(0x1d09, 0x1010) },
     { USB_DEVICE(0x19D2, 0x1181) },
 	{ USB_DEVICE(0x2020, 0x1005)},//S830 3G Dongle
+    { USB_DEVICE(0x1782, 0x0002)},//U7501
+	{ USB_DEVICE(0x21f5, 0x2012) },//SEW290
 // cmy end
 //xxh
    { USB_DEVICE_AND_INTERFACE_INFO(0x05c6, 0x1000, 0xff, 0xff, 0xff) },

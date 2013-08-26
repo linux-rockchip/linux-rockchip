@@ -1,4 +1,4 @@
-/* drivers/misc/bp/chips/mt6229.c
+/* drivers/misc/bp/chips/u5501.c
  *
  * Copyright (C) 2012-2015 ROCKCHIP.
  * Author: luowei <lw@rock-chips.com>
@@ -39,7 +39,7 @@
 
 #include <linux/bp-auto.h>
 	 
-	 
+
 #if 0
 #define DBG(x...)  printk(x)
 #else
@@ -53,22 +53,25 @@ static int bp_active(struct bp_private_data *bp, int enable)
 	int result = 0;
 	if(enable)
 	{
-		gpio_direction_output(bp->ops->bp_power, GPIO_HIGH);
+//		gpio_direction_output(bp->ops->bp_power, GPIO_HIGH);
+//		msleep(500);
+		gpio_set_value(bp->ops->bp_reset, GPIO_HIGH);
+		msleep(100);
+		gpio_set_value(bp->ops->bp_reset, GPIO_LOW);
+		gpio_set_value(bp->ops->bp_en, GPIO_LOW);
 		msleep(1000);
-		gpio_direction_output(bp->ops->bp_en, GPIO_LOW);
-		gpio_direction_output(bp->ops->bp_usb_en, GPIO_HIGH);
-		gpio_direction_output(bp->ops->bp_uart_en, GPIO_LOW);
-		
-		gpio_direction_output(bp->ops->ap_ready, GPIO_HIGH);
+		gpio_set_value(bp->ops->bp_en, GPIO_HIGH);
+		msleep(700);
+		gpio_set_value(bp->ops->bp_en, GPIO_LOW);
+		gpio_set_value(bp->ops->ap_wakeup_bp, GPIO_LOW);
 	}
 	else
 	{
-		gpio_direction_output(bp->ops->bp_power, GPIO_LOW);	
-		msleep(10);
-		gpio_direction_output(bp->ops->bp_en, GPIO_HIGH);
-		gpio_direction_output(bp->ops->bp_usb_en, GPIO_LOW);
-		gpio_direction_output(bp->ops->bp_uart_en, GPIO_HIGH);
-		gpio_direction_output(bp->ops->ap_ready, GPIO_LOW);
+//		gpio_direction_output(bp->ops->bp_power, GPIO_LOW);
+		gpio_set_value(bp->ops->bp_en, GPIO_LOW);
+		gpio_set_value(bp->ops->bp_en, GPIO_HIGH);
+		msleep(2500);
+		gpio_set_value(bp->ops->bp_en, GPIO_LOW);
 	}
 	
 	return result;
@@ -77,19 +80,8 @@ static int bp_active(struct bp_private_data *bp, int enable)
 static int ap_wake_bp(struct bp_private_data *bp, int wake)
 {
 	int result = 0;
-	if(wake)
-	{
-		gpio_direction_output(bp->ops->bp_uart_en,  GPIO_LOW);
-		msleep(2000);
-		gpio_direction_output(bp->ops->ap_ready, GPIO_HIGH);
-		gpio_direction_output(bp->ops->bp_usb_en, GPIO_HIGH);
-	}
-	else
-	{
-		gpio_direction_output(bp->ops->bp_usb_en, GPIO_LOW);
-		gpio_direction_output(bp->ops->bp_uart_en, GPIO_HIGH);	
-		gpio_direction_output(bp->ops->ap_ready, GPIO_LOW);
-	}
+	
+	gpio_set_value(bp->ops->ap_wakeup_bp, wake);  
 	
 	return result;
 
@@ -104,6 +96,7 @@ static void  ap_wake_bp_work(struct work_struct *work)
 	{
 		if(bp->ops->ap_wake_bp)
 		bp->ops->ap_wake_bp(bp, 0);
+		bp->suspend_status = 0;
 	}
 	else	
 	{
@@ -116,12 +109,35 @@ static void  ap_wake_bp_work(struct work_struct *work)
 static int bp_init(struct bp_private_data *bp)
 {
 	int result = 0;
-	//gpio_direction_output(bp->ops->bp_power, GPIO_HIGH);
-	//msleep(1000);
+	gpio_direction_output(bp->ops->bp_power, GPIO_HIGH);
+	gpio_set_value(bp->ops->bp_power, GPIO_HIGH);
+	msleep(500);
 	//if(bp->ops->active)
-	//	bp->ops->active(bp, 1);	
+	//	bp->ops->active(bp, 1);
+	gpio_direction_input(bp->ops->bp_wakeup_ap);
+	gpio_pull_updown(bp->ops->bp_wakeup_ap, 1);	
+	gpio_direction_output(bp->ops->bp_reset, GPIO_LOW);
+	gpio_direction_output(bp->ops->bp_en, GPIO_LOW);
+	gpio_direction_output(bp->ops->ap_wakeup_bp, GPIO_LOW);
 	INIT_DELAYED_WORK(&bp->wakeup_work, ap_wake_bp_work);
 	return result;
+}
+
+static int bp_reset(struct bp_private_data *bp)
+{
+//	gpio_direction_output(bp->ops->bp_power, GPIO_HIGH);
+//	msleep(500);
+	gpio_set_value(bp->ops->bp_reset, GPIO_HIGH);
+	msleep(100);
+	gpio_set_value(bp->ops->bp_reset, GPIO_LOW);
+	gpio_set_value(bp->ops->bp_en, GPIO_LOW);
+	msleep(1000);
+	gpio_set_value(bp->ops->bp_en, GPIO_HIGH);
+	msleep(700);
+	gpio_set_value(bp->ops->bp_en, GPIO_LOW);
+	gpio_set_value(bp->ops->ap_wakeup_bp, GPIO_LOW);
+
+	return 0;
 }
 
 static int bp_wake_ap(struct bp_private_data *bp)
@@ -141,58 +157,85 @@ static int bp_shutdown(struct bp_private_data *bp)
 	
 	if(bp->ops->active)
 		bp->ops->active(bp, 0);
-	
+	gpio_set_value(bp->ops->bp_power, GPIO_LOW);
 	cancel_delayed_work_sync(&bp->wakeup_work);	
-		
+
 	return result;
 }
-
 
 
 
 static int bp_suspend(struct bp_private_data *bp)
 {	
 	int result = 0;
+	printk("<-----u5501 bp_suspend-------->\n");
+	#if defined(CONFIG_ARCH_RK29)
+		rk29_mux_api_set(GPIO1C1_UART0RTSN_SDMMC1WRITEPRT_NAME, GPIO1H_GPIO1C1);
+	#elif defined(CONFIG_SOC_RK3066)
+		rk30_mux_api_set(GPIO1A7_UART1RTSN_SPI0TXD_NAME, GPIO1A_GPIO1A7);
+	#endif
 	
 	if(!bp->suspend_status)
 	{
 		bp->suspend_status = 1;	
-		if(bp->ops->ap_wake_bp)
-			bp->ops->ap_wake_bp(bp, 0);
+		gpio_set_value(bp->ops->ap_wakeup_bp, GPIO_HIGH);	
 	}
-	
+	#if defined(CONFIG_ARCH_RK2928)
+	rk29_mux_api_set(GPIO1B1_SPI_TXD_UART1_SOUT_NAME, GPIO1B_GPIO1B1);
+	gpio_set_value(RK2928_PIN1_PB1, GPIO_LOW);
+	#elif defined(CONFIG_SOC_RK3066)
+	rk30_mux_api_set(GPIO1A5_UART1SOUT_SPI0CLK_NAME, GPIO1A_GPIO1A5);
+	gpio_set_value(RK30_PIN1_PA5, GPIO_LOW);
+	#endif
 	return result;
 }
+
+
+
+
 static int bp_resume(struct bp_private_data *bp)
-{
-	bp->suspend_status = 0;
-	PREPARE_DELAYED_WORK(&bp->wakeup_work, ap_wake_bp_work);
-	schedule_delayed_work(&bp->wakeup_work, 0);
-		
+{	
+	#if defined(CONFIG_ARCH_RK29)
+		rk29_mux_api_set(GPIO1C1_UART0RTSN_SDMMC1WRITEPRT_NAME, GPIO1H_UART0_RTS_N);
+	#elif defined(CONFIG_SOC_RK3066)
+		rk30_mux_api_set(GPIO1A7_UART1RTSN_SPI0TXD_NAME, GPIO1A_UART1_RTS_N);
+	#endif
+	
+	#if defined(CONFIG_ARCH_RK2928)
+	rk29_mux_api_set(GPIO1B1_SPI_TXD_UART1_SOUT_NAME, GPIO1B_UART1_SOUT);
+	#elif defined(CONFIG_SOC_RK3066)
+	rk30_mux_api_set(GPIO1A5_UART1SOUT_SPI0CLK_NAME, GPIO1A_UART1_SOUT);
+	#endif
+	//bp->suspend_status = 0;	
+	//gpio_set_value(bp->ops->ap_wakeup_bp, GPIO_LOW);	
+	schedule_delayed_work(&bp->wakeup_work, 4*HZ);
+	
+	
 	return 0;
 }
 
 
-struct bp_operate bp_mt6229_ops = {
+struct bp_operate bp_u5501_ops = {
 #if defined(CONFIG_ARCH_RK2928)
-	.name			= "mt6229",
-	.bp_id			= BP_ID_MT6229,
+	.name			= "u5501",
+	.bp_id			= BP_ID_U5501,
 	.bp_bus			= BP_BUS_TYPE_USB_UART,		
 	.bp_pid			= 0,	
 	.bp_vid			= 0,	
-	.bp_power		= BP_UNKNOW_DATA, 	// 3g_power
+	.bp_power		= RK2928_PIN3_PC2, 	// 3g_power
 	.bp_en			= BP_UNKNOW_DATA,	// 3g_en
-	.bp_reset			= BP_UNKNOW_DATA,
+	.bp_reset			= RK2928_PIN1_PA3,
 	.ap_ready		= BP_UNKNOW_DATA,	//
 	.bp_ready		= BP_UNKNOW_DATA,
-	.ap_wakeup_bp		= BP_UNKNOW_DATA,
-	.bp_wakeup_ap		= BP_UNKNOW_DATA,	//
+	.ap_wakeup_bp		= RK2928_PIN3_PC4,
+	.bp_wakeup_ap		= RK2928_PIN3_PC3,	//
 	.bp_uart_en		= BP_UNKNOW_DATA, 	//EINT9
 	.bp_usb_en		= BP_UNKNOW_DATA, 	//W_disable
-	.trig			= IRQF_TRIGGER_RISING,
+	.trig			= IRQF_TRIGGER_FALLING,
 
 	.active			= bp_active,
 	.init			= bp_init,
+	.reset			= bp_reset,
 	.ap_wake_bp		= ap_wake_bp,
 	.bp_wake_ap		= bp_wake_ap,
 	.shutdown		= bp_shutdown,
@@ -203,24 +246,25 @@ struct bp_operate bp_mt6229_ops = {
 	.misc_name		= NULL,
 	.private_miscdev	= NULL,
 #elif defined(CONFIG_ARCH_RK30)
-	.name			= "mt6229",
-	.bp_id			= BP_ID_MT6229,
+	.name			= "u5501",
+	.bp_id			= BP_ID_U5501,
 	.bp_bus			= BP_BUS_TYPE_USB_UART,		
 	.bp_pid			= 0,	
 	.bp_vid			= 0,	
-	.bp_power		= BP_UNKNOW_DATA, 	// 3g_power
+	.bp_power		= BP_UNKNOW_DATA,//RK2928_PIN3_PC2, 	// 3g_power
 	.bp_en			= BP_UNKNOW_DATA,	// 3g_en
-	.bp_reset			= BP_UNKNOW_DATA,
+	.bp_reset			= BP_UNKNOW_DATA,//RK2928_PIN1_PA3,
 	.ap_ready		= BP_UNKNOW_DATA,	//
 	.bp_ready		= BP_UNKNOW_DATA,
-	.ap_wakeup_bp		= BP_UNKNOW_DATA,
-	.bp_wakeup_ap		= BP_UNKNOW_DATA,	//
+	.ap_wakeup_bp		= BP_UNKNOW_DATA,//RK2928_PIN3_PC4,
+	.bp_wakeup_ap		= BP_UNKNOW_DATA,//RK2928_PIN3_PC3,	//
 	.bp_uart_en		= BP_UNKNOW_DATA, 	//EINT9
 	.bp_usb_en		= BP_UNKNOW_DATA, 	//W_disable
-	.trig			= IRQF_TRIGGER_RISING,
+	.trig			= IRQF_TRIGGER_FALLING,
 
 	.active			= bp_active,
 	.init			= bp_init,
+	.reset			= bp_reset,
 	.ap_wake_bp		= ap_wake_bp,
 	.bp_wake_ap		= bp_wake_ap,
 	.shutdown		= bp_shutdown,
@@ -231,24 +275,25 @@ struct bp_operate bp_mt6229_ops = {
 	.misc_name		= NULL,
 	.private_miscdev	= NULL,
 #else
-	.name			= "mt6229",
-	.bp_id			= BP_ID_MT6229,
+	.name			= "u5501",
+	.bp_id			= BP_ID_U5501,
 	.bp_bus			= BP_BUS_TYPE_USB_UART,		
 	.bp_pid			= 0,	
 	.bp_vid			= 0,	
-	.bp_power		= BP_UNKNOW_DATA, 	// 3g_power
+	.bp_power		= BP_UNKNOW_DATA,//RK2928_PIN3_PC2, 	// 3g_power
 	.bp_en			= BP_UNKNOW_DATA,	// 3g_en
-	.bp_reset			= BP_UNKNOW_DATA,
+	.bp_reset			= BP_UNKNOW_DATA,//RK2928_PIN1_PA3,
 	.ap_ready		= BP_UNKNOW_DATA,	//
 	.bp_ready		= BP_UNKNOW_DATA,
-	.ap_wakeup_bp		= BP_UNKNOW_DATA,
-	.bp_wakeup_ap		= BP_UNKNOW_DATA,	//
+	.ap_wakeup_bp		= BP_UNKNOW_DATA,//RK2928_PIN3_PC4,
+	.bp_wakeup_ap		= BP_UNKNOW_DATA,//RK2928_PIN3_PC3,	//
 	.bp_uart_en		= BP_UNKNOW_DATA, 	//EINT9
 	.bp_usb_en		= BP_UNKNOW_DATA, 	//W_disable
-	.trig			= IRQF_TRIGGER_RISING,
+	.trig			= IRQF_TRIGGER_FALLING,
 
 	.active			= bp_active,
 	.init			= bp_init,
+	.reset			= bp_reset,
 	.ap_wake_bp		= ap_wake_bp,
 	.bp_wake_ap		= bp_wake_ap,
 	.shutdown		= bp_shutdown,
@@ -266,10 +311,10 @@ struct bp_operate bp_mt6229_ops = {
 //function name should not be changed
 static struct bp_operate *bp_get_ops(void)
 {
-	return &bp_mt6229_ops;
+	return &bp_u5501_ops;
 }
 
-static int __init bp_mt6229_init(void)
+static int __init bp_u5501_init(void)
 {
 	struct bp_operate *ops = bp_get_ops();
 	int result = 0;
@@ -292,13 +337,13 @@ static int __init bp_mt6229_init(void)
 	return result;
 }
 
-static void __exit bp_mt6229_exit(void)
+static void __exit bp_u5501_exit(void)
 {
 	//struct bp_operate *ops = bp_get_ops();
 	bp_unregister_slave(NULL, NULL, bp_get_ops);
 }
 
 
-subsys_initcall(bp_mt6229_init);
-module_exit(bp_mt6229_exit);
+subsys_initcall(bp_u5501_init);
+module_exit(bp_u5501_exit);
 
