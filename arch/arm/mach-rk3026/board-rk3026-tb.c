@@ -51,6 +51,10 @@
 #include "../../../drivers/spi/rk29_spim.h"
 #endif
 
+#ifdef CONFIG_SND_SOC_RK3026
+#include "../../../sound/soc/codecs/rk3026_codec.h"
+#endif
+
 #if defined(CONFIG_RK_HDMI)
         #include "../../../drivers/video/rockchip/hdmi/rk_hdmi.h"
 #endif
@@ -434,6 +438,19 @@ static struct sensor_platform_data mma8452_info = {
 #include <plat/key.h>
 
 static struct rk29_keys_button key_button[] = {
+        {
+                .desc   = "play",
+                .code   = KEY_POWER,
+                .gpio   = PLAY_ON_PIN,
+                .active_low = PRESS_LEV_LOW,
+                .wakeup = 1,
+        },
+/* disable adc keyboard,
+ * because rk280a adc reference voltage is 3.3V, but
+ * rk30xx mainbord key's supply voltage is 2.5V and
+ * rk31xx mainbord key's supply voltage is 1.8V.
+ */
+#if 0 
 #ifdef RK31XX_MAINBOARD_V1
         {
                 .desc   = "vol-",
@@ -527,6 +544,7 @@ static struct rk29_keys_button key_button[] = {
 		.gpio = INVALID_GPIO,
 		.active_low = PRESS_LEV_LOW,
 	},
+#endif
 #endif
 };
 
@@ -918,6 +936,30 @@ void __sramfunc board_pmu_resume(void)
 	#endif
 }
 
+#ifdef CONFIG_SND_SOC_RK3026
+struct rk3026_codec_pdata rk3026_codec_pdata_info={
+    .spk_ctl_gpio = INVALID_GPIO,
+    .hp_ctl_gpio = RK2928_PIN1_PA0,
+	.delay_time = 10,
+};
+
+static struct resource resources_acodec[] = {
+	{
+		.start 	= RK2928_ACODEC_PHYS,
+		.end 	= RK2928_ACODEC_PHYS + RK2928_ACODEC_SIZE - 1,
+		.flags 	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device rk3026_codec = {
+	.name	= "rk3026-codec",
+	.id		= -1,
+	.resource = resources_acodec,
+    	.dev = {
+        	.platform_data = &rk3026_codec_pdata_info,
+    }
+};
+#endif
 /***********************************************************
 *	i2c
 ************************************************************/
@@ -1018,6 +1060,9 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_WIFI_CONTROL_FUNC
 	&rk29sdk_wifi_device,
 #endif
+#ifdef CONFIG_SND_SOC_RK3026
+ 	&rk3026_codec,
+#endif
 };
 
 static void rk30_pm_power_off(void)
@@ -1041,6 +1086,11 @@ static void __init machine_rk30_board_init(void)
 	spi_register_board_info(board_spi_devices, ARRAY_SIZE(board_spi_devices));
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	rk_platform_add_display_devices();	
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+	rk29sdk_wifi_bt_gpio_control_init();
+#elif defined(CONFIG_WIFI_COMBO_MODULE_CONTROL_FUNC)
+    rk29sdk_wifi_combo_module_gpio_init();
+#endif
 }
 
 static void __init rk30_reserve(void)
@@ -1063,6 +1113,9 @@ static void __init rk30_reserve(void)
 #ifdef CONFIG_ION
 	rk30_ion_pdata.heaps[0].base = board_mem_reserve_add("ion", ION_RESERVE_SIZE);
 #endif
+#ifdef CONFIG_VIDEO_RK29
+	rk30_camera_request_reserve_mem();
+#endif
 	board_mem_reserved();
 }
 
@@ -1073,10 +1126,10 @@ static struct cpufreq_frequency_table dvfs_arm_table[] = {
 	{.frequency = 312 * 1000,       .index = 1200 * 1000},
 	{.frequency = 504 * 1000,       .index = 1200 * 1000},
 	{.frequency = 816 * 1000,       .index = 1200 * 1000},
-	{.frequency = 1008 * 1000,      .index = 1200 * 1000},
-	{.frequency = 1200 * 1000,      .index = 1200 * 1000},
-	{.frequency = 1416 * 1000,      .index = 1200 * 1000},
-	{.frequency = 1608 * 1000,      .index = 1200 * 1000},
+	//{.frequency = 1008 * 1000,      .index = 1200 * 1000},
+	//{.frequency = 1200 * 1000,      .index = 1200 * 1000},
+	//{.frequency = 1416 * 1000,      .index = 1200 * 1000},
+	//{.frequency = 1608 * 1000,      .index = 1200 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
 

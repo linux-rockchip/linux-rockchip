@@ -62,8 +62,7 @@
 #if defined(CONFIG_GPS_RK)
 #include "../../../drivers/misc/gps/rk_gps/rk_gps.h"
 #endif
-
-#include "board-rk3026-tb-camera.c"
+#include "board-rk3028a-86v-camera.c"
 
 /***********************************************************
 *	board config
@@ -81,15 +80,15 @@
 //backlight
 #define LCD_DISP_ON_PIN
 #define BL_PWM			0  // (0 ~ 2)
-#define PWM_EFFECT_VALUE  	1
+#define PWM_EFFECT_VALUE  	0
 #define BL_EN_PIN		RK30_PIN3_PC5
 #define BL_EN_VALUE		GPIO_HIGH
 
 //fb
 #define LCD_EN_PIN		RK30_PIN3_PD2
-#define LCD_EN_VALUE		GPIO_HIGH
+#define LCD_EN_VALUE		GPIO_LOW
 #define LCD_CS_PIN		INVALID_GPIO
-#define LCD_CS_VALUE		GPIO_HIGH
+#define LCD_CS_VALUE		GPIO_LOW
 
 //gsensor
 #define GS_INT_PIN		RK30_PIN3_PD1
@@ -102,11 +101,11 @@
 #define PLAY_ON_PIN		RK30_PIN0_PD1	//wakeup key		
 
 //pwm regulator
-#define REG_PWM			2  // (0 ~ 2)
+#define REG_PWM			1  // (0 ~ 2)
 
 //pmic
 #define PMU_INT_PIN		RK30_PIN3_PC6
-#define PMU_SLEEP_PIN		RK30_PIN0_PD0
+#define PMU_SLEEP_PIN		RK30_PIN3_PC4
 
 //ion reserve memory
 #define ION_RESERVE_SIZE        (80 * SZ_1M)
@@ -140,6 +139,42 @@ static struct spi_board_info board_spi_devices[] = {
 /***********************************************************
 *	touchscreen
 ************************************************************/
+#if defined(CONFIG_TOUCHSCREEN_GSLX680_RK3028)
+//#define TOUCH_RESET_PIN RK30_PIN0_PC1
+//#define TOUCH_EN_PIN NULL
+//#define TOUCH_INT_PIN RK30_PIN0_PB4
+	
+	int gslx680_init_platform_hw(void)
+	{
+	
+	       if(gpio_request(TOUCH_RST_PIN,NULL) != 0){
+			gpio_free(TOUCH_RST_PIN);
+			printk("gslx680_init_platform_hw gpio_request error\n");
+			return -EIO;
+		}
+		if(gpio_request(TOUCH_INT_PIN,NULL) != 0){
+			gpio_free(TOUCH_INT_PIN);
+			printk("gslx680_init_platform_hw  gpio_request error\n");
+			return -EIO;
+		}
+		gpio_direction_output(TOUCH_RST_PIN, TOUCH_RST_VALUE);
+		mdelay(10);
+		gpio_set_value(TOUCH_RST_PIN,!TOUCH_RST_VALUE);
+		mdelay(10);
+		gpio_set_value(TOUCH_RST_PIN,TOUCH_RST_VALUE);
+		msleep(300);
+		return 0;
+	
+	}
+	
+	struct ts_hw_data     gslx680_info = {
+		.reset_gpio = TOUCH_RST_PIN,
+		.touch_en_gpio = TOUCH_INT_PIN,
+		.init_platform_hw = gslx680_init_platform_hw,
+	};
+#endif
+
+
 #if defined(CONFIG_TOUCHSCREEN_GT8XX)
 static int goodix_init_platform_hw(void)
 {
@@ -175,6 +210,7 @@ static int rk29_backlight_io_init(void)
 	int ret = 0;
 
 	iomux_set(pwm_mode[BL_PWM]);
+	msleep(50);
 #ifdef  LCD_DISP_ON_PIN
 	ret = rk_gpio_request(BL_EN_PIN, GPIOF_DIR_OUT, BL_EN_VALUE, "bl_en");
 	if(ret < 0)
@@ -221,7 +257,7 @@ static int rk29_backlight_pwm_resume(void)
 
 static struct rk29_bl_info rk29_bl_info = {
 	.pwm_id = BL_PWM,
-	.min_brightness=20,
+	.min_brightness=60,
 	.max_brightness=255,
 	.brightness_mode = BRIGHTNESS_MODE_CONIC,
 	.bl_ref = PWM_EFFECT_VALUE,
@@ -421,7 +457,9 @@ static int rk_platform_add_display_devices(void)
 /***********************************************************
 *	gsensor
 ************************************************************/
+// mma 8452 gsensor
 #if defined (CONFIG_GS_MMA8452)
+#define MMA8452_INT_PIN GS_INT_PIN
 static int mma8452_init_platform_hw(void)
 {
 	return 0;
@@ -435,19 +473,191 @@ static struct sensor_platform_data mma8452_info = {
         .orientation = {-1, 0, 0, 0, -1, 0, 0, 0, 1},
 };
 #endif
-#if defined (CONFIG_GS_LIS3DH)
-static int lis3dh_init_platform_hw(void)
+
+// lsm303d gsensor
+#if defined (CONFIG_GS_LSM303D)
+#define LSM303D_INT_PIN GS_INT_PIN
+static int lms303d_init_platform_hw(void)
+{
+	return 0;
+}
+
+static struct sensor_platform_data lms303d_info = {
+	.type = SENSOR_TYPE_ACCEL,
+	.irq_enable = 1,
+	.poll_delay_ms = 30,
+        .init_platform_hw = lms303d_init_platform_hw,
+        .orientation = {-1, 0, 0, 0, -1, 0, 0, 0, 1},
+};
+#endif
+
+
+/*MMA7660 gsensor*/
+#if defined (CONFIG_GS_MMA7660)
+#define MMA7660_INT_PIN   GS_INT_PIN
+
+static int mma7660_init_platform_hw(void)
+{
+	//rk30_mux_api_set(GPIO1B2_SPI_RXD_UART1_SIN_NAME, GPIO1B_GPIO1B2);
+
+	return 0;
+}
+
+static struct sensor_platform_data mma7660_info = {
+	.type = SENSOR_TYPE_ACCEL,
+	.irq_enable = 1,
+	.poll_delay_ms = 30,
+    .init_platform_hw = mma7660_init_platform_hw,
+#ifndef CONFIG_MFD_RK616
+	#ifdef CONFIG_TOUCHSCREEN_GSLX680_RK3168
+	.orientation = {-1, 0, 0, 0, -1, 0, 0, 0, 1},
+	#else
+    .orientation = {0, -1, 0, -1, 0, 0, 0, 0, -1},
+    #endif  
+#else
+	.orientation = {1, 0, 0, 0, -1, 0, 0, 0, -1},
+#endif	
+};
+#endif
+
+
+#if defined (CONFIG_GS_MXC6225)
+#define MXC6225_INT_PIN   GS_INT_PIN
+
+static int mxc6225_init_platform_hw(void)
 {
         return 0;
 }
 
-static struct sensor_platform_data lis3dh_info = {
-	.type = SENSOR_TYPE_ACCEL,
+static struct sensor_platform_data mxc6225_info = {
+        .type = SENSOR_TYPE_ACCEL,
+        .irq_enable = 0,
+        .poll_delay_ms = 30,
+        .init_platform_hw = mxc6225_init_platform_hw,
+        .orientation = { 0, -1, 0, 1, 0, 0, 0, 0, 0},
+};
+#endif
+#if defined (CONFIG_GS_LIS3DH)
+#define LIS3DH_INT_PIN   GS_INT_PIN
+	
+	static int lis3dh_init_platform_hw(void)
+	{
+	
+		return 0;
+	}
+	
+	static struct sensor_platform_data lis3dh_info = {
+		.type = SENSOR_TYPE_ACCEL,
+		.irq_enable = 1,
+		.poll_delay_ms = 30,
+		.init_platform_hw = lis3dh_init_platform_hw,
+		.orientation = {1, 0, 0, 0, 1, 0, 0, 0, 1},
+	};
+#endif
+
+#if defined (CONFIG_COMPASS_AK8975)
+static struct sensor_platform_data akm8975_info =
+{
+	.type = SENSOR_TYPE_COMPASS,
 	.irq_enable = 1,
 	.poll_delay_ms = 30,
-        .init_platform_hw = lis3dh_init_platform_hw,
-	.orientation = {-1, 0, 0, 0, -1, 0, 0, 0, 1},
+	.m_layout = 
+	{
+		{
+			{1, 0, 0},
+			{0, 1, 0},
+			{0, 0, 1},
+		},
+
+		{
+			{1, 0, 0},
+			{0, 1, 0},
+			{0, 0, 1},
+		},
+
+		{
+			{1, 0, 0},
+			{0, 1, 0},
+			{0, 0, 1},
+		},
+
+		{
+			{1, 0, 0},
+			{0, 1, 0},
+			{0, 0, 1},
+		},
+	}
 };
+
+#endif
+
+#if defined (CONFIG_COMPASS_AK8963)
+static struct sensor_platform_data akm8963_info =
+{
+       .type = SENSOR_TYPE_COMPASS,
+       .irq_enable = 1,
+       .poll_delay_ms = 30,
+       .m_layout = 
+       {
+               {
+                       {0, 1, 0},
+                       {1, 0, 0},
+                       {0, 0, -1},
+               },
+
+               {
+                       {1, 0, 0},
+                       {0, 1, 0},
+                       {0, 0, 1},
+               },
+
+               {
+                       {0, -1, 0},
+                       {-1, 0, 0},
+                       {0, 0, -1},
+               },
+
+               {
+                       {1, 0, 0},
+                       {0, 1, 0},
+                       {0, 0, 1},
+               },
+       }
+};
+
+#endif
+
+
+#if defined(CONFIG_GYRO_L3G4200D)
+
+#include <linux/l3g4200d.h>
+#define L3G4200D_INT_PIN  RK30_PIN0_PB4
+
+static int l3g4200d_init_platform_hw(void)
+{
+	return 0;
+}
+
+static struct sensor_platform_data l3g4200d_info = {
+	.type = SENSOR_TYPE_GYROSCOPE,
+	.irq_enable = 1,
+	.poll_delay_ms = 30,
+	.orientation = {0, 1, 0, -1, 0, 0, 0, 0, 1},
+	.init_platform_hw = l3g4200d_init_platform_hw,
+	.x_min = 40,//x_min,y_min,z_min = (0-100) according to hardware
+	.y_min = 40,
+	.z_min = 20,
+};
+
+#endif
+
+#ifdef CONFIG_LS_CM3217
+static struct sensor_platform_data cm3217_info = {
+	.type = SENSOR_TYPE_LIGHT,
+	.irq_enable = 0,
+	.poll_delay_ms = 500,
+};
+
 #endif
 
 /***********************************************************
@@ -468,90 +678,38 @@ static struct rk29_keys_button key_button[] = {
  * rk30xx mainbord key's supply voltage is 2.5V and
  * rk31xx mainbord key's supply voltage is 1.8V.
  */
-#if 0 
-#ifdef RK31XX_MAINBOARD_V1
-        {
-                .desc   = "vol-",
-                .code   = KEY_VOLUMEDOWN,
-		.adc_value      = 744,
-                .gpio   = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
-        {
-                .desc   = "play",
-                .code   = KEY_POWER,
-                .gpio   = PLAY_ON_PIN,
-                .active_low = PRESS_LEV_LOW,
-                .wakeup = 1,
-        },
-        {
-                .desc   = "vol+",
-                .code   = KEY_VOLUMEUP,
-                .adc_value      = 558,
-                .gpio = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
+ /*
 	{
-                .desc   = "menu",
-                .code   = EV_MENU,
-                .adc_value      = 1,
-                .gpio = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
-        {
-                .desc   = "home",
-                .code   = KEY_HOME,
-                .adc_value      = 354,
-                .gpio = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
-        {
-                .desc   = "esc",
-                .code   = KEY_BACK,
-                .adc_value      = 169,
+		.desc	= "vol+",
+		.code	= KEY_VOLUMEUP,
 		.gpio = INVALID_GPIO,
+		.adc_value	= 1,
 		.active_low = PRESS_LEV_LOW,
 	},
-#else
-        {
-                .desc   = "vol-",
-                .code   = KEY_VOLUMEDOWN,
-		.adc_value      = 900,
-                .gpio   = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
-        {
-                .desc   = "play",
-                .code   = KEY_POWER,
-                .gpio   = PLAY_ON_PIN,
-                .active_low = PRESS_LEV_LOW,
-                .wakeup = 1,
-        },
-        {
-                .desc   = "vol+",
-                .code   = KEY_VOLUMEUP,
-                .adc_value      = 1,
-                .gpio = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
 	{
-                .desc   = "menu",
-                .code   = EV_MENU,
-                .adc_value      = 133,
-                .gpio = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
-        {
-                .desc   = "home",
-                .code   = KEY_HOME,
-                .adc_value      = 550,
-                .gpio = INVALID_GPIO,
-                .active_low = PRESS_LEV_LOW,
-        },
-        {
-                .desc   = "esc",
-                .code   = KEY_BACK,
-                .adc_value      = 333,
+		.desc	= "vol-",
+		.code	= KEY_VOLUMEDOWN,
+		.gpio = INVALID_GPIO,
+		.adc_value	= 512,
+		.active_low = PRESS_LEV_LOW,
+	},
+	{
+        .desc   = "menu",
+        .code   = EV_MENU,
+        .adc_value      = 133,
+        .gpio = INVALID_GPIO,
+        .active_low = PRESS_LEV_LOW,
+    },
+    {
+         .code   = KEY_HOME,
+         .adc_value      = 550,
+         .gpio = INVALID_GPIO,
+         .active_low = PRESS_LEV_LOW,
+    },
+    {
+         .desc   = "esc",
+         .code   = KEY_BACK,
+         .adc_value      = 333,
 		.gpio = INVALID_GPIO,
 		.active_low = PRESS_LEV_LOW,
 	},
@@ -561,22 +719,21 @@ static struct rk29_keys_button key_button[] = {
 		.adc_value	= 742,
 		.gpio = INVALID_GPIO,
 		.active_low = PRESS_LEV_LOW,
-	},
-#endif
-#endif
+	},*/
+
 };
 
 struct rk29_keys_platform_data rk29_keys_pdata = {
 	.buttons	= key_button,
 	.nbuttons	= ARRAY_SIZE(key_button),
-	.chn	= 1,  //chn: 0-7, if do not use ADC,set 'chn' -1
+	.chn	= 3,  //chn: 0-7, if do not use ADC,set 'chn' -1
 };
 
 /***********************************************************
 *	sdmmc
 ************************************************************/
 #ifdef CONFIG_SDMMC_RK29
-#include "board-rk3028a-tb-sdmmc-config.c"
+#include "board-rk3028a-86v-sdmmc-config.c"
 #include "../plat-rk/rk-sdmmc-ops.c"
 #include "../plat-rk/rk-sdmmc-wifi.c"
 #endif //endif ---#ifdef CONFIG_SDMMC_RK29
@@ -721,6 +878,35 @@ struct rk29_sdmmc_platform_data default_sdmmc1_data = {
 };
 #endif //endif--#ifdef CONFIG_SDMMC1_RK29
 
+#ifdef CONFIG_BATTERY_RK30_ADC_FAC
+static struct rk30_adc_battery_platform_data rk30_adc_battery_platdata = {
+        .dc_det_pin      = RK30_PIN1_PB4,
+        .batt_low_pin    = INVALID_GPIO, 
+        .charge_set_pin  = INVALID_GPIO,
+        .charge_ok_pin   = RK30_PIN1_PA0,
+	 .usb_det_pin = INVALID_GPIO,
+        .dc_det_level    = GPIO_LOW,
+        .charge_ok_level = GPIO_HIGH,
+
+	.reference_voltage = 3300, // the rK2928 is 3300;RK3066 and rk29 are 2500;rk3066B is 1800;
+       .pull_up_res = 200,     //divider resistance ,  pull-up resistor
+       .pull_down_res = 120, //divider resistance , pull-down resistor
+
+	.is_reboot_charging = 1,
+        .save_capacity   = 1 ,
+        .low_voltage_protection = 3600,    
+};
+
+static struct platform_device rk30_device_adc_battery = {
+        .name   = "rk30-battery",
+        .id     = -1,
+        .dev = {
+                .platform_data = &rk30_adc_battery_platdata,
+        },
+};
+#endif
+
+
 /***********************************************************
 *	rfkill
 ************************************************************/
@@ -739,40 +925,40 @@ static struct rfkill_rk_platform_data rfkill_rk_platdata = {
 	},
 
 	.reset_gpio         = { // BT_RST
-		.io             = RK30_PIN3_PD5, // set io to INVALID_GPIO for disable it
+		.io             = RK30_PIN1_PB3, // set io to INVALID_GPIO for disable it
 		.enable         = GPIO_LOW,
 		.iomux          = {
 			.name       = "bt_reset",
-			//.fgpio      = GPIO3_D5,
+			.fgpio      = GPIO1_B3,
 		},
 	}, 
 
 	.wake_gpio          = { // BT_WAKE, use to control bt's sleep and wakeup
-		.io             = RK30_PIN0_PC6, // set io to INVALID_GPIO for disable it
+		.io             = RK30_PIN1_PB2, // set io to INVALID_GPIO for disable it
 		.enable         = GPIO_HIGH,
 		.iomux          = {
 			.name       = "bt_wake",
-			//.fgpio      = GPIO0_C6,
+			.fgpio      = GPIO1_B2,
 		},
 	},
 
 	.wake_host_irq      = { // BT_HOST_WAKE, for bt wakeup host when it is in deep sleep
 		.gpio           = {
-			.io         = RK30_PIN0_PC5, // set io to INVALID_GPIO for disable it
+			.io         = RK30_PIN0_PA4, // set io to INVALID_GPIO for disable it
 			.enable     = GPIO_LOW,      // set GPIO_LOW for falling, set 0 for rising
 			.iomux      = {
 				.name   = "bt_wake_host",
-				//.fgpio  = GPIO0_C5,  
+				//.fgpio  = GPIO0_A4,  
 			},
 		},
 	},
 
 	.rts_gpio           = { // UART_RTS, enable or disable BT's data coming
-		.io             = RK30_PIN0_PC3, // set io to INVALID_GPIO for disable it
+		.io             = RK30_PIN1_PA3, // set io to INVALID_GPIO for disable it
 		.enable         = GPIO_LOW,
 		.iomux          = {
 			.name       = "bt_rts",
-			.fgpio      = GPIO0_C3,
+			.fgpio      = GPIO1_A3,
 			.fmux       = UART0_RTSN,
 		},
 	}
@@ -810,31 +996,6 @@ static struct platform_device device_ion = {
 		.platform_data = &rk30_ion_pdata,
 	},
 };
-#endif
-
-#ifdef CONFIG_SND_SOC_RK3026
-struct rk3026_codec_pdata rk3026_codec_pdata_info={
-	    .spk_ctl_gpio = INVALID_GPIO,
-	    .hp_ctl_gpio = RK2928_PIN3_PD4,
-		.delay_time = 10,
-	};
-
-static struct resource resources_acodec[] = {
-	{
-		.start 	= RK2928_ACODEC_PHYS,
-		.end 	= RK2928_ACODEC_PHYS + RK2928_ACODEC_SIZE - 1,
-		.flags 	= IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device rk3026_codec = {
-	.name   = "rk3026-codec",
-   	.id     = -1,
-	.resource = resources_acodec,
-	.dev = {
-	       .platform_data = &rk3026_codec_pdata_info,
-		    }
-	};
 #endif
 
 /***********************************************************
@@ -965,34 +1126,33 @@ int __sramdata g_pmic_type =  0;
 #define PMU_POWER_SLEEP		PMU_SLEEP_PIN
 static struct pmu_info  tps65910_dcdc_info[] = {
 	{
-		.name = "vdd_cpu",
-		.min_uv = 1200000,
-		.max_uv = 1200000,
+		.name          = "vdd_core",   //logic
+		.min_uv          = 1100000,
+		.max_uv         = 1100000,
 	},
 	{
-		.name = "vdd2",
-		.min_uv = 1200000,
-		.max_uv = 1200000,
+		.name          = "vdd_cpu",    //arm
+		.min_uv          = 1100000,
+		.max_uv         = 1100000,
 	},
 	{
-		.name = "vio",
-		.min_uv = 3300000,
-		.max_uv = 3300000,
+		.name          = "vio",   //vcc_io
+		.min_uv          = 3300000,
+		.max_uv         = 3300000,
 	},
+	
 };
-
-static struct pmu_info tps65910_ldo_info[] = {
-	{
-		.name          = "vpll",   //vcc25
-		.min_uv          = 2500000,
-		.max_uv         = 2500000,
-	},
+static  struct pmu_info  tps65910_ldo_info[] = {
+	/*{
+		.name          = "vpll",   //vdd10
+		.min_uv          = 1000000,
+		.max_uv         = 1000000,
+	},*/
 	{
 		.name          = "vdig1",    //vcc18_cif
 		.min_uv          = 2800000,//1800000,
 		.max_uv         = 2800000,//1800000,
 	},
-
 	{
 		.name          = "vdig2",   //vdd11
 		.min_uv          = 1100000,
@@ -1004,7 +1164,7 @@ static struct pmu_info tps65910_ldo_info[] = {
 		.max_uv         = 2800000,
 	},
 	{
-		.name          = "vaux2",   //vcca33
+		.name          = "vaux2",   //vcc33
 		.min_uv          = 3300000,
 		.max_uv         = 3300000,
 	},
@@ -1014,9 +1174,9 @@ static struct pmu_info tps65910_ldo_info[] = {
 		.max_uv         = 3300000,
 	},
 	{
-		.name          = "vmmc",   //vccio_wl
-		.min_uv          = 1800000,
-		.max_uv         = 1800000,
+		.name          = "vmmc",   //vcca30
+		.min_uv          = 3000000,
+		.max_uv         = 3000000,
 	},
 	{
 		.name          = "vdac",   //
@@ -1043,6 +1203,29 @@ void __sramfunc board_pmu_resume(void)
 	#endif
 }
 
+#ifdef CONFIG_SND_SOC_RK3026
+struct rk3026_codec_pdata rk3026_codec_pdata_info={
+    .spk_ctl_gpio = RK2928_PIN3_PD4,
+    .hp_ctl_gpio = RK2928_PIN3_PD4,
+};
+
+static struct resource resources_acodec[] = {
+	{
+		.start 	= RK2928_ACODEC_PHYS,
+		.end 	= RK2928_ACODEC_PHYS + RK2928_ACODEC_SIZE - 1,
+		.flags 	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device rk3026_codec = {
+	.name	= "rk3026-codec",
+	.id		= -1,
+	.resource = resources_acodec,
+    	.dev = {
+        	.platform_data = &rk3026_codec_pdata_info,
+    }
+};
+#endif
 #if defined(CONFIG_GPS_RK)
 #define GPS_OSCEN_PIN 	RK2928_PIN1_PB0
 #define GPS_RXEN_PIN 	RK2928_PIN1_PB0
@@ -1153,30 +1336,6 @@ static struct platform_device rk_device_gps = {
 ************************************************************/
 #ifdef CONFIG_I2C0_RK30
 static struct i2c_board_info __initdata i2c0_info[] = {
-#if defined (CONFIG_GS_MMA8452)
-	{
-		.type	        = "gs_mma8452",
-		.addr	        = 0x1d,
-		.flags	        = 0,
-		.irq	        = GS_INT_PIN,
-		.platform_data = &mma8452_info,
-	},
-#endif
-#if defined (CONFIG_GS_LIS3DH)
-	{
-		.type	        = "gs_lis3dh",
-		.addr	        = 0x19,   //0x19(SA0-->VCC), 0x18(SA0-->GND)
-		.flags	        = 0,
-		.irq	        = GS_INT_PIN,
-		.platform_data = &lis3dh_info,
-	},
-#endif
-
-};
-#endif
-
-#ifdef CONFIG_I2C1_RK30
-static struct i2c_board_info __initdata i2c1_info[] = {
 #if defined (CONFIG_MFD_TPS65910)
 	{
 		.type           = "tps65910",
@@ -1186,6 +1345,87 @@ static struct i2c_board_info __initdata i2c1_info[] = {
 		.platform_data = &tps65910_data,
 	},
 #endif
+
+};
+#endif
+
+#ifdef CONFIG_I2C1_RK30
+static struct i2c_board_info __initdata i2c1_info[] = {
+#if defined (CONFIG_GS_MXC6225)
+        {
+                .type           = "gs_mxc6225",
+                .addr           = 0x15,
+                .flags          = 0,
+                .irq            = MXC6225_INT_PIN,
+                .platform_data  = &mxc6225_info,
+        },
+#endif
+#if defined (CONFIG_GS_MMA7660)
+	{
+		.type	        = "gs_mma7660",//gs_mma7660
+		.addr	        = 0x4c,
+		.flags	        = 0,
+		.irq	        = MMA7660_INT_PIN,
+		.platform_data = &mma7660_info,
+	},
+#endif
+#if defined (CONFIG_GS_MMA8452)
+	{
+		.type	        = "gs_mma8452",
+		.addr	        = 0x1d,
+		.flags	        = 0,
+		.irq	        = MMA8452_INT_PIN,
+		.platform_data = &mma8452_info,
+	},
+#endif
+#if defined (CONFIG_GS_LIS3DH)
+	{
+		.type	        = "gs_lis3dh",
+		.addr	        = 0x19,   //0x19(SA0-->VCC), 0x18(SA0-->GND)
+		.flags	        = 0,
+		.irq	        = LIS3DH_INT_PIN,
+		.platform_data = &lis3dh_info,
+	},
+#endif
+#if defined (CONFIG_GS_LSM303D)
+        {
+            .type           = "gs_lsm303d",
+            .addr           = 0x1d,   //0x19(SA0-->VCC), 0x18(SA0-->GND)
+            .flags          = 0,
+            .irq            = LSM303D_INT_PIN,         
+	    .platform_data  = &lms303d_info,           
+        },
+#endif
+#if defined (CONFIG_COMPASS_AK8975)
+	{
+		.type          = "ak8975",
+		.addr          = 0x0d,
+		.flags         = 0,
+		.irq           = RK30_PIN3_PD7,	
+		.platform_data = &akm8975_info,
+		.irq           = RK30_PIN3_PD7,	
+		.platform_data = &akm8975_info,
+	},
+#endif
+#if defined (CONFIG_COMPASS_AK8963)
+	{
+		.type          = "ak8963",
+		.addr          = 0x0d,
+		.flags         = 0,
+		.irq           = RK30_PIN3_PD7,	
+		.platform_data = &akm8963_info,
+	},
+#endif
+#if defined (CONFIG_GYRO_L3G4200D)
+	{
+		.type          = "l3g4200d_gryo",
+		.addr          = 0x69,
+		.flags         = 0,
+		.irq           = L3G4200D_INT_PIN,
+		.platform_data = &l3g4200d_info,
+	},
+#endif
+
 };
 #endif
 
@@ -1200,6 +1440,15 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.platform_data = &goodix_info,
 	},
 #endif
+#if defined (CONFIG_TOUCHSCREEN_GSLX680_RK3028)
+    {
+        .type           = "gslX680",
+        .addr           = 0x40,
+        .flags          = 0,
+        .platform_data =&gslx680_info,
+    },
+#endif
+
 };
 #endif
 
@@ -1260,6 +1509,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #ifdef CONFIG_RFKILL_RK
 	&device_rfkill_rk,
+#endif
+#ifdef CONFIG_BATTERY_RK30_ADC_FAC
+ 	&rk30_device_adc_battery,
 #endif
 #ifdef CONFIG_SND_SOC_RK3026
 	&rk3026_codec,
@@ -1332,29 +1584,29 @@ static void __init rk30_reserve(void)
 *	clock
 ************************************************************/
 static struct cpufreq_frequency_table dvfs_arm_table[] = {
-	{.frequency = 312 * 1000,       .index = 1200 * 1000},
-	{.frequency = 504 * 1000,       .index = 1200 * 1000},
-	{.frequency = 816 * 1000,       .index = 1200 * 1000},
-	//{.frequency = 1008 * 1000,      .index = 1200 * 1000},
-	//{.frequency = 1200 * 1000,      .index = 1200 * 1000},
+	{.frequency = 312 * 1000,       .index = 1100 * 1000},
+	{.frequency = 504 * 1000,       .index = 1100 * 1000},
+	{.frequency = 816 * 1000,       .index = 1150 * 1000},
+	{.frequency = 1008 * 1000,      .index = 1200 * 1000},
+	//{.frequency = 1200 * 1000,      .index = 1300 * 1000},
 	//{.frequency = 1416 * 1000,      .index = 1200 * 1000},
 	//{.frequency = 1608 * 1000,      .index = 1200 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
 
 static struct cpufreq_frequency_table dvfs_gpu_table[] = {
-	{.frequency = 100 * 1000,       .index = 1200 * 1000},
+	//{.frequency = 100 * 1000,       .index = 1200 * 1000},
 	{.frequency = 200 * 1000,       .index = 1200 * 1000},
-	{.frequency = 266 * 1000,       .index = 1200 * 1000},
-	{.frequency = 300 * 1000,       .index = 1200 * 1000},
-	{.frequency = 400 * 1000,       .index = 1200 * 1000},
+	//{.frequency = 266 * 1000,       .index = 1200 * 1000},
+	//{.frequency = 300 * 1000,       .index = 1200 * 1000},
+	//{.frequency = 400 * 1000,       .index = 1200 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
 
 static struct cpufreq_frequency_table dvfs_ddr_table[] = {
-	{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 1200 * 1000},
-	{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index = 1200 * 1000},
-	{.frequency = 400 * 1000 + DDR_FREQ_NORMAL,     .index = 1200 * 1000},
+	//{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 1200 * 1000},
+	//{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index = 1200 * 1000},
+	{.frequency = 360 * 1000 + DDR_FREQ_NORMAL,     .index = 1200 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
 

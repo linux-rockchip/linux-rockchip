@@ -36,7 +36,7 @@
 /*
 * define sdcard PowerEn-pin
 */
-#define RK29SDK_SD_CARD_PWR_EN                  INVALID_GPIO
+#define RK29SDK_SD_CARD_PWR_EN                  RK30_PIN3_PA1
 #define RK29SDK_SD_CARD_PWR_EN_LEVEL            GPIO_LOW 
 int rk31sdk_get_sdmmc0_pin_io_voltage(void)
 {
@@ -57,7 +57,7 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
 /*
 * define the card-detect-pin.
 */
-#define RK29SDK_SD_CARD_DETECT_N                RK30_PIN2_PA7  //According to your own project to set the value of card-detect-pin.
+#define RK29SDK_SD_CARD_DETECT_N                RK30_PIN3_PB0  //According to your own project to set the value of card-detect-pin.
 #define RK29SDK_SD_CARD_INSERT_LEVEL            GPIO_LOW       // set the voltage of insert-card. Please pay attention to the default setting.
 
 /*
@@ -69,8 +69,7 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
 *
 */          
 #if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) || defined(CONFIG_RTL8723AU) || defined(CONFIG_MT7601)
-    //#define CONFIG_USB_WIFI_POWER_CONTROLED_BY_GPIO
-    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN0_PD3           
+    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD3           
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_LOW//GPIO_HIGH        
     
 #elif defined(CONFIG_BCM4329) || defined(CONFIG_BCM4319) || defined(CONFIG_RKWIFI) || defined(CONFIG_RTL8189ES)
