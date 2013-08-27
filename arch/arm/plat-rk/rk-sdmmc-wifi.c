@@ -406,22 +406,32 @@ static int __init rk29sdk_wifi_bt_gpio_control_init(void)
 }
 
 #if (defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) || defined(CONFIG_RTL8723AU)) \
-	&& defined(CONFIG_ARCH_RK2928)
+	&& (defined(CONFIG_ARCH_RK2928) || defined(CONFIG_MACH_RK3026_86V))
 static int usbwifi_power_status = 1;
 int rk29sdk_wifi_power(int on)
 {
         pr_info("%s: %d\n", __func__, on);
          if (on){
+            #if defined(CONFIG_USB_WIFI_POWER_CONTROLED_BY_GPIO)
+                gpio_set_value(rk_platform_wifi_gpio.power_n.io, rk_platform_wifi_gpio.power_n.enable);
+                mdelay(100);
+            #else
                 if(usbwifi_power_status == 1) {
                     rkusb_wifi_power(0);
                     mdelay(50);
                 }
                 rkusb_wifi_power(1);
+            #endif
                 usbwifi_power_status = 1;
                  pr_info("wifi turn on power\n");  	
         }else{
+            #if defined(CONFIG_USB_WIFI_POWER_CONTROLED_BY_GPIO)
+                gpio_set_value(rk_platform_wifi_gpio.power_n.io, !(rk_platform_wifi_gpio.power_n.enable));
+                mdelay(100);
+            #else
                 rkusb_wifi_power(0);
                 usbwifi_power_status = 0;    	
+            #endif
                  pr_info("wifi shut off power\n");
         }
         return 0;
@@ -500,6 +510,30 @@ int rk29sdk_wifi_set_carddetect(int val)
         return 0;
 }
 EXPORT_SYMBOL(rk29sdk_wifi_set_carddetect);
+
+#include <linux/etherdevice.h>
+u8 wifi_custom_mac_addr[6] = {0,0,0,0,0,0};
+extern char GetSNSectorInfo(char * pbuf);
+static int rk29sdk_wifi_mac_addr(unsigned char *buf)
+{
+    printk("rk29sdk_wifi_mac_addr.\n");
+    
+	// from vflash
+    if(is_zero_ether_addr(wifi_custom_mac_addr)) {
+    	int i;
+    	char *tempBuf = kmalloc(512, GFP_KERNEL);
+    	if(tempBuf) {
+    		GetSNSectorInfo(tempBuf);
+			for (i = 506; i <= 511; i++)
+				wifi_custom_mac_addr[i-506] = tempBuf[i];
+			kfree(tempBuf);
+    	}
+	}
+	
+	memcpy(buf, wifi_custom_mac_addr, 6);
+	return 0;
+}
+EXPORT_SYMBOL(rk29sdk_wifi_mac_addr);
 
 //#define WIFI_HOST_WAKE RK30_PIN3_PD2
 

@@ -20,30 +20,31 @@ static ssize_t wifi_chip_read(struct class *cls, char *_buf)
 #endif
 {
     int count = 0;
+
 #ifdef CONFIG_MACH_RK_FAC
-		if(wifi_type==WIFI_TYPE_RTL8188CU)
-		{
-			count = sprintf(_buf, "%s", "RTL8188CU");
-			printk("Current WiFi chip is RTL8188CU.\n");
-    }else	if(wifi_type==WIFI_TYPE_RTL8188EU){
-			count = sprintf(_buf, "%s", "RTL8188EU");
-			printk("Current WiFi chip is RTL8188EU.\n");
-    }else if(wifi_type==WIFI_TYPE_MT7601){
-			count = sprintf(_buf, "%s", "MT7601");
-			printk("Current WiFi chip is MT7601.\n");
-    }else if(wifi_type==WIFI_TYPE_RTL8188ETV)
-		{
-			 count = sprintf(_buf, "%s", "RTL8188ETV");
-    	 printk("Current WiFi chip is RTL8188ETV.\n");
-    }else if(wifi_type==WIFI_TYPE_MT5370)
-		{
-			 count = sprintf(_buf, "%s", "MT5370");
-    	 printk("Current WiFi chip is MT5370.\n");
-    }	
-		else    
-	  {
-	  	printk("NOT surpport type %d\n",wifi_type);
-	  }
+    if(wifi_type==WIFI_TYPE_RTL8188CU) {
+        count = sprintf(_buf, "%s", "RTL8188CU");
+        printk("Current WiFi chip is RTL8188CU.\n");
+        return count;
+    } else if(wifi_type==WIFI_TYPE_RTL8188EU) {
+        count = sprintf(_buf, "%s", "RTL8188EU");
+        printk("Current WiFi chip is RTL8188EU.\n");
+        return count;
+    } else if(wifi_type==WIFI_TYPE_MT7601) {
+        count = sprintf(_buf, "%s", "MT7601");
+        printk("Current WiFi chip is MT7601.\n");
+        return count;
+    } else if(wifi_type==WIFI_TYPE_RTL8188ETV) {
+        count = sprintf(_buf, "%s", "RTL8188ETV");
+        printk("Current WiFi chip is RTL8188ETV.\n");
+        return count;
+    } else if(wifi_type==WIFI_TYPE_MT5370) {
+        count = sprintf(_buf, "%s", "MT5370");
+        printk("Current WiFi chip is MT5370.\n");
+        return count;
+    } else {
+        //printk("NOT surpport type %d\n",wifi_type);
+    }
 #endif
 
 #ifdef CONFIG_BCM4329
@@ -269,7 +270,7 @@ static ssize_t wifi_pcba_read(struct class *cls, char *_buf)
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
-static ssize_t wifi_pcba_write(struct class *cls, struct class_attribute *attr, char *_buf, size_t _count)
+static ssize_t wifi_pcba_write(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
 #else
 static ssize_t wifi_pcba_write(struct class *cls, char *_buf, size_t _count)
 #endif 
