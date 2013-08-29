@@ -1,4 +1,4 @@
-//$_FOR_ROCKCHIP_RBOX_$
+
 
 static int rk30_vmac_register_set(void)
 {
@@ -112,9 +112,9 @@ static int rk29_vmac_speed_switch(int speed)
 {
 	//printk("%s--speed=%d\n", __FUNCTION__, speed);
 	if (10 == speed) {
-	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) & (~BIT_EMAC_SPEED), RK30_GRF_BASE + GRF_SOC_CON1);
+	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) & (~BIT_EMAC_SPEED) | (BIT_EMAC_SPEED << 16), RK30_GRF_BASE + GRF_SOC_CON1);
 	} else {
-	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) | ( BIT_EMAC_SPEED), RK30_GRF_BASE + GRF_SOC_CON1);
+	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) | ( BIT_EMAC_SPEED) | (BIT_EMAC_SPEED << 16), RK30_GRF_BASE + GRF_SOC_CON1);
 	}
 }
 
