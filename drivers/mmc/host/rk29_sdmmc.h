@@ -229,6 +229,53 @@
 #define SDM_WAIT_FOR_CMDSTART_TIMEOUT   (12)  
 #define SDM_WAIT_FOR_FIFORESET_TIMEOUT  (13)  
 
+#define FALSE			0
+#define TRUE			1
+
+#define DEBOUNCE_TIME         (25)     //uint is ms, recommend 5--25ms
+
+#if defined(CONFIG_ARCH_RK29)
+#define SDMMC_USE_INT_UNBUSY     0
+#else
+#define SDMMC_USE_INT_UNBUSY     0///1 
+#endif
+
+/*
+** You can set the macro to true, if some module wants to use this feature, which is about SDIO suspend-resume.
+** As the following example.
+** added by xbw at 2013-05-08
+*/
+#if defined(CONFIG_MTK_COMBO_DRIVER_VERSION_JB2) || defined(CONFIG_ESP8089)
+#define RK_SDMMC_USE_SDIO_SUSPEND_RESUME    1
+#else
+#define RK_SDMMC_USE_SDIO_SUSPEND_RESUME    0
+#endif
+
+#define RK29_SDMMC_ERROR_FLAGS		(SDMMC_INT_FRUN | SDMMC_INT_HLE )
+
+#if defined(CONFIG_SDMMC0_RK29_SDCARD_DET_FROM_GPIO)
+    #if SDMMC_USE_INT_UNBUSY
+    #define RK29_SDMMC_INTMASK_USEDMA   (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | SDMMC_INT_UNBUSY |RK29_SDMMC_ERROR_FLAGS )
+    #define RK29_SDMMC_INTMASK_USEIO    (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | SDMMC_INT_UNBUSY |RK29_SDMMC_ERROR_FLAGS | SDMMC_INT_TXDR | SDMMC_INT_RXDR )
+    #else
+    #define RK29_SDMMC_INTMASK_USEDMA   (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | RK29_SDMMC_ERROR_FLAGS )
+    #define RK29_SDMMC_INTMASK_USEIO    (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | RK29_SDMMC_ERROR_FLAGS | SDMMC_INT_TXDR | SDMMC_INT_RXDR )
+    #endif
+#else
+    #if SDMMC_USE_INT_UNBUSY
+    #define RK29_SDMMC_INTMASK_USEDMA   (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | SDMMC_INT_UNBUSY |RK29_SDMMC_ERROR_FLAGS | SDMMC_INT_CD)
+    #define RK29_SDMMC_INTMASK_USEIO    (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | SDMMC_INT_UNBUSY |RK29_SDMMC_ERROR_FLAGS | SDMMC_INT_CD| SDMMC_INT_TXDR | SDMMC_INT_RXDR )
+    #else
+    #define RK29_SDMMC_INTMASK_USEDMA   (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | RK29_SDMMC_ERROR_FLAGS | SDMMC_INT_CD)
+    #define RK29_SDMMC_INTMASK_USEIO    (SDMMC_INT_CMD_DONE | SDMMC_INT_DTO | RK29_SDMMC_ERROR_FLAGS | SDMMC_INT_CD| SDMMC_INT_TXDR | SDMMC_INT_RXDR )
+    #endif
+#endif
+
+#define RK29_SDMMC_SEND_START_TIMEOUT   3000  //The time interval from the time SEND_CMD to START_CMD_BIT cleared.
+#define RK29_ERROR_PRINTK_INTERVAL      200   //The time interval between the two printk for the same error. 
+#define RK29_SDMMC_WAIT_DTO_INTERNVAL   4500  //The time interval from the CMD_DONE_INT to DTO_INT
+#define RK29_SDMMC_REMOVAL_DELAY        2000  //The time interval from the CD_INT to detect_timer react.
+
 
 
 #define FALSE			0
