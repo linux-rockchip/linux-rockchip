@@ -408,7 +408,11 @@ static int rockchip_headsetobserve_probe(struct platform_device *pdev)
 #endif
 	//------------------------------------------------------------------
 	if (pdata->Headset_gpio) {
-		ret = pdata->headset_io_init(pdata->Headset_gpio, pdata->headset_gpio_info.iomux_name, pdata->headset_gpio_info.iomux_mode);
+		if(pdata->Headset_gpio == NULL){
+			dev_err(&pdev->dev,"failed init headset,please full hook_io_init function in board\n");
+			goto failed_free_dev;
+		}	
+		ret = pdata->headset_io_init(pdata->Headset_gpio);
 		if (ret) 
 			goto failed_free;	
 
