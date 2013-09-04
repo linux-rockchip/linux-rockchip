@@ -115,7 +115,8 @@ static int rk_fb_close(struct fb_info *info,int user)
 	}
 	else
 	{
-    		dev_drv->open(dev_drv,layer_id,0);
+		if(dev_drv->overlay)
+			dev_drv->open(dev_drv,layer_id, 0);
 	}
 	#endif
     	return 0;

@@ -316,8 +316,10 @@ static int win0_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 		
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, m_W0_EN, v_W0_EN(open));
 		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
-		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(open));
-		lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(open));
+		if(lcdc_dev->driver.overlay) {
+			lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(open));
+			lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(open));
+		}
 		#endif
 		if(!lcdc_dev->atv_layer_cnt)  //if no layer used,disable lcdc
 		{
