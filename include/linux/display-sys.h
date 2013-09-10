@@ -57,6 +57,7 @@ struct rk_display_ops {
 	int (*getscale)(struct rk_display_device *, int);
 	int (*get3dmode)(struct rk_display_device *);
 	int (*set3dmode)(struct rk_display_device *, int);
+	int (*getedidaudioinfo)(struct rk_display_device *, char *audioinfo, int len);
 };
 
 struct rk_display_device {

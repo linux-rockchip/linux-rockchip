@@ -514,8 +514,8 @@ static void rk30_hdmi_config_aai(struct rk30_hdmi *rk30_hdmi, unsigned char chan
 	info[2] = 0x0A;
 
 	info[4] = channel;
-    //if(5 == channel)
-        info[7] = 0x0b;
+	if(5 == channel)
+		info[7] = 0x0b;
 	info[3] = info[0] + info[1] + info[2];	
 	for (i = 4; i < SIZE_AUDIO_INFOFRAME; i++)
     	info[3] += info[i];
@@ -586,6 +586,7 @@ int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 			dev_err(hdmi->dev, "[%s] not support such sample rate %d\n", __FUNCTION__, audio->rate);
 			return -ENOENT;
 	}
+#if 0
 	switch(audio->word_length)
 	{
 		case HDMI_AUDIO_WORD_LENGTH_16bit:
@@ -601,19 +602,23 @@ int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 			dev_err(hdmi->dev, "[%s] not support such word length %d\n", __FUNCTION__, audio->word_length);
 			return -ENOENT;
 	}
+#endif
 	//set_audio_if I2S
 	HDMIWrReg(AUDIO_CTRL1, 0x00); //internal CTS, disable down sample, i2s input, disable MCLK
 	HDMIWrReg(AUDIO_CTRL2, 0x40); 
 	HDMIWrReg(I2S_AUDIO_CTRL, v_I2S_MODE(I2S_MODE_STANDARD) | v_I2S_CHANNEL(channel) );	
 	HDMIWrReg(I2S_INPUT_SWAP, 0x00); //no swap
 	HDMIMskReg(value, AV_CTRL1, m_AUDIO_SAMPLE_RATE, v_AUDIO_SAMPLE_RATE(rate))	
-	HDMIWrReg(SRC_NUM_AUDIO_LEN, word_length);
+	//HDMIWrReg(SRC_NUM_AUDIO_LEN, word_length);
 		
     //Set N value 6144, fs=48kHz
     HDMIWrReg(N_1, N & 0xFF);
     HDMIWrReg(N_2, (N >> 8) & 0xFF);
-    HDMIWrReg(LR_SWAP_N3, ((N >> 16) & 0x0F)|0x20); 
-    
+    if(audio->channel>2){
+        HDMIWrReg(LR_SWAP_N3, ((N >> 16) & 0x0F)|0x20);
+    }else{
+        HDMIWrReg(LR_SWAP_N3, (N >> 16) & 0x0F); 
+    }
     rk30_hdmi_config_aai(rk30_hdmi, audio->channel-1);
     return 0;
 }

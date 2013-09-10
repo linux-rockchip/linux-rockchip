@@ -144,6 +144,56 @@ static int hdmi_get_3dmode(struct rk_display_device *device)
 		return hdmi->mode_3d;
 }
 
+//CEA 861-E: Audio Coding Type
+//sync width enum hdmi_audio_type
+static const char* const sAudioFormatStr[] = {
+	"",
+	"LPCM",		//HDMI_AUDIO_LPCM = 1,
+	"AC3",		//HDMI_AUDIO_AC3,
+	"MPEG1",	//HDMI_AUDIO_MPEG1,
+	"MP3",		//HDMI_AUDIO_MP3,
+	"MPEG2",	//HDMI_AUDIO_MPEG2,
+	"AAC-LC",	//HDMI_AUDIO_AAC_LC,		//AAC
+	"DTS",		//HDMI_AUDIO_DTS,
+	"ATARC",	//HDMI_AUDIO_ATARC,
+	"DSD",		//HDMI_AUDIO_DSD,			//One bit Audio
+	"E-AC3",	//HDMI_AUDIO_E_AC3,
+	"DTS-HD",	//HDMI_AUDIO_DTS_HD,
+	"MLP",		//HDMI_AUDIO_MLP,
+	"DST",		//HDMI_AUDIO_DST,
+	"WMA-PRO",	//HDMI_AUDIO_WMA_PRO
+};
+
+static int hdmi_get_edidaudioinfo(struct rk_display_device *device, char *audioinfo, int len)
+{
+	struct hdmi *hdmi = device->priv_data;
+	int i=0;
+	int size=0;
+	struct hdmi_audio *audio;
+	if(!hdmi)
+		return -1;
+
+	memset(audioinfo, 0x00, len);
+
+	//printk("hdmi:edid: audio_num: %d\n", hdmi->edid.audio_num);
+	for(i = 0; i < hdmi->edid.audio_num; i++)
+	{
+		audio = &(hdmi->edid.audio[i]);
+		if(audio->type<1 || audio->type>HDMI_AUDIO_WMA_PRO){
+			printk("audio type: unsupported.");
+			continue;
+		}
+		size = strlen(sAudioFormatStr[audio->type]);
+		//printk("size: %d, type: %s\n", size, sAudioFormatStr[audio->type]);
+		memcpy(audioinfo, sAudioFormatStr[audio->type], size);
+		audioinfo[size]=',';
+		audioinfo += (size+1);
+	}
+
+	return 0;
+}
+
+
 static struct rk_display_ops hdmi_display_ops = {
 	.setenable = hdmi_set_enable,
 	.getenable = hdmi_get_enable,
@@ -155,6 +205,7 @@ static struct rk_display_ops hdmi_display_ops = {
 	.getscale = hdmi_get_scale,
 	.set3dmode = hdmi_set_3dmode,
 	.get3dmode = hdmi_get_3dmode,
+	.getedidaudioinfo = hdmi_get_edidaudioinfo,
 };
 
 static int hdmi_display_probe(struct rk_display_device *device, void *devdata)
