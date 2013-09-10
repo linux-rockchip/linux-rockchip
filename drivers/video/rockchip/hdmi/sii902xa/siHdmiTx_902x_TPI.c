@@ -2934,7 +2934,7 @@ byte siHdmiTx_AudioSet (void)
        	WriteByteTPI(TPI_I2S_EN, 0x80); // 0x1F
 
 		if (siHdmiTx.AudioChannels > ACHANNEL_2CH)
-			WriteByteTPI(TPI_I2S_EN, 0x91);
+			WriteByteTPI(TPI_I2S_EN, 0x95);
 		
 		if (siHdmiTx.AudioChannels > ACHANNEL_4CH)
 			WriteByteTPI(TPI_I2S_EN, 0xA2);
@@ -2957,7 +2957,7 @@ byte siHdmiTx_AudioSet (void)
 	}
 
     WriteByteTPI(TPI_AUDIO_SAMPLE_CTRL, REFER_TO_STREAM_HDR);
-	SetAudioInfoFrames(siHdmiTx.AudioChannels & THREE_LSBITS, REFER_TO_STREAM_HDR, REFER_TO_STREAM_HDR, REFER_TO_STREAM_HDR, 0x00); 	
+	SetAudioInfoFrames(siHdmiTx.AudioChannels & THREE_LSBITS, REFER_TO_STREAM_HDR, REFER_TO_STREAM_HDR, REFER_TO_STREAM_HDR, 0x0b); 	
 
 //	SetAudioMute(AUDIO_MUTE_NORMAL);  // unmute output //Modified by zhy for itv drivers 20110924
 

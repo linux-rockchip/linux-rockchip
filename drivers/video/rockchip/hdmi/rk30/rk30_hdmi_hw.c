@@ -502,7 +502,7 @@ int rk30_hdmi_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)
 	return 0;
 }
 
-static void rk30_hdmi_config_aai(struct rk30_hdmi *rk30_hdmi)
+static void rk30_hdmi_config_aai(struct rk30_hdmi *rk30_hdmi, unsigned char channel)
 {
 	int i;
 	char info[SIZE_AUDIO_INFOFRAME];
@@ -512,7 +512,10 @@ static void rk30_hdmi_config_aai(struct rk30_hdmi *rk30_hdmi)
 	info[0] = 0x84;
 	info[1] = 0x01;
 	info[2] = 0x0A;
-	
+
+	info[4] = channel;
+	if(5 == channel)
+        info[7] = 0x0b;
 	info[3] = info[0] + info[1] + info[2];	
 	for (i = 4; i < SIZE_AUDIO_INFOFRAME; i++)
     	info[3] += info[i];
@@ -524,12 +527,22 @@ static void rk30_hdmi_config_aai(struct rk30_hdmi *rk30_hdmi)
 		HDMIWrReg(CONTROL_PACKET_HB0 + i*4, info[i]);
 }
 
+static void rk30_hdmi_audio_reset(struct rk30_hdmi *rk30_hdmi)
+{
+       int value;
+       
+       HDMIMskReg(value, VIDEO_SETTING2, m_AUDIO_RESET, AUDIO_CAPTURE_RESET)
+       msleep(1);
+       HDMIMskReg(value, VIDEO_SETTING2, m_AUDIO_RESET, 0)
+}
+
 int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
 	int value, rate, N;
 	char word_length, channel;
-	
+	//printk(KERN_ERR "rk30_hdmi_config_audio\n");
+	rk30_hdmi_audio_reset(rk30_hdmi);
 	if(audio->channel < 3)
 		channel = I2S_CHANNEL_1_2;
 	else if(audio->channel < 5)
@@ -573,21 +586,23 @@ int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 			dev_err(hdmi->dev, "[%s] not support such sample rate %d\n", __FUNCTION__, audio->rate);
 			return -ENOENT;
 	}
-//	switch(audio->word_length)
-//	{
-//		case HDMI_AUDIO_WORD_LENGTH_16bit:
-//			word_length = 0x02;
-//			break;
-//		case HDMI_AUDIO_WORD_LENGTH_20bit:
-//			word_length = 0x0a;
-//			break;
-//		case HDMI_AUDIO_WORD_LENGTH_24bit:
-//			word_length = 0x0b;
-//			break;
-//		default:
-//			dev_err(hdmi->dev, "[%s] not support such word length %d\n", __FUNCTION__, audio->word_length);
-//			return -ENOENT;
-//	}
+#if 0
+	switch(audio->word_length)
+	{
+		case HDMI_AUDIO_WORD_LENGTH_16bit:
+			word_length = 0x02;
+			break;
+		case HDMI_AUDIO_WORD_LENGTH_20bit:
+			word_length = 0x0a;
+			break;
+		case HDMI_AUDIO_WORD_LENGTH_24bit:
+			word_length = 0x0b;
+			break;
+		default:
+			dev_err(hdmi->dev, "[%s] not support such word length %d\n", __FUNCTION__, audio->word_length);
+			return -ENOENT;
+	}
+#endif
 	//set_audio_if I2S
 	HDMIWrReg(AUDIO_CTRL1, 0x00); //internal CTS, disable down sample, i2s input, disable MCLK
 	HDMIWrReg(AUDIO_CTRL2, 0x40); 
@@ -599,20 +614,16 @@ int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
     //Set N value 6144, fs=48kHz
     HDMIWrReg(N_1, N & 0xFF);
     HDMIWrReg(N_2, (N >> 8) & 0xFF);
-    HDMIWrReg(LR_SWAP_N3, (N >> 16) & 0x0F); 
-    
-    rk30_hdmi_config_aai(rk30_hdmi);
+    if(audio->channel>2){
+        HDMIWrReg(LR_SWAP_N3, ((N >> 16) & 0x0F)|0x20);
+    }else{
+        HDMIWrReg(LR_SWAP_N3, (N >> 16) & 0x0F); 
+    }
+    rk30_hdmi_config_aai(rk30_hdmi, audio->channel-1);
     return 0;
 }
 
-static void rk30_hdmi_audio_reset(struct rk30_hdmi *rk30_hdmi)
-{
-	int value;
-	
-	HDMIMskReg(value, VIDEO_SETTING2, m_AUDIO_RESET, AUDIO_CAPTURE_RESET)
-	msleep(1);
-	HDMIMskReg(value, VIDEO_SETTING2, m_AUDIO_RESET, 0)
-}
+
 
 int rk30_hdmi_control_output(struct hdmi *hdmi, int enable)
 {

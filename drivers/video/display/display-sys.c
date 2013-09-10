@@ -261,6 +261,22 @@ static ssize_t display_store_3dmode(struct device *dev,
 	return -EINVAL;
 }
 
+static ssize_t display_show_sinkaudioinfo(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct rk_display_device *dsp = dev_get_drvdata(dev);
+	char audioinfo[200];
+	int ret=0;
+
+	if(dsp->ops && dsp->ops->getedidaudioinfo) {
+		ret = dsp->ops->getedidaudioinfo(dsp, audioinfo, 200);
+		if(!ret){
+			return snprintf(buf, PAGE_SIZE, "%s\n", audioinfo);
+		}
+	}
+	return -EINVAL;
+}
+
 static struct device_attribute display_attrs[] = {
 	__ATTR(name, S_IRUGO, display_show_name, NULL),
 	__ATTR(type, S_IRUGO, display_show_type, NULL),
@@ -271,6 +287,7 @@ static struct device_attribute display_attrs[] = {
 	__ATTR(mode, 0664, display_show_mode, display_store_mode),
 	__ATTR(scale, 0664, display_show_scale, display_store_scale),
 	__ATTR(3dmode, 0664, display_show_3dmode, display_store_3dmode),
+	__ATTR(audioinfo, 0664, display_show_sinkaudioinfo, NULL),
 	__ATTR_NULL
 };
 

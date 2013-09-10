@@ -7,6 +7,13 @@ struct hdmi_delayed_work {
 	void *data;
 };
 
+struct hdmi_id_ref_info {
+	struct hdmi *hdmi;
+	int id;
+	int ref;
+}ref_info[HDMI_MAX_ID];
+
+
 static int hdmi_number = 0;
 static void hdmi_work_queue(struct work_struct *work);
 
@@ -303,12 +310,21 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 {
 	struct hdmi *hdmi;
 	char name[32];
+	int i;
 	
 	if(property == NULL || ops == NULL) {
 		printk(KERN_ERR "HDMI: %s invalid parameter\n", __FUNCTION__);
 		return NULL;
 	}
-	
+
+	for(i = 0; i < HDMI_MAX_ID; i++) 
+	{
+		if(ref_info[i].ref == 0)
+			break;
+	}
+	if(i == HDMI_MAX_ID)
+		return NULL;
+
 	DBG("hdmi_register() - video source %d display %d",
 		 property->videosrc,  property->display);
 	
@@ -367,7 +383,11 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 	}
 	switch_dev_register(&(hdmi->switchdev));
 	#endif
-		
+
+	hdmi->id = i;
+	ref_info[i].hdmi = hdmi;
+	ref_info[i].ref = 1;
+
 	return hdmi;
 	
 err_register_display:
@@ -396,6 +416,69 @@ void hdmi_unregister(struct hdmi *hdmi)
 			kfree(hdmi->edid.specs);
 		}
 		kfree(hdmi);
+
+        ref_info[hdmi->id].ref = 0;
+        ref_info[hdmi->id].hdmi = NULL;
+	
 		hdmi = NULL;
 	}
 }
+
+int hdmi_config_audio(struct hdmi_audio	*audio)
+{
+	int i, j;
+	struct hdmi *hdmi;
+	if(audio == NULL)
+		return HDMI_ERROR_FALSE;
+	//printk(KERN_ERR "hdmi_config_audio\n");	
+	for(i = 0; i < HDMI_MAX_ID; i++)
+	{
+		if(ref_info[i].ref ==0)
+			continue;
+		hdmi = ref_info[i].hdmi;
+
+		//printk(KERN_ERR "eenable %d, sleep %d\n", hdmi->enable, hdmi->sleep);
+		// Same as current audio setting, return.
+		if(memcmp(audio, &hdmi->audio, sizeof(struct hdmi_audio)) == 0){
+			//printk("same setting, return.\n");
+			continue;
+		}
+
+		/*for(j = 0; j < hdmi->edid.audio_num; j++)
+		{
+			if(audio->type == hdmi->edid.audio_num)
+				break;
+		}*/
+		
+		/*if( (j == hdmi->edid.audio_num) ||
+			(audio->channel > hdmi->edid.audio[j].channel) ||
+			((audio->rate & hdmi->edid.audio[j].rate) == 0)||
+			((audio->type == HDMI_AUDIO_LPCM) &&
+			((audio->word_length & hdmi->edid.audio[j].word_length) == 0)) )
+		{
+			printk("[%s] warning : input audio type not supported in hdmi sink\n", __FUNCTION__);
+//			continue;
+		}*/
+		//printk("new audio setting.\n");
+		memcpy(&hdmi->audio, audio, sizeof(struct hdmi_audio));
+		if(hdmi->ops && hdmi->ops->setAudio && hdmi->enable)
+			hdmi->ops->setAudio(hdmi, &hdmi->audio);
+        
+	}
+	return 0;
+}
+
+static int __init hdmi_class_init(void)
+{
+	int i;
+
+	for(i = 0; i < HDMI_MAX_ID; i++) {
+		ref_info[i].id = i;
+		ref_info[i].ref = 0;
+		ref_info[i].hdmi = NULL;
+	}
+	return 0;
+}
+
+subsys_initcall(hdmi_class_init);
+
