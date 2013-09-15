@@ -27,7 +27,7 @@
 
 #define DRIVER_NAME	"rk29xxnand"
 
-const char rknand_base_version[] = "rknand_base.c version: 4.38 20120717";
+const char rknand_base_version[] = "rknand_base.c version: 4.40 20130420";
 #define NAND_DEBUG_LEVEL0 0
 #define NAND_DEBUG_LEVEL1 1
 #define NAND_DEBUG_LEVEL2 2
@@ -66,16 +66,16 @@ static struct proc_dir_entry *my_trac_proc_entry;
 #define MAX_TRAC_BUFFER_SIZE     (long)(2048 * 8 * 512) //sector
 static char grknand_trac_buf[MAX_TRAC_BUFFER_SIZE];
 static char *ptrac_buf = grknand_trac_buf;
-void trac_log(long lba,int len, int mod)
+void trac_log(long lba,int len,int *pbuf,int mod)
 {
 	unsigned long long t;
     unsigned long nanosec_rem;
     t = cpu_clock(UINT_MAX);
     nanosec_rem = do_div(t, 1000000000);
     if(mod)
-        ptrac_buf += sprintf(ptrac_buf,"[%5lu.%06lu] W %d %d \n",(unsigned long) t, nanosec_rem / 1000,lba,len);
+        ptrac_buf += sprintf(ptrac_buf,"[%5lu.%06lu] W %d %d %8x %8x\n",(unsigned long) t, nanosec_rem / 1000,lba,len,pbuf[0],pbuf[1]);
     else
-        ptrac_buf += sprintf(ptrac_buf,"[%5lu.%06lu] R %d %d \n",(unsigned long) t, nanosec_rem / 1000,lba,len);
+        ptrac_buf += sprintf(ptrac_buf,"[%5lu.%06lu] R %d %d %8x %8x\n",(unsigned long) t, nanosec_rem / 1000,lba,len,pbuf[0],pbuf[1]);
 }
 
 void trac_logs(char *s)
@@ -187,17 +187,19 @@ static int rknand_read(struct mtd_info *mtd, loff_t from, size_t len,
 	int sector = len>>9;
 	int LBA = (int)(from>>9);
 #ifdef RKNAND_TRAC_EN
-    //trac_log(LBA,sector,0);
+    trac_log(LBA,sector,buf,0);
 #endif
 	//printk("R %d %d \n",(int)LBA,sector);
 	//if(rknand_debug)
     //   printk("rk28xxnand_read: from=%x,sector=%x,\n",(int)LBA,sector);
+	*retlen = len;
     if(sector && gpNandInfo->ftl_read)
     {
 		ret = gpNandInfo->ftl_read(LBA, sector, buf);
+		if(ret)
+		   *retlen = 0;
     }
-	*retlen = len;
-	return 0;//ret;
+	return ret;
 }
 
 static int rknand_write(struct mtd_info *mtd, loff_t from, size_t len,
@@ -207,7 +209,7 @@ static int rknand_write(struct mtd_info *mtd, loff_t from, size_t len,
 	int sector = len>>9;
 	int LBA = (int)(from>>9);
 #ifdef RKNAND_TRAC_EN
-    trac_log(LBA,sector,1);
+    trac_log(LBA,sector,buf,1);
 #endif
 	//printk("W %d %d \n",(int)LBA,sector);
     //return 0;
@@ -278,10 +280,35 @@ char GetSNSectorInfo(char * pbuf)
     return 0;
 }
 
+
+char GetSNSectorInfoBeforeNandInit(char * pbuf)
+{
+    char * sn_addr = ioremap(0x10501600,0x200);
+    memcpy(pbuf,sn_addr,0x200);
+    iounmap(sn_addr);
+	//print_hex_dump(KERN_WARNING, "sn:", DUMP_PREFIX_NONE, 16,1, sn_addr, 16, 0);
+    return 0;
+} 
+
+char GetVendor0InfoBeforeNandInit(char * pbuf)
+{
+    char * sn_addr = ioremap(0x10501400,0x200);
+    memcpy(pbuf,sn_addr + 8,504);
+    iounmap(sn_addr);
+	//print_hex_dump(KERN_WARNING, "sn:", DUMP_PREFIX_NONE, 16,1, sn_addr, 16, 0);
+    return 0;
+} 
+
 char GetChipSectorInfo(char * pbuf)
 {
     if(gpNandInfo->GetChipSectorInfo)
 	   return( gpNandInfo->GetChipSectorInfo( pbuf));
+	else
+	{
+        char * sn_addr = ioremap(0x10501600,0x200);
+        memcpy(pbuf,sn_addr,0x200);
+        iounmap(sn_addr);
+	}
     return 0;
 }
 
@@ -307,6 +334,12 @@ int  GetflashDataByLba(int lba,char * pbuf , int len)
 		ret = gpNandInfo->ftl_read(LBA, sector, pbuf);
 	}
 	return ret?-1:(sector<<9);
+}
+
+void rknand_dev_cache_flush(void)
+{
+    if(gpNandInfo->rknand_dev_cache_flush)
+        gpNandInfo->rknand_dev_cache_flush();
 }
 
 
