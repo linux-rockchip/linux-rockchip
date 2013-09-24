@@ -175,7 +175,7 @@ static int hdmi_get_edidaudioinfo(struct rk_display_device *device, char *audioi
 
 	memset(audioinfo, 0x00, len);
 
-	printk("hdmi:edid: audio_num: %d\n", hdmi->edid.audio_num);
+	//printk("hdmi:edid: audio_num: %d\n", hdmi->edid.audio_num);
 	for(i = 0; i < hdmi->edid.audio_num; i++)
 	{
 		audio = &(hdmi->edid.audio[i]);
@@ -184,7 +184,7 @@ static int hdmi_get_edidaudioinfo(struct rk_display_device *device, char *audioi
 			continue;
 		}
 		size = strlen(sAudioFormatStr[audio->type]);
-		printk("size: %d, type: %s\n", size, sAudioFormatStr[audio->type]);
+		//printk("size: %d, type: %s\n", size, sAudioFormatStr[audio->type]);
 		memcpy(audioinfo, sAudioFormatStr[audio->type], size);
 		audioinfo[size]=',';
 		audioinfo += (size+1);

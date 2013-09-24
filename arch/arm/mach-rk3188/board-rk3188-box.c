@@ -1271,7 +1271,7 @@ static struct rkdisplay_platform_data tv_data = {
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 	.io_pwr_pin 	= INVALID_GPIO,
 	.io_reset_pin 	= RK30_PIN3_PD4,
-	.io_switch_pin	= INVALID_GPIO,
+	.io_switch_pin	= RK30_PIN2_PD7,
 };
 #endif
 //$_rbox_$_modify_$ zhengyang modified end
@@ -1859,6 +1859,7 @@ static struct i2c_board_info __initdata i2c4_info[] = {
 		.type           = "rk1000_i2c_codec",
 		.addr           = 0x60,
 		.flags          = 0,
+		.platform_data = &tv_data,
     },
 #endif
 #endif

@@ -617,7 +617,12 @@ int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
     if(audio->channel>2){
         HDMIWrReg(LR_SWAP_N3, ((N >> 16) & 0x0F)|0x20);
     }else{
-        HDMIWrReg(LR_SWAP_N3, (N >> 16) & 0x0F); 
+        HDMIWrReg(LR_SWAP_N3, (N >> 16) & 0x0F);
+    }
+    if(HDMI_AUDIO_NLPCM == audio->type){
+        HDMIWrReg(AUDIO_STA_BIT_CTRL2, 0X80);
+    }else{
+        HDMIWrReg(AUDIO_STA_BIT_CTRL2, 0X00);
     }
     rk30_hdmi_config_aai(rk30_hdmi, audio->channel-1);
     return 0;

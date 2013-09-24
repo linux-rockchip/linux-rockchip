@@ -1783,7 +1783,18 @@ void setHDMITX_NLPCMAudio(BOOL bSPDIF) // no Source Num, no I2S.
     HDMITX_WriteI2C_Byte(REG_TX_AUDIO_FIFOMAP,0xE4); // default mapping.
 
 #ifdef USE_SPDIF_CHSTAT
+#if 0
     HDMITX_WriteI2C_Byte(REG_TX_AUDIO_CTRL3,B_TX_CHSTSEL);
+#else
+    if( bSPDIF )
+    {
+        HDMITX_WriteI2C_Byte(REG_TX_AUDIO_CTRL3,B_TX_CHSTSEL);
+    }
+    else
+    {
+        HDMITX_WriteI2C_Byte(REG_TX_AUDIO_CTRL3,0);
+    }
+#endif
 #else // not USE_SPDIF_CHSTAT
     HDMITX_WriteI2C_Byte(REG_TX_AUDIO_CTRL3,0);
 #endif // USE_SPDIF_CHSTAT
@@ -1801,7 +1812,9 @@ void setHDMITX_NLPCMAudio(BOOL bSPDIF) // no Source Num, no I2S.
             }
         }
     }
-    HDMITX_WriteI2C_Byte(REG_TX_AUDIO_CTRL0, AudioEnable|B_TX_AUD_EN_I2S0);
+    AudioEnable |= B_TX_AUD_EN_I2S0;
+    hdmiTxDev[0].bAudioChannelEnable=AudioEnable;
+    HDMITX_WriteI2C_Byte(REG_TX_AUDIO_CTRL0, AudioEnable);
 }
 
 void setHDMITX_HBRAudio(BOOL bSPDIF)

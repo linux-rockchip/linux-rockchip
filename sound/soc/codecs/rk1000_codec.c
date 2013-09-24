@@ -28,7 +28,7 @@
 #include <sound/initval.h>
 #include <mach/gpio.h>
 #include <mach/iomux.h>
-
+#include <linux/display-sys.h>
 #include "rk1000_codec.h"
 
 #ifdef CONFIG_ARCH_RK29
@@ -83,6 +83,8 @@ struct rk1000_codec_priv {
 	struct snd_soc_codec codec;
 	struct snd_pcm_hw_constraint_list *sysclk_constraints;
 	u16 reg_cache[RK1000_CODEC_NUM_REG];
+	int io_pwr_pin;
+	int io_spk_pin;
 };
 
 static void rk1000_codec_reg_set(void);
@@ -501,6 +503,8 @@ static int rk1000_codec_pcm_startup(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int gAudioNLPCM=0;
+static int rk1000_codec_mute(struct snd_soc_dai *dai, int mute);
 static int rk1000_codec_pcm_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
 				struct snd_soc_dai *dai)
@@ -521,6 +525,14 @@ static int rk1000_codec_pcm_hw_params(struct snd_pcm_substream *substream,
 	/*by Vincent Hsiung for EQ Vol Change*/
 	#define HW_PARAMS_FLAG_EQVOL_ON 0x21
 	#define HW_PARAMS_FLAG_EQVOL_OFF 0x22
+	DBG("params->flags: %d\n", params->flags);
+	if(HW_PARAMS_FLAG_NLPCM == params->flags)
+	{
+		gAudioNLPCM=1;
+	}else if(HW_PARAMS_FLAG_LPCM == params->flags){
+		gAudioNLPCM=0;
+	}
+
 	if (params->flags == HW_PARAMS_FLAG_EQVOL_ON)
 	{
 		u16 r17 = rk1000_codec_read_reg_cache(codec, ACCELCODEC_R17);
@@ -587,8 +599,8 @@ static int rk1000_codec_pcm_hw_params(struct snd_pcm_substream *substream,
 void PhaseOut(struct snd_soc_codec *codec,u32 nStep, u32 us)
 {
         DBG("%s[%d]\n",__FUNCTION__,__LINE__); 
-        rk1000_codec_write(codec,ACCELCODEC_R17, 0x00|ASC_OUTPUT_ACTIVE|ASC_CROSSZERO_EN);  //AOL
-        rk1000_codec_write(codec,ACCELCODEC_R18, 0x00|ASC_OUTPUT_ACTIVE|ASC_CROSSZERO_EN);  //AOR
+        rk1000_codec_write(codec,ACCELCODEC_R17, 0x00|ASC_OUTPUT_MUTE|ASC_CROSSZERO_EN);  //AOL
+        rk1000_codec_write(codec,ACCELCODEC_R18, 0x00|ASC_OUTPUT_MUTE|ASC_CROSSZERO_EN);  //AOR
         udelay(us);
 }
 
@@ -606,7 +618,15 @@ static int rk1000_codec_mute(struct snd_soc_dai *dai, int mute)
 
     DBG("Enter::%s----%d--mute=%d\n",__FUNCTION__,__LINE__,mute);
 
+    if(gAudioNLPCM)
+        mute=1;
+
     if (mute){
+        u16 r04 = rk1000_codec_read_reg_cache(codec, ACCELCODEC_R04);
+        if(r04 & 0x3){
+            return 0;
+        }
+
         PhaseOut(codec,1, 5000);
         rk1000_codec_write(codec,ACCELCODEC_R19, 0xFF);  //AOM
         rk1000_codec_write(codec,ACCELCODEC_R04, ASC_INT_MUTE_L|ASC_INT_MUTE_R|ASC_SIDETONE_L_OFF|ASC_SIDETONE_R_OFF);  //soft mute   
@@ -821,6 +841,24 @@ static int rk1000_codec_probe(struct platform_device *pdev)
     }
     gpio_set_value(RK1000_SPK_CTRL_PIN, GPIO_HIGH);
     gpio_direction_output(RK1000_SPK_CTRL_PIN, GPIO_HIGH);
+#else
+	if(rk1000_codec->io_pwr_pin != INVALID_GPIO) {
+		ret = gpio_request(rk1000_codec->io_pwr_pin, "rk1000 pwr ctrl");
+		if (ret) {
+        	printk("rk1000 codec request pwr gpio fail\n");
+        	//goto err1;
+    	}
+	}
+	if(rk1000_codec->io_spk_pin != INVALID_GPIO) {
+		ret = gpio_request(rk1000_codec->io_spk_pin, "rk1000 spk ctrl");
+		if(!ret) {
+    		gpio_direction_output(rk1000_codec->io_spk_pin, GPIO_HIGH);
+			gpio_set_value(rk1000_codec->io_spk_pin, GPIO_HIGH);
+		}else {
+			printk("rk1000 codec request spk gpio fail\n");
+        	//goto err1;
+		}
+	}
 #endif
     
     rk1000_codec_reg_set();
@@ -1101,12 +1139,23 @@ static int rk1000_codec_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
 	struct rk1000_codec_priv *rk1000_codec;
+	struct rkdisplay_platform_data *tv_data;
 	int ret;
 	
 	rk1000_codec = kzalloc(sizeof(struct rk1000_codec_priv), GFP_KERNEL);
 	if (rk1000_codec == NULL)
 		return -ENOMEM;
-		
+	
+	if(i2c->dev.platform_data) {
+		tv_data = i2c->dev.platform_data;
+		rk1000_codec->io_pwr_pin = tv_data->io_pwr_pin;
+		rk1000_codec->io_spk_pin = tv_data->io_switch_pin;
+	}
+	else {
+		rk1000_codec->io_pwr_pin = INVALID_GPIO;
+		rk1000_codec->io_spk_pin = INVALID_GPIO;
+	}
+	
 	i2c_set_clientdata(i2c, rk1000_codec);
 	rk1000_codec->control_type = SND_SOC_I2C;
 	

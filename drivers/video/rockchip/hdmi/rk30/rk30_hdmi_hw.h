@@ -29,6 +29,8 @@ enum {
 #define AUDIO_CTRL1			0x28
 #define AUDIO_CTRL2 		0x2c
 #define I2S_AUDIO_CTRL		0x30
+#define AUDIO_STA_BIT_CTRL2    0X48
+
 enum {
 	I2S_MODE_STANDARD = 0,
 	I2S_MODE_RIGHT_JUSTIFIED,

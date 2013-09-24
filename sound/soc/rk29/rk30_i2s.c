@@ -313,10 +313,13 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 			return -EINVAL;
 	}
     //set hdmi codec params
-    
+    if(HW_PARAMS_FLAG_NLPCM == params->flags)
+        hdmi_audio_cfg.type = HDMI_AUDIO_NLPCM;
+    else
+        hdmi_audio_cfg.type = HDMI_AUDIO_LPCM;
+    //printk("i2s: hdmi_audio_cfg.type: %d\n", hdmi_audio_cfg.type);
     hdmi_audio_cfg.channel = params_channels(params);
     hdmi_audio_cfg.rate = SR2FS(params_rate(params));
-    hdmi_audio_cfg.type = HDMI_AUDIO_LPCM;
     hdmi_audio_cfg.word_length = HDMI_AUDIO_WORD_LENGTH_16bit;
 	hdmi_config_audio(&hdmi_audio_cfg);
 	

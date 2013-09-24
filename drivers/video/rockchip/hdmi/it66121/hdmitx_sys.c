@@ -269,6 +269,7 @@ int it66121_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
     struct it66121 *it66121 = hdmi->property->priv;
     unsigned long ulAudioSampleFS;
 	unsigned char word_length;
+	unsigned char audio_type;
 	
 	switch(audio->rate)
 	{
@@ -311,8 +312,14 @@ int it66121_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 			word_length = 24;
 			break;
 	}
+
+    if(HDMI_AUDIO_NLPCM == audio->type){
+        audio_type = T_AUDIO_NLPCM;
+    }else{
+        audio_type = T_AUDIO_LPCM;
+    }
     HDMITX_EnableAudioOutput(
-    CONFIG_INPUT_AUDIO_TYPE,
+    audio_type,
     CONFIG_INPUT_AUDIO_SPDIF,
     ulAudioSampleFS,
     audio->channel,
