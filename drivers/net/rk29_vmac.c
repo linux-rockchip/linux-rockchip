@@ -1732,6 +1732,9 @@ rk29_vmac_resume(struct device *dev)
 		if (ap->open_flag == 1) {
 			netif_device_attach(ndev);
 			netif_start_queue(ndev);
+      if (ap->suspending == 1) {
+         ap->suspending = 0;
+			}
 		}
 	}
 	return 0;
