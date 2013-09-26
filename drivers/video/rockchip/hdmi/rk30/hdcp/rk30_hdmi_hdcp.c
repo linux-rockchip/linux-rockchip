@@ -321,7 +321,8 @@ int rk30_hdcp_authentication_1st(struct hdcp *hdcp)
 		return -HDCP_CANCELLED_AUTH;
 		
 	/* DDC: Read BKSV from RX */
-	while(trytimes--) {
+	while(trytimes) {
+		trytimes--;
 		status = rk30_hdcp_ddc_read(hdcp, DDC_BKSV_LEN, DDC_BKSV_ADDR, an_ksv_data);
 		if (status < 0)
 			return status;
