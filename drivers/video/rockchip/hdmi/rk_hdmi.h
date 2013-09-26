@@ -127,6 +127,7 @@ enum hdmi_deep_color {
 
 // HDMI Audio Type
 enum hdmi_audio_type {
+	HDMI_AUDIO_NLPCM = 0,
 	HDMI_AUDIO_LPCM = 1,
 	HDMI_AUDIO_AC3,
 	HDMI_AUDIO_MPEG1,
