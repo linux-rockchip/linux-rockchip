@@ -337,8 +337,8 @@ static inline unsigned int sub(unsigned int a, unsigned int b)
 	return 0;
 }
 
-#define HW_PARAMS_FLAG_LPCM 1
-#define HW_PARAMS_FLAG_NLPCM 0
+#define HW_PARAMS_FLAG_LPCM 0
+#define HW_PARAMS_FLAG_NLPCM 1
 
 #endif /* __SOUND_PCM_PARAMS_H */
 
