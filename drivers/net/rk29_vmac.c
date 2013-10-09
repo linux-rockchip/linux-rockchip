@@ -1053,9 +1053,15 @@ int vmac_open(struct net_device *dev)
 	ap->shutdown = 0;
 		
 	//set rmii ref clock 50MHz
-	mac_clk = clk_get(NULL, "mac_ref_div");
-	if (IS_ERR(mac_clk))
+#if defined (CONFIG_RK29_VMAC_EXT_CLK) 	
+	mac_clk = clk_get(NULL, "rmii_clkin");
+#else
+    mac_clk = clk_get(NULL, "mac_ref_div");
+#endif
+	if (IS_ERR(mac_clk)){
+		printk("!!!!!!!!!!get rmii clk err!!!!\n");
 		mac_clk = NULL;
+	}
 	arm_clk = clk_get(NULL, "arm_pll");
 	if (IS_ERR(arm_clk))
 		arm_clk = NULL;
@@ -1258,7 +1264,12 @@ int vmac_close(struct net_device *dev)
 		pdata->rmii_power_control(0);
 
 	//clock close
-	mac_clk = clk_get(NULL, "mac_ref_div");
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)
+    mac_clk = clk_get(NULL, "rmii_clkin");
+#else
+    mac_clk = clk_get(NULL, "mac_ref_div");
+#endif
+
 	if (IS_ERR(mac_clk))
 		mac_clk = NULL;
 	if (mac_clk) {
@@ -1693,7 +1704,11 @@ static void rk29_vmac_power_off(struct net_device *dev)
 		pdata->rmii_power_control(0);
 
 	//clock close
-	clk_disable(clk_get(NULL, "mac_ref_div"));
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)  	
+    clk_disable(clk_get(NULL, "rmii_clkin"));
+#else
+    clk_disable(clk_get(NULL, "mac_ref_div"));
+#endif
 	clk_disable(clk_get(NULL,"mii_rx"));
 	clk_disable(clk_get(NULL,"mii_tx"));
 	clk_disable(clk_get(NULL,"hclk_mac"));

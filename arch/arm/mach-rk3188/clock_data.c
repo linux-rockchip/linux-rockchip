@@ -3537,18 +3537,21 @@ static void __init rk30_clock_common_init(unsigned long gpll_rate, unsigned long
 	// uart
 	rk30_clock_common_uart_init(&codec_pll_clk,&general_pll_clk);
 
-	//mac
-	if(!(gpll_rate % (50 * MHZ))) {
-		clk_set_parent_nolock(&clk_mac_pll_div, &general_pll_clk);
-
-	} else if((!(ddr_pll_clk.rate % (50 * MHZ))) && (ddr_pll_clk.rate != 24 * MHZ) && ((pll_flag & 0x2) == 0)) {
-		clk_set_parent_nolock(&clk_mac_pll_div, &ddr_pll_clk);
-
-	} else {
-		CLKDATA_DBG("mac can't get 50mhz, set to gpll\n");
-		clk_set_parent_nolock(&clk_mac_pll_div, &general_pll_clk);
-	}
-
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)  
+    clk_set_parent_nolock(&clk_mac_pll_div, &general_pll_clk);
+    clk_set_rate_nolock(&clk_mac_pll_div, 50 * MHZ);
+    clk_set_parent_nolock(&clk_mac_ref, &rmii_clkin);//hzb
+    printk("hzb test rmii clk get form clkin\n");	//mac
+#else
+    if(!(gpll_rate % (50 * MHZ))) {
+        clk_set_parent_nolock(&clk_mac_pll_div, &general_pll_clk);
+    } else if((!(ddr_pll_clk.rate % (50 * MHZ))) && (ddr_pll_clk.rate != 24 * MHZ) && ((pll_flag & 0x2) == 0)) {
+        clk_set_parent_nolock(&clk_mac_pll_div, &ddr_pll_clk);
+    } else {
+        CLKDATA_DBG("mac can't get 50mhz, set to gpll\n");
+        clk_set_parent_nolock(&clk_mac_pll_div, &general_pll_clk);
+    }	
+#endif
 	//hsadc
 	//auto pll sel
 	//clk_set_parent_nolock(&clk_hsadc_pll_div, &general_pll_clk);

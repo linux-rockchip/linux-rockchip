@@ -18,7 +18,11 @@ static int rk30_rmii_io_init(void)
 	iomux_set(RMII_TXD0);
 	iomux_set(RMII_RXD0);
 	iomux_set(RMII_RXD1);
-	iomux_set(RMII_CLKOUT);
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)      
+	iomux_set(RMII_CLKIN);
+#else
+    iomux_set(RMII_CLKOUT);
+#endif
 	iomux_set(RMII_RXERR);
 	iomux_set(RMII_CRS);
 	iomux_set(RMII_MD);
@@ -75,7 +79,11 @@ static int rk30_rmii_power_control(int enable)
 		iomux_set(RMII_TXD0);
 		iomux_set(RMII_RXD0);
 		iomux_set(RMII_RXD1);
-		iomux_set(RMII_CLKOUT);
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)        
+		iomux_set(RMII_CLKIN);
+#else 
+        iomux_set(RMII_CLKOUT);
+#endif
 		iomux_set(RMII_RXERR);
 		iomux_set(RMII_CRS);
 		iomux_set(RMII_MD);

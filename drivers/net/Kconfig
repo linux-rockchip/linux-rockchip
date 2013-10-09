@@ -259,7 +259,20 @@ config RK29_VMAC
 	select CRC32
 	help
 	  MAC device present on rockchip rk29xx 
+	  
+choice	
+	depends on RK29_VMAC
+	prompt "Select the vmac source clock"
+	default RK29_VMAC_PLL_CLK
+	
+	config RK29_VMAC_PLL_CLK 
+    	bool "RK29_VMAC_PLL_CLK"
+    	depends on MII 
 
+	config RK29_VMAC_EXT_CLK
+    	bool "RK29_VMAC_EXT_CLK"
+	    depends on MII
+endchoice
 
 config MACE
 	tristate "MACE (Power Mac ethernet) support"
