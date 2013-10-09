@@ -480,36 +480,34 @@ static void __sramfunc rk30_sram_suspend(void)
 			  | (1 << CLK_GATE_ACLK_CORE)
 			  , clkgt_regs[0], CRU_CLKGATES_CON(0), 0xffff);
 
+	gate_save_soc_clk(0
 #ifdef CONFIG_DWC_REMOTE_WAKEUP	
-	gate_save_soc_clk(0|(3<<5), clkgt_regs[1], CRU_CLKGATES_CON(1), 0xffff);//hzb
-	if(clkgt_regs[8]&((1<<12)|(1<13))){
-		gate_save_soc_clk(0
-				  | (1 << CLK_GATE_PERIPH_SRC % 16)
-				  | (1 << CLK_GATE_PCLK_PERIPH % 16)
-				  | (1 << CLK_GATE_HCLK_PERIPH % 16)
-				, clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);
-	}else{
-		gate_save_soc_clk(0|(1 << CLK_GATE_HCLK_PERIPH % 16)
-				, clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);
-
-	}
-#else
-	gate_save_soc_clk(0, clkgt_regs[1], CRU_CLKGATES_CON(1), 0xffff);
+			| (1 << CLK_GATE_OTGPHY0 % 16)
+			| (1 << CLK_GATE_OTGPHY1 % 16) 	
+#endif	
+			, clkgt_regs[1], CRU_CLKGATES_CON(1), 0xffff);
+	
 #if defined(CONFIG_ARCH_RK3066B) || defined(CONFIG_ARCH_RK3188)
 	if(((clkgt_regs[8] >> CLK_GATE_PCLK_GPIO3% 16) & 0x01) == 0x01){
 #else
 	if(((clkgt_regs[8] >> CLK_GATE_PCLK_GPIO3% 16) & 0x03) == 0x03){
 #endif
 		gate_save_soc_clk(0
+#ifdef CONFIG_DWC_REMOTE_WAKEUP	
+			| (1 << CLK_GATE_HCLK_PERIPH % 16)
+#endif	
 				, clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);
 
 	}else{
 		gate_save_soc_clk(0
 				  | (1 << CLK_GATE_PERIPH_SRC % 16)
 				  | (1 << CLK_GATE_PCLK_PERIPH % 16)
+#ifdef CONFIG_DWC_REMOTE_WAKEUP	
+					| (1 << CLK_GATE_HCLK_PERIPH % 16)
+#endif				  
 				, clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);
 	}
-#endif	
+
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_ACLK_STRC_SYS % 16)
 			  | (1 << CLK_GATE_ACLK_INTMEM % 16)
@@ -523,6 +521,10 @@ static void __sramfunc rk30_sram_suspend(void)
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_PCLK_GRF % 16)
 			  | (1 << CLK_GATE_PCLK_PMU % 16)
+#ifdef CONFIG_DWC_REMOTE_WAKEUP				  
+			  | (1 << CLK_GATE_HCLK_OTG0 % 16)
+			  | (1 << CLK_GATE_HCLK_OTG1 % 16)
+#endif	
 			  , clkgt_regs[5], CRU_CLKGATES_CON(5), 0xffff);
 	gate_save_soc_clk(0, clkgt_regs[7], CRU_CLKGATES_CON(7), 0xffff);
 	gate_save_soc_clk(0
@@ -628,6 +630,7 @@ static int rk30_pm_enter(suspend_state_t state)
 		clkgt_regs[i] = cru_readl(CRU_CLKGATES_CON(i));
 	}
 
+	//clk gate0
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_CORE_PERIPH)
 #if defined(CONFIG_ARCH_RK3066B) || defined(CONFIG_ARCH_RK3188)
@@ -639,27 +642,26 @@ static int rk30_pm_enter(suspend_state_t state)
 			  | (1 << CLK_GATE_HCLK_CPU)
 			  | (1 << CLK_GATE_PCLK_CPU)
 			  , clkgt_regs[0], CRU_CLKGATES_CON(0), 0xffff);
-#ifdef CONFIG_DWC_REMOTE_WAKEUP			  
+			  
+	//clk gate1	  
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_DDR_GPLL % 16)|(3 <<5)
 			  , clkgt_regs[1], CRU_CLKGATES_CON(1), 0xffff);
+	
+	//clk gate2,add hclk for usb wakeup		  
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_PERIPH_SRC % 16)
 			  | (1 << CLK_GATE_PCLK_PERIPH % 16)
 			  | (1 << CLK_GATE_ACLK_PERIPH % 16)
+#ifdef CONFIG_DWC_REMOTE_WAKEUP				  
 			  | (1 << CLK_GATE_HCLK_PERIPH % 16)
-			  , clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);		  
-#else
-	gate_save_soc_clk(0
-			  | (1 << CLK_GATE_DDR_GPLL % 16)
-			  , clkgt_regs[1], CRU_CLKGATES_CON(1), 0xffff);
-	gate_save_soc_clk(0
-			  | (1 << CLK_GATE_PERIPH_SRC % 16)
-			  | (1 << CLK_GATE_PCLK_PERIPH % 16)
-			  | (1 << CLK_GATE_ACLK_PERIPH % 16)
-			  , clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);
-#endif	
+#endif
+			  , clkgt_regs[2], CRU_CLKGATES_CON(2), 0xffff);	
+			  	  
+	//clk gate3
 	gate_save_soc_clk(0, clkgt_regs[3], CRU_CLKGATES_CON(3), 0xff9f);
+	
+	//clk gate4
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_HCLK_PERI_AXI_MATRIX % 16)
 			  | (1 << CLK_GATE_PCLK_PERI_AXI_MATRIX % 16)
@@ -677,17 +679,31 @@ static int rk30_pm_enter(suspend_state_t state)
 			  | (1 << CLK_GATE_HCLK_IMEM0 % 16)
 #endif
 			  , clkgt_regs[4], CRU_CLKGATES_CON(4), 0xffff);
+			  
+	//clk gate5,add hclk_otg0 and hclk_otg0 for usb wakeup	  
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_PCLK_GRF % 16)
 			  | (1 << CLK_GATE_PCLK_PMU % 16)
 			  | (1 << CLK_GATE_PCLK_DDRUPCTL % 16)
+#ifdef CONFIG_DWC_REMOTE_WAKEUP				  
+			  | (1 << CLK_GATE_HCLK_OTG0 % 16)
+			  | (1 << CLK_GATE_HCLK_OTG1 % 16)
+#endif			  
 			  , clkgt_regs[5], CRU_CLKGATES_CON(5), 0xffff);
+			  
+	//clk gate6		  
 	gate_save_soc_clk(0, clkgt_regs[6], CRU_CLKGATES_CON(6), 0xffff);
+	
+	//clk gate7
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_PCLK_PWM01 % 16)
 			  | (1 << CLK_GATE_PCLK_PWM23 % 16)
 			  , clkgt_regs[7], CRU_CLKGATES_CON(7), 0xffff);
+			  
+	//clk gate8		  
 	gate_save_soc_clk(0 , clkgt_regs[8], CRU_CLKGATES_CON(8), 0x01ff);
+	
+	//clk gate9
 	gate_save_soc_clk(0
 			  | (1 << CLK_GATE_CLK_L2C % 16)
 			  | (1 << CLK_GATE_PCLK_PUBL % 16)
