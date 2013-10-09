@@ -28,7 +28,3 @@ config MACH_RK3188_BOX
 	bool "RK3188 box board"
 	
 endchoice
-
-config SOC_MACH_RK3188T
-        bool "RK3188T"
-        default n
