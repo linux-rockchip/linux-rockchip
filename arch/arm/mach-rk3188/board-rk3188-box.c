@@ -1267,7 +1267,7 @@ static struct rkdisplay_platform_data hdmi_data = {
 
 #if defined(CONFIG_RK1000_TVOUT) || defined(CONFIG_MFD_RK1000)
 static struct rkdisplay_platform_data tv_data = {
-	.property 		= DISPLAY_AUX,
+	.property 		= DISPLAY_MAIN,//DISPLAY_AUX,
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 	.io_pwr_pin 	= INVALID_GPIO,
 	.io_reset_pin 	= RK30_PIN3_PD4,
@@ -1950,7 +1950,7 @@ static void __init machine_rk30_board_init(void)
 	
 	pm_power_off = rk30_pm_power_off;
 	
-        gpio_direction_output(POWER_ON_PIN, GPIO_HIGH);
+	gpio_direction_output(POWER_ON_PIN, GPIO_HIGH);
 
 
 	rk30_i2c_register_board_info();

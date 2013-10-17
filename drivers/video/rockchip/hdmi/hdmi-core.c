@@ -158,8 +158,7 @@ out:
 
 static void hdmi_wq_insert(struct hdmi *hdmi)
 {
-	DBG("%s", __FUNCTION__);
-	hdmi_send_uevent(hdmi, KOBJ_ADD);
+	DBG("%s", __FUNCTION__);	
 	if(hdmi->ops->insert)
 		hdmi->ops->insert(hdmi);
 	hdmi_wq_parse_edid(hdmi);
@@ -223,14 +222,18 @@ static void hdmi_work_queue(struct work_struct *work)
 	switch(event) {
 		case HDMI_ENABLE_CTL:
 			if(!hdmi->enable) {
-				if(!hdmi->sleep && hdmi->ops->enable)
-					hdmi->ops->enable(hdmi);
 				hdmi->enable = 1;
+				if(!hdmi->sleep) {
+					if(hdmi->ops->enable)
+						hdmi->ops->enable(hdmi);
+					if(hdmi->hotplug == HDMI_HPD_ACTIVED)
+						hdmi_wq_insert(hdmi);
+				}
 			}
 			break;
 		case HDMI_RESUME_CTL:
 			if(hdmi->sleep) {
-				if(hdmi->enable && hdmi->ops->enable)
+				if(hdmi->ops->enable)
 					hdmi->ops->enable(hdmi);
 				hdmi->sleep = 0;
 			}
@@ -238,8 +241,8 @@ static void hdmi_work_queue(struct work_struct *work)
 		case HDMI_DISABLE_CTL:
 			if(hdmi->enable) {
 				if(!hdmi->sleep) {
-					if(hdmi->ops->disable)
-						hdmi->ops->disable(hdmi);
+//					if(hdmi->ops->disable)
+//						hdmi->ops->disable(hdmi);
 					hdmi_wq_remove(hdmi);
 				}
 				hdmi->enable = 0;
@@ -261,7 +264,10 @@ static void hdmi_work_queue(struct work_struct *work)
 			DBG("hdmi_work_queue() - hpd is %d hotplug is %d", hpd, hdmi->hotplug);
 			if(hpd != hdmi->hotplug) {
 				if(hpd == HDMI_HPD_ACTIVED) {
-					hdmi_wq_insert(hdmi);
+					hdmi->hotplug = hpd;
+					hdmi_send_uevent(hdmi, KOBJ_ADD);
+					if(hdmi->enable)
+						hdmi_wq_insert(hdmi);
 				}
 				else if(hdmi->hotplug == HDMI_HPD_ACTIVED) {
 					hdmi_wq_remove(hdmi);
@@ -378,8 +384,8 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 		hdmi->switchdev.name="hdmi";
 	else {
 		hdmi->switchdev.name = kzalloc(32, GFP_KERNEL);
-		memset(hdmi->switchdev.name, 0, 32);
-		sprintf(hdmi->switchdev.name, "hdmi%d", hdmi->id);
+		memset((char*)hdmi->switchdev.name, 0, 32);
+		sprintf((char*)hdmi->switchdev.name, "hdmi%d", hdmi->id);
 	}
 	switch_dev_register(&(hdmi->switchdev));
 	#endif

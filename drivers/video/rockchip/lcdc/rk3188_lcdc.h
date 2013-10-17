@@ -289,6 +289,11 @@
 
 #define CalScale(x, y)	             ((((u32)(x-1))*0x1000)/(y-1))
 
+enum {
+	LAYER_WIN0 = 1 << 0,
+	LAYER_WIN1 = 1 << 1,
+};
+
 struct rk3188_lcdc_device{
 	int id;
 	struct rk_lcdc_device_driver driver;

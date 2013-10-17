@@ -45,8 +45,10 @@ static irqreturn_t it66121_detect_irq(int irq, void *dev_id)
 
 static int it66121_enable(struct hdmi *hdmi)
 {
-	it66121->enable = 1;
-	queue_delayed_work(it66121->workqueue, &it66121->delay_work, msecs_to_jiffies(50));
+	if(!it66121->enable) {
+		it66121->enable = 1;
+		queue_delayed_work(it66121->workqueue, &it66121->delay_work, msecs_to_jiffies(50));
+	}
 	return 0;
 }
 
@@ -60,13 +62,15 @@ static int it66121_disable(struct hdmi *hdmi)
 static void it66121_early_suspend(struct early_suspend *h)
 {
 	struct hdmi *hdmi = it66121->hdmi;
+	printk("%s\n",__FUNCTION__);
 	hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
 	return;
 }
 
 static void it66121_early_resume(struct early_suspend *h)
 {
-	struct hdmi *hdmi = it66121->hdmi;		
+	struct hdmi *hdmi = it66121->hdmi;
+	printk("%s\n",__FUNCTION__);		
 	hdmi_submit_work(hdmi, HDMI_RESUME_CTL, 0, NULL);
 	return;
 }

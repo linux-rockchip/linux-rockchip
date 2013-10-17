@@ -209,22 +209,30 @@ int rk1000_tv_standby(int type)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void rk1000_early_suspend(struct early_suspend *h)
 {
-	printk("rk1000 enter early suspend");
-	if(rk1000.ypbpr)
+	printk("rk1000 enter early suspend\n");
+	if(rk1000.ypbpr) {
 		rk1000.ypbpr->ddev->ops->setenable(rk1000.ypbpr->ddev, 0);
-	if(rk1000.cvbs)
+		rk1000.ypbpr->suspend = 1;
+	}
+	if(rk1000.cvbs) {
 		rk1000.cvbs->ddev->ops->setenable(rk1000.cvbs->ddev, 0);
+		rk1000.cvbs->suspend = 1;
+	}
 	return;
 }
 
 static void rk1000_early_resume(struct early_suspend *h)
 {
-	printk("rk1000 exit early resume");
-	if( rk1000.cvbs && (rk1000.mode < TVOUT_YPbPr_720x480p_60) ) {
-		rk_display_device_enable((rk1000.cvbs)->ddev);
+	printk("rk1000 exit early resume\n");
+	if( rk1000.cvbs) {
+		rk1000.cvbs->suspend = 0;
+		if(rk1000.mode < TVOUT_YPbPr_720x480p_60)
+			rk_display_device_enable((rk1000.cvbs)->ddev);
 	}
-	else if( rk1000.ypbpr && (rk1000.mode > TVOUT_CVBS_PAL) ) {
-		rk_display_device_enable((rk1000.ypbpr)->ddev);
+	else if( rk1000.ypbpr ) {
+		rk1000.ypbpr->suspend = 0;
+		if(rk1000.mode > TVOUT_CVBS_PAL)
+			rk_display_device_enable((rk1000.ypbpr)->ddev);
 	}
 	return;
 }
@@ -286,7 +294,7 @@ static int rk1000_tv_control_probe(struct i2c_client *client,const struct i2c_de
 	#ifdef CONFIG_HAS_EARLYSUSPEND
 	rk1000.early_suspend.suspend = rk1000_early_suspend;
 	rk1000.early_suspend.resume = rk1000_early_resume;
-	rk1000.early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 10;
+	rk1000.early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 11;
 	register_early_suspend(&(rk1000.early_suspend));
 	#endif
 	

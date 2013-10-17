@@ -224,21 +224,23 @@ struct rk_lcdc_device_driver{
 	struct layer_par *def_layer_par;
 	int num_layer;
 	int num_buf;				//the num_of buffer
-	int fb_index_base;                     //the first fb index of the lcdc device
-	rk_screen *screen0;		      //some platform have only one lcdc,but extend
-	rk_screen *screen1;		      //two display devices for dual display,such as rk2918,rk2928
-	rk_screen *cur_screen;		     //screen0 is primary screen ,like lcd panel,screen1 is  extend screen,like hdmi
+	int fb_index_base;          //the first fb index of the lcdc device
+	rk_screen *screen0;		    //some platform have only one lcdc,but extend
+	rk_screen *screen1;		    //two display devices for dual display,such as rk2918,rk2928
+	rk_screen *cur_screen;		//screen0 is primary screen ,like lcd panel,screen1 is  extend screen,like hdmi
 	u32 pixclock;
 //$_rbox_$_modify_$_zhengyang modified for box display system	
 	int x_scale;
 	int y_scale;
 	int overlay;
+	int enable;
+	int *dsp_lut;
 //$_rbox_$_modify_$end
 	
-        char fb0_win_id;
-        char fb1_win_id;
-        char fb2_win_id;
-        struct mutex fb_win_id_mutex;
+	char fb0_win_id;
+	char fb1_win_id;
+	char fb2_win_id;
+	struct mutex fb_win_id_mutex;
 	
 	struct completion  frame_done;		  //sync for pan_display,whe we set a new frame address to lcdc register,we must make sure the frame begain to display
 	spinlock_t  cpl_lock; 			 //lock for completion  frame done
@@ -266,7 +268,6 @@ struct rk_lcdc_device_driver{
 	int (*read_dsp_lut)(struct rk_lcdc_device_driver *dev_drv,int *lut);
 	int (*lcdc_hdmi_process)(struct rk_lcdc_device_driver *dev_drv,int mode); //some lcdc need to some process in hdmi mode
 	int (*lcdc_rst)(struct rk_lcdc_device_driver *dev_drv);
-	
 };
 
 struct rk_fb_inf {

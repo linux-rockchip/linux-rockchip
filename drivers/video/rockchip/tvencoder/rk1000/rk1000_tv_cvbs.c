@@ -66,6 +66,8 @@ int rk1000_tv_pal_init(void)
 
 static int rk1000_cvbs_set_enable(struct rk_display_device *device, int enable)
 {
+	if(cvbs_monspecs.suspend)
+		return 0;
 	if(cvbs_monspecs.enable != enable || cvbs_monspecs.mode_set != rk1000.mode)
 	{
 		if(enable == 0 && cvbs_monspecs.enable)
