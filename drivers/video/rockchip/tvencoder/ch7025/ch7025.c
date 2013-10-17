@@ -138,21 +138,29 @@ void ch7025_standby(void)
 static void ch7025_early_suspend(struct early_suspend *h)
 {
 	DBG("ch7025 enter early suspend");
-	if(ch7025.ypbpr)
+	if(ch7025.ypbpr) {
 		ch7025.ypbpr->ddev->ops->setenable(ch7025.ypbpr->ddev, 0);
-	if(ch7025.cvbs)
+		ch7025.ypbpr->suspend = 1;
+	}
+	if(ch7025.cvbs) {
 		ch7025.cvbs->ddev->ops->setenable(ch7025.cvbs->ddev, 0);
+		ch7025.cvbs->suspend = 1;
+	}
 	return;
 }
 
 static void ch7025_early_resume(struct early_suspend *h)
 {
 	DBG("ch7025 exit early resume");
-	if( ch7025.cvbs && (ch7025.mode < TVOUT_YPbPr_720x480p_60) ) {
-		rk_display_device_enable((ch7025.cvbs)->ddev);
+	if(ch7025.cvbs) {
+		ch7025.cvbs->suspend = 0;
+		if(ch7025.mode < TVOUT_YPbPr_720x480p_60)
+			rk_display_device_enable((ch7025.cvbs)->ddev);
 	}
-	else if( ch7025.ypbpr && (ch7025.mode > TVOUT_CVBS_PAL) ) {
-		rk_display_device_enable((ch7025.ypbpr)->ddev);
+	else if( ch7025.ypbpr ) {
+		ch7025.ypbpr->suspend = 0;
+		if(ch7025.mode > TVOUT_CVBS_PAL)
+			rk_display_device_enable((ch7025.ypbpr)->ddev);
 	}
 	return;
 }

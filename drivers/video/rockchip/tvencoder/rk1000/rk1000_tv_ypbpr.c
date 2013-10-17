@@ -119,6 +119,8 @@ int rk1000_tv_Ypbpr720_60_init(void)
 
 static int rk1000_ypbpr_set_enable(struct rk_display_device *device, int enable)
 {
+	if(ypbpr_monspecs.suspend)
+		return 0;
 	if(ypbpr_monspecs.enable != enable || ypbpr_monspecs.mode_set != rk1000.mode)
 	{
 		if(enable == 0 && ypbpr_monspecs.enable)

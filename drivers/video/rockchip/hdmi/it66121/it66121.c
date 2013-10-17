@@ -31,8 +31,10 @@ static void it66121_irq_work_func(struct work_struct *work)
 {
 	struct hdmi *hdmi = it66121->hdmi;
 
-	it66121_poll_status(hdmi);
-	queue_delayed_work(it66121->workqueue, &it66121->delay_work, 50);
+	if(it66121->enable) {
+		it66121_poll_status(hdmi);
+		queue_delayed_work(it66121->workqueue, &it66121->delay_work, msecs_to_jiffies(50));
+	}
 }
 
 static irqreturn_t it66121_detect_irq(int irq, void *dev_id)
@@ -41,11 +43,44 @@ static irqreturn_t it66121_detect_irq(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
+static int it66121_enable(struct hdmi *hdmi)
+{
+	if(!it66121->enable) {
+		it66121->enable = 1;
+		queue_delayed_work(it66121->workqueue, &it66121->delay_work, msecs_to_jiffies(50));
+	}
+	return 0;
+}
+
+static int it66121_disable(struct hdmi *hdmi)
+{
+	it66121->enable = 0;
+	return 0;
+}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void it66121_early_suspend(struct early_suspend *h)
+{
+	struct hdmi *hdmi = it66121->hdmi;
+	printk("%s\n",__FUNCTION__);
+	hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	return;
+}
+
+static void it66121_early_resume(struct early_suspend *h)
+{
+	struct hdmi *hdmi = it66121->hdmi;
+	printk("%s\n",__FUNCTION__);		
+	hdmi_submit_work(hdmi, HDMI_RESUME_CTL, 0, NULL);
+	return;
+}
+#endif
+
 static struct hdmi_property it66121_property;
 
 static struct hdmi_ops it66121_ops = {
-//	.enable = it66121_enable,
-//	.disable = it66121_disable,
+	.enable = it66121_enable,
+	.disable = it66121_disable,
 	.getStatus = it66121_detect_hotplug,
 	.insert = it66121_insert,
 	.remove = it66121_remove,
@@ -71,6 +106,7 @@ static int it66121_i2c_probe(struct i2c_client *client,const struct i2c_device_i
     }
 	it66121->client = client;
 	it66121->io_irq_pin = client->irq;
+	it66121->enable = 1;
 	i2c_set_clientdata(client, it66121);
 	
 	it66121_property.name = (char*)client->name;
@@ -97,6 +133,13 @@ static int it66121_i2c_probe(struct i2c_client *client,const struct i2c_device_i
 		dev_err(&client->dev, "fail to register hdmi\n");
 		goto err_hdmi_register;
 	}
+	
+	#ifdef CONFIG_HAS_EARLYSUSPEND
+	it66121->early_suspend.suspend = it66121_early_suspend;
+	it66121->early_suspend.resume = it66121_early_resume;
+	it66121->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 10;
+	register_early_suspend(&it66121->early_suspend);
+	#endif
 	
 	//Power on it66121
 	if(it66121->io_pwr_pin != INVALID_GPIO) {

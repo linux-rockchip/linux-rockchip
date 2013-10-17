@@ -14,7 +14,7 @@ static struct rk1000_monspecs cvbs_monspecs;
 
 int rk1000_tv_ntsc_init(void)
 {
-	unsigned char Tv_encoder_regs[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	unsigned char Tv_encoder_regs[] = {0x00, 0x00, 0x00, 0x03, 0x00, 0x00};
 	unsigned char Tv_encoder_control_regs[] = {0x43, 0x01};
 	int i;
 	int ret;
@@ -40,7 +40,7 @@ int rk1000_tv_ntsc_init(void)
 
 int rk1000_tv_pal_init(void)
 {
-	unsigned char Tv_encoder_regs[] = {0x06, 0x00, 0x00, 0x00, 0x00, 0x00};
+	unsigned char Tv_encoder_regs[] = {0x06, 0x00, 0x00, 0x03, 0x00, 0x00};
 	unsigned char Tv_encoder_control_regs[] = {0x41, 0x01};
 	int i;
 	int ret;
@@ -66,6 +66,8 @@ int rk1000_tv_pal_init(void)
 
 static int rk1000_cvbs_set_enable(struct rk_display_device *device, int enable)
 {
+	if(cvbs_monspecs.suspend)
+		return 0;
 	if(cvbs_monspecs.enable != enable || cvbs_monspecs.mode_set != rk1000.mode)
 	{
 		if(enable == 0 && cvbs_monspecs.enable)

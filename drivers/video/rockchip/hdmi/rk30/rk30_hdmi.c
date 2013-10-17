@@ -207,6 +207,7 @@ static int __devinit rk30_hdmi_probe (struct platform_device *pdev)
 	spin_lock_init(&rk30_hdmi->irq_lock);
 	
 	/* request the IRQ */
+	rk30_hdmi->enable = 1;
 	ret = request_irq(rk30_hdmi->irq, hdmi_irq, 0, dev_name(&pdev->dev), rk30_hdmi);
 	if (ret)
 	{

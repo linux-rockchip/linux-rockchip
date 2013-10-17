@@ -196,6 +196,8 @@ static void ch7025_ypbpr_init(const struct fb_videomode *outmode)
 static int ypbpr_set_enable(struct rk_display_device *device, int enable)
 {
 	DBG("%s  %d", __FUNCTION__, enable);
+	if(ypbpr_monspecs.suspend)
+		return 0;
 	if(ypbpr_monspecs.enable != enable || (ypbpr_monspecs.mode_set != ch7025.mode))
 	{
 		if(enable == 0 && ypbpr_monspecs.enable)

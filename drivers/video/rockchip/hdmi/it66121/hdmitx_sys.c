@@ -134,10 +134,12 @@ static int HPDStatus = 0;
 
 int it66121_poll_status(struct hdmi *hdmi)
 {
-	char HPDChangeStatus;
-	CheckHDMITX((BYTE*)&HPDStatus, &HPDChangeStatus);
-	if(HPDChangeStatus)
+	struct it66121 *it66121 = hdmi->property->priv;
+	char HPDChangeStatus, hdpstatus;
+	CheckHDMITX((BYTE*)&hdpstatus, &HPDChangeStatus);
+	if(HPDStatus != hdpstatus && it66121->enable)
 		hdmi_submit_work(hdmi, HDMI_HPD_CHANGE, 10, NULL);
+	HPDStatus = hdpstatus;
 	return HDMI_ERROR_SUCESS;
 }
 
@@ -157,13 +159,14 @@ int it66121_remove(struct hdmi *hdmi)
 	HDMITX_DEBUG_PRINTF(("HPD OFF HDMITX_DisableVideoOutput()\n"));
     HDMITX_DisableVideoOutput();
     HDMITX_PowerDown();
+    HPDStatus = 0;
 	return HDMI_ERROR_SUCESS;
 }
 
 
 int it66121_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
 {
-	return (getHDMITX_EDIDBlock(block, buff) == TRUE)?HDMI_ERROR_SUCESS:HDMI_ERROR_FALSE;;
+	return (getHDMITX_EDIDBlock(block, buff) == TRUE)?HDMI_ERROR_SUCESS:HDMI_ERROR_FALSE;
 }
 
 int it66121_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)

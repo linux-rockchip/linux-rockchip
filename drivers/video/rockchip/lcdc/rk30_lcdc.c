@@ -56,14 +56,17 @@ static int  rk30_lcdc_clk_enable(struct rk30_lcdc_device *lcdc_dev)
 
 static int rk30_lcdc_clk_disable(struct rk30_lcdc_device *lcdc_dev)
 {
+	if(unlikely(!lcdc_dev->clk_on))
+		return 0;
 	spin_lock(&lcdc_dev->reg_lock);
 	lcdc_dev->clk_on = 0;
 	spin_unlock(&lcdc_dev->reg_lock);
-	
-	clk_disable(lcdc_dev->dclk);
-	clk_disable(lcdc_dev->hclk);
-	clk_disable(lcdc_dev->aclk);
-	clk_disable(lcdc_dev->pd);
+	if(lcdc_dev->id != 0) {
+		clk_disable(lcdc_dev->dclk);
+		clk_disable(lcdc_dev->hclk);
+		clk_disable(lcdc_dev->aclk);
+		clk_disable(lcdc_dev->pd);
+	}
 	printk("rk30 lcdc%d clk disable...\n",lcdc_dev->id);
 	return 0;
 }
@@ -304,23 +307,25 @@ static int win0_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 			{
 				printk(KERN_INFO "lcdc%d wakeup from standby!\n",lcdc_dev->id);
 				lcdc_msk_reg(lcdc_dev, SYS_CTRL0,m_LCDC_STANDBY,v_LCDC_STANDBY(0));
-			}
-			
-			lcdc_dev->atv_layer_cnt++;
+			}		
+			lcdc_dev->atv_layer_cnt |= LAYER_WIN0;
 		}
-		else if((lcdc_dev->atv_layer_cnt > 0) && (!open))
+		else if((lcdc_dev->atv_layer_cnt & LAYER_WIN0) && (!open))
 		{
-			lcdc_dev->atv_layer_cnt--;
+			lcdc_dev->atv_layer_cnt &= ~LAYER_WIN0;
 		}
-		lcdc_dev->driver.layer_par[0]->state = open;
+//		lcdc_dev->driver.layer_par[0]->state = open;
 		
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, m_W0_EN, v_W0_EN(open));
-		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
+
 		if(lcdc_dev->driver.overlay) {
 			lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_W1_ALPHA_MODE, v_W1_ALPHA_MODE(open));
 			lcdc_msk_reg(lcdc_dev, BLEND_CTRL, m_W1_BLEND_EN, v_W1_BLEND_EN(open));
 		}
-		#endif
+		if(!open) {
+			lcdc_writel(lcdc_dev, WIN0_YRGB_MST0, 0);
+			lcdc_writel(lcdc_dev, WIN0_CBR_MST0, 0);
+		}
 		if(!lcdc_dev->atv_layer_cnt)  //if no layer used,disable lcdc
 		{
 			printk(KERN_INFO "no layer of lcdc%d is used,go to standby!\n",lcdc_dev->id);
@@ -335,7 +340,6 @@ static int win0_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 }
 static int win1_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 {
-	unsigned char i = 0;
 	spin_lock(&lcdc_dev->reg_lock);
 	if(likely(lcdc_dev->clk_on))
 	{
@@ -346,13 +350,13 @@ static int win1_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 				printk(KERN_INFO "lcdc%d wakeup from standby!\n",lcdc_dev->id);
 				lcdc_msk_reg(lcdc_dev, SYS_CTRL0,m_LCDC_STANDBY,v_LCDC_STANDBY(0));
 			}
-			lcdc_dev->atv_layer_cnt++;
+			lcdc_dev->atv_layer_cnt |= LAYER_WIN1;
 		}
-		else if((lcdc_dev->atv_layer_cnt > 0) && (!open))
+		else if((lcdc_dev->atv_layer_cnt & LAYER_WIN1) && (!open))
 		{
-			lcdc_dev->atv_layer_cnt--;
+			lcdc_dev->atv_layer_cnt &= ~LAYER_WIN1;
 		}
-		lcdc_dev->driver.layer_par[1]->state = open;
+//		lcdc_dev->driver.layer_par[1]->state = open;
 		
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, m_W1_EN, v_W1_EN(open));
 		if(!lcdc_dev->atv_layer_cnt)  //if no layer used,disable lcdc
@@ -379,13 +383,13 @@ static int win2_open(struct rk30_lcdc_device *lcdc_dev,bool open)
 				printk(KERN_INFO "lcdc%d wakeup from standby!",lcdc_dev->id);
 				lcdc_msk_reg(lcdc_dev, SYS_CTRL0,m_LCDC_STANDBY,v_LCDC_STANDBY(0));
 			}
-			lcdc_dev->atv_layer_cnt++;
+			lcdc_dev->atv_layer_cnt |= LAYER_WIN2;
 		}
-		else if((lcdc_dev->atv_layer_cnt > 0) && (!open))
+		else if((lcdc_dev->atv_layer_cnt & LAYER_WIN2) && (!open))
 		{
-			lcdc_dev->atv_layer_cnt--;
+			lcdc_dev->atv_layer_cnt &= ~LAYER_WIN2;
 		}
-		lcdc_dev->driver.layer_par[1]->state = open;
+//		lcdc_dev->driver.layer_par[1]->state = open;
 		
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, m_W2_EN, v_W2_EN(open));
 
@@ -674,8 +678,8 @@ static  int win0_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		lcdc_writel(lcdc_dev, WIN0_ACT_INFO,v_ACT_WIDTH(xact) | v_ACT_HEIGHT(yact));
 		lcdc_writel(lcdc_dev, WIN0_DSP_ST, v_DSP_STX(xpos) | v_DSP_STY(ypos));
 		lcdc_writel(lcdc_dev, WIN0_DSP_INFO, v_DSP_WIDTH(par->xsize)| v_DSP_HEIGHT(par->ysize));
-		lcdc_msk_reg(lcdc_dev, WIN0_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,
-			v_COLORKEY_EN(1) | v_KEYCOLOR(0));
+		//lcdc_msk_reg(lcdc_dev, WIN0_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,
+		//	v_COLORKEY_EN(1) | v_KEYCOLOR(0));
 		switch(par->format) 
 		{
 			case XBGR888:
@@ -783,7 +787,7 @@ static int win1_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		lcdc_writel(lcdc_dev, WIN1_DSP_ST,v_DSP_STX(xpos) | v_DSP_STY(ypos));
 		lcdc_writel(lcdc_dev, WIN1_DSP_INFO,v_DSP_WIDTH(par->xsize) | v_DSP_HEIGHT(par->ysize));
 		// enable win1 color key and set the color to black(rgb=0)
-		lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(0) | v_KEYCOLOR(0));
+		//lcdc_msk_reg(lcdc_dev, WIN1_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(1) | v_KEYCOLOR(0));
 		switch(par->format)
 	    	{
 	    		case XBGR888:
@@ -848,7 +852,7 @@ static int win2_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		lcdc_writel(lcdc_dev, WIN2_DSP_ST,v_DSP_STX(xpos) | v_DSP_STY(ypos));
 		lcdc_writel(lcdc_dev, WIN2_DSP_INFO,v_DSP_WIDTH(par->xsize) | v_DSP_HEIGHT(par->ysize));
 		// enable win1 color key and set the color to black(rgb=0)
-		lcdc_msk_reg(lcdc_dev, WIN2_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(1) | v_KEYCOLOR(0));
+		//lcdc_msk_reg(lcdc_dev, WIN2_COLOR_KEY_CTRL, m_COLORKEY_EN | m_KEYCOLOR,v_COLORKEY_EN(1) | v_KEYCOLOR(0));
 		switch(par->format)
 	    	{
 	    		case XBGR888:

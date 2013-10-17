@@ -33,7 +33,7 @@ struct rk30_hdmi {
 	int				regbase_phy;
 	int				regsize_phy;
 	struct hdmi		*hdmi;
-	
+	int				enable;
 	int				pwr_mode;
 	
 	int				tmdsclk;

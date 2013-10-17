@@ -15,6 +15,7 @@
 struct rk1000_monspecs {
 	struct rk_display_device	*ddev;
 	unsigned int				enable;
+	unsigned int				suspend;
 	struct fb_videomode			*mode;
 	struct list_head			modelist;
 	unsigned int 				mode_set;

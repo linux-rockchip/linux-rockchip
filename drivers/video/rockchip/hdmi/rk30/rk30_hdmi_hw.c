@@ -688,15 +688,20 @@ int rk30_hdmi_enable(struct hdmi *hdmi)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
 
-	enable_irq(rk30_hdmi->irq);
+	if(!rk30_hdmi->enable) {
+		rk30_hdmi->enable = 1;
+		enable_irq(rk30_hdmi->irq);
+	}
 	return 0;
 }
 
 int rk30_hdmi_disable(struct hdmi *hdmi)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
-
-	disable_irq(rk30_hdmi->irq);
+	if(rk30_hdmi->enable) {
+		rk30_hdmi->enable = 0;
+		disable_irq(rk30_hdmi->irq);
+	}
 	return 0;
 }
 

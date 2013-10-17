@@ -131,6 +131,8 @@ static int ch7025_cvbs_init(struct fb_videomode *mode)
 static int cvbs_set_enable(struct rk_display_device *device, int enable)
 {
 	DBG("%s start enable %d", __FUNCTION__, enable);
+	if(cvbs_monspecs.suspend)
+		return 0;
 	if(cvbs_monspecs.enable != enable || cvbs_monspecs.mode_set != ch7025.mode)
 	{
 		if(enable == 0 && cvbs_monspecs.enable)

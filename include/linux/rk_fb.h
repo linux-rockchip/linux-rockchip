@@ -191,6 +191,12 @@ typedef enum _TRSP_MODE
     TRSP_INVAL
 } TRSP_MODE;
 
+enum {
+	LAYER_WIN0 = 0x1,
+	LAYER_WIN1 = 0x2,
+	LAYER_WIN2 = 0x4,
+};
+
 struct layer_par {
     char name[5];
     int id;
@@ -231,6 +237,7 @@ struct rk_lcdc_device_driver{
 	int x_scale;
 	int y_scale;
 	int overlay;
+	int enable;
 	int *dsp_lut;
         char fb0_win_id;
         char fb1_win_id;

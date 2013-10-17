@@ -5,8 +5,11 @@
 #include "hdmitx.h"
 #include "hdmitx_sys.h"
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
+
 #define IT66121_I2C_RATE	100 * 1000
-#define delay1ms	msleep
 
 #ifdef CONFIG_HDMI_DEBUG
 #define DBG(format, ...) \
@@ -46,6 +49,11 @@ struct it66121 {
 	struct work_struct	irq_work;
 	struct delayed_work delay_work;
 	struct workqueue_struct *workqueue;
+	
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend	early_suspend;
+#endif
+	int enable;
 };
 
 extern int it66121_initial(void);
@@ -59,4 +67,5 @@ extern int it66121_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio);
 extern int it66121_set_output(struct hdmi *hdmi, int enable);
 extern BOOL i2c_write_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device );
 extern BOOL i2c_read_byte( BYTE address,BYTE offset,BYTE byteno,BYTE *p_data,BYTE device );
+extern void delay1ms(int ms);
 #endif
