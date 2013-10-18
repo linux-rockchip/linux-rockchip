@@ -55,10 +55,10 @@
 #if defined(CONFIG_MFD_RK610)
 #include <linux/mfd/rk610_core.h>
 #endif
-//$_rbox_$_modify_$ zhengyang modified for box
+
 #include <linux/display-sys.h>
 #include <linux/rk_fb.h>
-//$_rbox_$_modify_$ zhengyang modified end
+
 #if defined(CONFIG_SPIM_RK29)
 #include "../../../drivers/spi/rk29_spim.h"
 #endif
@@ -69,11 +69,10 @@
 #include "../../../drivers/misc/gps/rk_gps/rk_gps.h"
 #endif
 
-/*$_rbox_$_modify_$_huangzhibao begin*/
 #ifdef CONFIG_RK_REMOTECTL
 #include <mach/remotectl.h>
 #endif
-/*$_rbox_$_modify_$_huangzhibao endif*/
+
 #if defined(CONFIG_MT6620)
 #include <linux/gps.h>
 #endif
@@ -905,7 +904,7 @@ static struct platform_device rk30_device_adc_battery = {
         },
 };
 #endif
-/*$_rbox_$_modify_$_huangzhibao_begin$_20120508_$*/
+
 #ifdef CONFIG_RK_REMOTECTL
 
 void rk30_remotectl_iomux(void)
@@ -928,7 +927,7 @@ static struct platform_device rk30_device_remotectl = {
 	},
 };
 #endif
-/*$_rbox_$_modify_$_huangzhibao_end$_20120508_$*/
+
 #ifdef CONFIG_RK30_PWM_REGULATOR
 static int pwm_voltage_map[] = {
 	800000,825000,850000, 875000,900000, 925000 ,950000, 975000,1000000, 1025000, 1050000, 1075000, 1100000, 1125000, 1150000, 1175000, 1200000, 1225000, 1250000, 1275000, 1300000, 1325000, 1350000,1375000
@@ -1166,7 +1165,6 @@ static struct platform_device device_mt6622 = {
 };	
 #endif
 
-/*$_rbox_$_modify_$_zhengyang_begin$_20130407_$*/
 /*
  * Codec for the ASoC Rockchip HDMI machine driver
  */
@@ -1185,7 +1183,64 @@ static struct platform_device rockchip_hdmi_audio = {
 	.id	= -1,
 };
 #endif
-/*$_rbox_$_modify_$_zhengyang_end$_20130407_$*/
+
+#ifdef CONFIG_LEDS_GPIO_PLATFORM
+static struct gpio_led rk3188_leds[] = {	
+#ifdef CONFIG_DISPLAY_KEY_LED_CONTROL
+	#ifdef CONFIG_RK_HDMI
+	{
+		#ifdef CONFIG_IT66121
+		.name = "it66121",
+		#endif
+		.gpio = RK30_PIN0_PC6,
+		.active_low = 0,
+		.retain_state_suspended = 0,
+		.default_state = LEDS_GPIO_DEFSTATE_OFF,
+	},
+	#endif
+	#ifdef CONFIG_RK_VGA
+	{
+		.name = "vga",
+		.gpio = RK30_PIN0_PC5,
+		.active_low = 0,
+		.retain_state_suspended = 0,
+		.default_state = LEDS_GPIO_DEFSTATE_OFF,
+	},
+	#endif
+	#if defined(CONFIG_CH7025_7026_TVOUT_YPBPR) || defined(CONFIG_RK610_TVOUT_YPbPr) || defined(CONFIG_RK1000_TVOUT_YPbPr)
+	{
+		.name = "ypbpr",
+		.gpio = RK30_PIN0_PC4,
+		.active_low = 0,
+		.retain_state_suspended = 0,
+		.default_state = LEDS_GPIO_DEFSTATE_OFF,
+	},
+	#endif
+	#if defined(CONFIG_CH7025_7026_TVOUT_CVBS) || defined(CONFIG_RK610_TVOUT_CVBS) || defined(CONFIG_RK1000_TVOUT_CVBS)
+	{
+		.name = "cvbs",
+		.gpio = RK30_PIN0_PC3,
+		.active_low = 0,
+		.retain_state_suspended = 0,
+		.default_state = LEDS_GPIO_DEFSTATE_OFF,
+	},
+	#endif
+#endif
+};
+
+static struct gpio_led_platform_data rk3188_leds_pdata = {
+	.leds = rk3188_leds,
+	.num_leds = ARRAY_SIZE(rk3188_leds),
+};
+
+static struct platform_device rk3188_device_gpio_leds = {
+	.name	= "leds-gpio",
+	.id	= -1,
+	.dev	= {
+		.platform_data  = &rk3188_leds_pdata,
+	},
+};
+#endif
 
 static struct platform_device *devices[] __initdata = {
 
@@ -1212,24 +1267,25 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_MT5931_MT6622
 	&device_mt6622,
 #endif
-/*$_rbox_$_modify_$_huangzhibao_begin$_20120508_$*/
+
 #ifdef CONFIG_RK_REMOTECTL	
     &rk30_device_remotectl,
 #endif
-/*$_rbox_$_modify_$_huangzhibao_end$_20120508_$*/
+
 #if defined(CONFIG_MT6229)
 	&rk29_device_mt6229,
 #endif
-/*$_rbox_$_modify_$_zhengyang_begin$_20130407_$*/
+
 #ifdef CONFIG_SND_SOC_RK_HDMI_CODEC
 	&rockchip_hdmi_codec,
 #endif
 #ifdef CONFIG_SND_RK_SOC_HDMI
 	&rockchip_hdmi_audio,
 #endif
-/*$_rbox_$_modify_$_zhengyang_end$_20130407_$*/
+#ifdef CONFIG_LEDS_GPIO_PLATFORM
+	&rk3188_device_gpio_leds,
+#endif
 };
-
 
 static int rk_platform_add_display_devices(void)
 {
@@ -1255,9 +1311,8 @@ static int rk_platform_add_display_devices(void)
 	__rk_platform_add_display_devices(fb,lcdc0,lcdc1,bl);
 
 	return 0;
-	
 }
-//$_rbox_$_modify_$ zhengyang modified for box
+
 static struct rkdisplay_platform_data hdmi_data = {
 	.property 		= DISPLAY_MAIN,
 	.video_source 	= DISPLAY_SOURCE_LCDC1,
@@ -1274,7 +1329,7 @@ static struct rkdisplay_platform_data tv_data = {
 	.io_switch_pin	= RK30_PIN2_PD7,
 };
 #endif
-//$_rbox_$_modify_$ zhengyang modified end
+
 
 // i2c
 #ifdef CONFIG_I2C0_RK30
@@ -1344,7 +1399,7 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 		.platform_data = &l3g4200d_info,
 	},
 #endif
-//$_rbox_$_modify_$ zhengyang modified for box
+
 //#if defined (CONFIG_SND_SOC_RK1000)
 //	{
 //		.type          = "rk1000_i2c_codec",
@@ -1357,7 +1412,7 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 //		.flags         = 0,
 //	},
 //#endif
-//$_rbox_$_modify_$ zhengyang modified end
+
 #if defined (CONFIG_SND_SOC_RT5631)
         {
                 .type                   = "rt5631",
@@ -1777,7 +1832,7 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.platform_data = &cm3217_info,
 	},
 #endif
-//$_rbox_$_modify_$ zhengyang modified for box
+
 #ifdef CONFIG_IT66121
 {
 		.type		= "it66121",
@@ -1796,7 +1851,7 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 //		.platform_data 	= &rk_hdmi_pdata,
 //	},
 //#endif
-//$_rbox_$_modify_$ zhengyang modified end
+
 };
 #endif
 
@@ -1838,7 +1893,7 @@ static struct i2c_board_info __initdata i2c4_info[] = {
 		},
 #endif
 #endif
-//$_rbox_$_modify_$ zhengyang modified for box
+
 #if defined (CONFIG_MFD_RK1000)
 	{
 		.type			= "rk1000_control",
@@ -1863,7 +1918,6 @@ static struct i2c_board_info __initdata i2c4_info[] = {
     },
 #endif
 #endif
-//$_rbox_$_modify_$ zhengyang modified end
 };
 #endif
 

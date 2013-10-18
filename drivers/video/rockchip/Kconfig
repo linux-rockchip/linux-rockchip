@@ -64,6 +64,12 @@ config THREE_FB_BUFFER
         help
            select y if android support three buffer,like Jelly Bean
 
+config DISPLAY_KEY_LED_CONTROL
+	bool "Enable LED control for display interface."
+	depends on FB_ROCKCHIP
+	default n
+	help
+	   slect y if you need use led to indicate display status.
 
 source "drivers/video/rockchip/lcdc/Kconfig"
 source "drivers/video/rockchip/hdmi/Kconfig"
