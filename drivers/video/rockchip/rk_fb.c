@@ -256,24 +256,27 @@ static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
     	}
 //$_rbox_$_modify_$ zhengyang modified for box display system
 		#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
-			if(rk_fb_lcdc_state() == 2)
+			if(inf->num_lcdc == 2)
 			{
 				info2 = inf->fb[inf->num_fb>>1];
 				dev_drv1 = (struct rk_lcdc_device_driver * )info2->par;
-				par2 = dev_drv1->layer_par[layer_id];
-				par2->y_offset = par->y_offset;
-				//memcpy(info2->screen_base+par2->y_offset,info->screen_base+par->y_offset,
-				//	var->xres*var->yres*var->bits_per_pixel>>3);
-				#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
-				fb_copy_by_ipp(info2,info,par->y_offset);
-				#endif
-				dev_drv1->pan_display(dev_drv1,layer_id);
+				if(dev_drv1->enable) {
+					par2 = dev_drv1->layer_par[layer_id];
+					par2->y_offset = par->y_offset;
+					//memcpy(info2->screen_base+par2->y_offset,info->screen_base+par->y_offset,
+					//	var->xres*var->yres*var->bits_per_pixel>>3);
+					#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
+					fb_copy_by_ipp(info2,info,par->y_offset);
+					#endif
+					dev_drv1->pan_display(dev_drv1,layer_id);
+				}
 				//queue_delayed_work(inf->workqueue, &inf->delay_work,0);
 			}
 		#endif
 //$_rbox_$_modify_$ zhengyang modified end
 //	#endif
-	dev_drv->pan_display(dev_drv,layer_id);
+	if(dev_drv->enable)
+		dev_drv->pan_display(dev_drv,layer_id);
 	#ifdef	CONFIG_FB_MIRRORING
 	if(video_data_to_mirroring!=NULL)
 		video_data_to_mirroring(info,NULL);
@@ -644,7 +647,7 @@ static int rk_fb_set_par(struct fb_info *info)
 	par->xvir =  var->xres_virtual;		// virtual resolution	 stride --->LCDC_WINx_VIR
 	par->yvir =  var->yres_virtual;
 	#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
-	if(rk_fb_lcdc_state() == 2)
+	if(inf->num_lcdc == 2 && dev_drv1->enable)
 	{
 		if(info != info2)
 		{
@@ -678,7 +681,8 @@ static int rk_fb_set_par(struct fb_info *info)
 		//$_rbox_$_modify_$end
 	}
 #endif
-	dev_drv->set_par(dev_drv,layer_id);
+	if(dev_drv->enable)
+		dev_drv->set_par(dev_drv,layer_id);
 	return 0;
 }
 
@@ -872,7 +876,7 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 	
 	ret = dev_drv->load_screen(dev_drv,1);
 	for(i = 0; i < dev_drv->num_layer; i++) {
-		#if defined(CONFIG_NO_DUAL_DISP) && defined(CONFIG_LCDC_OVERLAY_ENABLE) 
+		#if defined(CONFIG_NO_DUAL_DISP)
 		info = inf->fb[i];
 		dev_drv1 = (struct rk_lcdc_device_driver * )info->par;
 		if(dev_drv1 != dev_drv) {
@@ -887,7 +891,7 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 		#endif
 		layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
 		if(dev_drv->layer_par[layer_id]) {
-			#if defined(CONFIG_NO_DUAL_DISP) && defined(CONFIG_LCDC_OVERLAY_ENABLE) 
+			#if defined(CONFIG_NO_DUAL_DISP)
 			if(dev_drv1 && dev_drv1->layer_par[layer_id])
 				dev_drv->layer_par[layer_id]->state = dev_drv1->layer_par[layer_id]->state;
 			#endif

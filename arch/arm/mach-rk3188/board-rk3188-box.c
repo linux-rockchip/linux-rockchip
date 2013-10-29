@@ -1322,7 +1322,11 @@ static struct rkdisplay_platform_data hdmi_data = {
 
 #if defined(CONFIG_RK1000_TVOUT) || defined(CONFIG_MFD_RK1000)
 static struct rkdisplay_platform_data tv_data = {
-	.property 		= DISPLAY_MAIN,//DISPLAY_AUX,
+	#ifdef CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL
+	.property 		= DISPLAY_AUX,
+	#else
+	.property 		= DISPLAY_MAIN,
+	#endif
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 	.io_pwr_pin 	= INVALID_GPIO,
 	.io_reset_pin 	= RK30_PIN3_PD4,
