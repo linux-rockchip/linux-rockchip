@@ -11,6 +11,7 @@ obj-y += mem_reserve.o
 obj-y += config.o
 obj-y += sram.o
 obj-y += iomux.o
+obj-y += efuse.o
 obj-$(CONFIG_DDR_TEST) += memtester.o ddr_test.o
 obj-$(CONFIG_DDR_FREQ) += ddr_freq.o
 obj-$(CONFIG_DVFS) += dvfs.o

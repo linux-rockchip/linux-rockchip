@@ -27,6 +27,7 @@
 #include <mach/pmu.h>
 #include <mach/dvfs.h>
 #include <mach/ddr.h>
+#include <plat/efuse.h>
 
 #define MHZ			(1000*1000)
 #define KHZ			(1000)
@@ -3408,6 +3409,8 @@ static void clk_dump_regs(void);
 void __init _rk30_clock_data_init(unsigned long gpll,unsigned long cpll,int flags)
 {
 	struct clk_lookup *lk;
+
+        rk_efuse_init();
 	
 	clk_register_dump_ops(&dump_ops);
 	clk_register_default_ops_clk(&def_ops_clk);
