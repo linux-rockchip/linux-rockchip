@@ -274,7 +274,7 @@ static int rk1000_tv_control_probe(struct i2c_client *client,const struct i2c_de
 	// RK1000 I2C Reg need dclk, so we open lcdc.
 	memset(&screen, 0, sizeof(struct rk29fb_screen));
 	set_lcd_info(&screen, NULL);
-	FB_Switch_Screen(&screen, 1);
+	FB_Switch_Screen(&screen, 2);
 	//Power down RK1000 output DAC.
     buff = 0x07;  
     rc = rk1000_tv_control_set_reg(client, 0x03, &buff, 1);
@@ -283,7 +283,6 @@ static int rk1000_tv_control_probe(struct i2c_client *client,const struct i2c_de
     	dev_err(&client->dev, "rk1000_tv_control probe error %d\n", rc);
     	return -EINVAL;
     }
-    
 #ifdef CONFIG_RK1000_TVOUT_YPbPr
 	rk1000_register_display_YPbPr(&client->dev);
 #endif

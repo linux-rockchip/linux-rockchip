@@ -875,6 +875,9 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 		memcpy(dev_drv->cur_screen, screen, sizeof(rk_screen));
 	
 	ret = dev_drv->load_screen(dev_drv,1);
+	
+	if(enable != 1)	return;
+		
 	for(i = 0; i < dev_drv->num_layer; i++) {
 		#if defined(CONFIG_NO_DUAL_DISP)
 		info = inf->fb[i];
@@ -895,11 +898,12 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 			if(dev_drv1 && dev_drv1->layer_par[layer_id])
 				dev_drv->layer_par[layer_id]->state = dev_drv1->layer_par[layer_id]->state;
 			#endif
-			if( dev_drv->layer_par[layer_id]->state)
+			if( dev_drv->layer_par[layer_id]->state) {
 				dev_drv->open(dev_drv, layer_id, 1);
+				ret = info->fbops->fb_set_par(info);
+				ret = info->fbops->fb_pan_display(&info->var, info);
+			}
 		}
-		ret = info->fbops->fb_set_par(info);
-		ret = info->fbops->fb_pan_display(&info->var, info);
 	}
 	return 0;
 }
