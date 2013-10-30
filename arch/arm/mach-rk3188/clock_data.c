@@ -29,6 +29,7 @@
 #include <mach/dvfs.h>
 #include <mach/ddr.h>
 #include <mach/cpu.h>
+#include <plat/efuse.h>
 
 #define MHZ			(1000UL * 1000UL)
 #define KHZ			(1000UL)
@@ -3597,6 +3598,8 @@ void rk_dump_clock_info(void);
 void __init _rk30_clock_data_init(unsigned long gpll, unsigned long cpll, int flags)
 {
 	struct clk_lookup *lk;
+
+        rk_efuse_init();
 
 	if (soc_is_rk3188plus()) {
 		arm_pll_clk.recalc = plus_plls_clk_recalc;

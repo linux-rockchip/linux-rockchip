@@ -89,3 +89,44 @@ int rk3028_version_val(void)
 {
 	return efuse_buf[5];
 }
+
+#ifdef CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#define EFUSE_IOCTL_MAGIC                         'M'
+
+#define EFUSE_DECRYPT                         _IOW(EFUSE_IOCTL_MAGIC, 0x00, int)
+#define EFUSE_ECRYPT                          _IOW(EFUSE_IOCTL_MAGIC, 0x01, int)
+
+static long proc_efuse_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+       int ret = 0,i;
+       u8 *num = (u8 *)arg;
+       switch (cmd) {
+               case EFUSE_DECRYPT: {
+                       for(i=0; i<16; i++){
+                       num[i] =  efuse_buf[i+6];
+       }
+                       
+               } break;
+               case EFUSE_ECRYPT: {
+                       
+               } break;
+               
+               default: {
+               
+               } break;
+       }
+
+       return ret;
+} 
+static const struct file_operations proc_efuse_fops = {
+       .unlocked_ioctl = proc_efuse_ioctl,
+};
+ 
+static int __init codec_proc_init (void)
+{
+       proc_create ("efuse", 0, NULL, &proc_efuse_fops);
+       return 0;
+}
+late_initcall (codec_proc_init);
+#endif /* CONFIG_PROC_FS */

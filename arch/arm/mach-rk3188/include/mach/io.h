@@ -157,6 +157,11 @@
 #define RK30_I2C1_PHYS          0x2002e000
 #define RK30_I2C1_BASE         RK30_IO_TO_VIRT1(RK30_I2C1_PHYS)
 #define RK30_I2C1_SIZE          SZ_8K
+
+#define RK30_EFUSE_PHYS         0x20010000
+#define RK30_EFUSE_BASE                RK30_IO_TO_VIRT1(RK30_EFUSE_PHYS)
+#define RK30_EFUSE_SIZE         SZ_16K
+
 #define RK30_PWM01_PHYS         0x20030000
 #define RK30_PWM01_BASE         RK30_IO_TO_VIRT1(RK30_PWM01_PHYS)
 #define RK30_PWM01_SIZE         SZ_16K
