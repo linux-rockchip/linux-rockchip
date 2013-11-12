@@ -685,6 +685,7 @@ static int win1_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 		switch(par->format)
 	    	{
 	    		case XBGR888:
+			case ABGR888:
 				lcdc_writel(lcdc_dev, WIN1_VIR,v_ARGB888_VIRWIDTH(xvir));
 				lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_W1_RGB_RB_SWAP,v_W1_RGB_RB_SWAP(1));
 				break;
@@ -706,7 +707,7 @@ static int win1_set_par(struct rk30_lcdc_device *lcdc_dev,rk_screen *screen,
 				lcdc_msk_reg(lcdc_dev,SYS_CTRL1,m_W1_RGB_RB_SWAP,v_W1_RGB_RB_SWAP(0));
 				break;
 		        default:
-				printk("%s:un supported formate\n",__func__);
+				printk("%s:un supported format\n",__func__);
 				break;
 	    	}
 		
