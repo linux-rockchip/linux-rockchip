@@ -2815,7 +2815,7 @@ static void __init rk2928_clock_common_init(unsigned long gpll_rate, unsigned lo
 	rk2928_clock_common_i2s_init();
 
 	// spi
-	clk_set_rate_nolock(&clk_spi, clk_spi.parent->rate);
+	clk_set_rate_nolock(&clk_spi, 48 * 1000 * 1000);//clk_spi.parent->rate);
 
 	// uart
 #if 0
