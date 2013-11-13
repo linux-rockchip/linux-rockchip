@@ -46,6 +46,7 @@
 #include <mach/io.h>
 #include <mach/gpio.h>
 #include <mach/iomux.h>
+#include <plat/efuse.h>
 
 #if defined(CONFIG_SPIM_RK29)
 #include "../../../drivers/spi/rk29_spim.h"
@@ -1123,10 +1124,11 @@ static void __init rk30_reserve(void)
 *	clock
 ************************************************************/
 static struct cpufreq_frequency_table dvfs_arm_table[] = {
-	{.frequency = 312 * 1000,       .index = 1200 * 1000},
-	{.frequency = 504 * 1000,       .index = 1200 * 1000},
+	{.frequency = 312 * 1000,       .index = 950 * 1000},
+	{.frequency = 504 * 1000,       .index = 1000 * 1000},
 	{.frequency = 816 * 1000,       .index = 1200 * 1000},
-	//{.frequency = 1008 * 1000,      .index = 1200 * 1000},
+	{.frequency = 912 * 1000,       .index = 1250 * 1000},
+	{.frequency = 1008 * 1000,      .index = 1350 * 1000},
 	//{.frequency = 1200 * 1000,      .index = 1200 * 1000},
 	//{.frequency = 1416 * 1000,      .index = 1200 * 1000},
 	//{.frequency = 1608 * 1000,      .index = 1200 * 1000},
@@ -1134,10 +1136,8 @@ static struct cpufreq_frequency_table dvfs_arm_table[] = {
 };
 
 static struct cpufreq_frequency_table dvfs_gpu_table[] = {
-	{.frequency = 100 * 1000,       .index = 1200 * 1000},
 	{.frequency = 200 * 1000,       .index = 1200 * 1000},
 	{.frequency = 266 * 1000,       .index = 1200 * 1000},
-	{.frequency = 300 * 1000,       .index = 1200 * 1000},
 	{.frequency = 400 * 1000,       .index = 1200 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
@@ -1149,10 +1149,13 @@ static struct cpufreq_frequency_table dvfs_ddr_table[] = {
 	{.frequency = CPUFREQ_TABLE_END},
 };
 
+extern void adjust_dvfs_table(int soc_version, struct cpufreq_frequency_table *table);
 void __init board_clock_init(void)
 {
 	rk2928_clock_data_init(periph_pll_default, codec_pll_default, RK30_CLOCKS_DEFAULT_FLAGS);
 	//dvfs_set_arm_logic_volt(dvfs_cpu_logic_table, cpu_dvfs_table, dep_cpu2core_table);	
+	printk(KERN_INFO "rk3026 soc version:%d\n", rk3026_version_val());
+	adjust_dvfs_table(rk3026_version_val(), dvfs_arm_table);
 	dvfs_set_freq_volt_table(clk_get(NULL, "cpu"), dvfs_arm_table);
 	dvfs_set_freq_volt_table(clk_get(NULL, "gpu"), dvfs_gpu_table);
 	dvfs_set_freq_volt_table(clk_get(NULL, "ddr"), dvfs_ddr_table);

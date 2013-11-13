@@ -77,6 +77,64 @@ static int rk_dvfs_clk_notifier_event(struct notifier_block *this,
 static struct notifier_block rk_dvfs_clk_notifier = {
 	.notifier_call = rk_dvfs_clk_notifier_event,
 };
+
+static struct cpufreq_frequency_table rk3026_arm_adjust_table_v0[] = {
+	{.frequency = 312 * 1000,       .index = 250 * 1000},
+	{.frequency = 504 * 1000,       .index = 200 * 1000},
+	{.frequency = 816 * 1000,       .index = 50  * 1000},
+	{.frequency = 912 * 1000,       .index = 100 * 1000},
+	{.frequency = CPUFREQ_TABLE_END},
+};
+
+static struct cpufreq_frequency_table rk3026_arm_adjust_table_v1[] = {
+	{.frequency = 504 * 1000,       .index = 50 * 1000},
+	{.frequency = 816 * 1000,       .index = 75  * 1000},
+	{.frequency = 912 * 1000,       .index = 100 * 1000},
+	{.frequency = 1008 * 1000,       .index = 50 * 1000},
+	{.frequency = CPUFREQ_TABLE_END},
+};
+
+#define rk3026_arm_adjust_table_v2 rk3026_arm_adjust_table_v1
+
+static struct cpufreq_frequency_table rk3026_arm_adjust_table_v3[] = {
+	{.frequency = CPUFREQ_TABLE_END},
+};
+
+#define rk3026_arm_adjust_table_v4 rk3026_arm_adjust_table_v3
+
+static struct cpufreq_frequency_table *rk3026_dvfs_arm_adjust_table[] =
+{
+	rk3026_arm_adjust_table_v0,
+	rk3026_arm_adjust_table_v1,
+	rk3026_arm_adjust_table_v2,
+	rk3026_arm_adjust_table_v3,
+	rk3026_arm_adjust_table_v4,
+
+};
+
+#define RK3026_VERSION_NUMBER sizeof(rk3026_dvfs_arm_adjust_table)/sizeof(struct cpufreq_frequency_table *)
+
+void adjust_dvfs_table(int soc_version, struct cpufreq_frequency_table *table)
+{
+	int i, j;
+
+	struct cpufreq_frequency_table *adjust_table;
+
+	if ((soc_version + 1) > RK3026_VERSION_NUMBER){
+		soc_version = 0;
+	}
+
+	adjust_table = rk3026_dvfs_arm_adjust_table[soc_version];
+
+	for (i = 0; adjust_table[i].frequency != CPUFREQ_TABLE_END; i++){
+		for(j = 0; table[j].frequency != CPUFREQ_TABLE_END; j++){
+			if (table[j].frequency == adjust_table[i].frequency){
+				table[j].index += adjust_table[i].index;
+			}
+		}
+	}
+}
+
 struct lkg_maxvolt {
 	int leakage_level;
 	unsigned int maxvolt;
