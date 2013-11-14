@@ -92,9 +92,9 @@ static struct lkg_maxvolt lkg_volt_table[] = {
 #else
 /* avdd_com & vdd_arm short circuit */
 static struct lkg_maxvolt lkg_volt_table[] = {
-	{.leakage_level = 3,	.maxvolt = 1350 * 1000},
-	{.leakage_level = 5,	.maxvolt = 1300 * 1000},
-	{.leakage_level = 15,	.maxvolt = 1250 * 1000},
+	{.leakage_level = 9000,		.maxvolt = 1350 * 1000},
+	{.leakage_level = 15000,	.maxvolt = 1300 * 1000},
+	{.leakage_level = 55000,	.maxvolt = 1250 * 1000},
 };
 #endif
 #define LOW_LEAKAGE_BOUND	2
@@ -127,6 +127,7 @@ void dvfs_adjust_table_lmtvolt(struct clk *clk, struct cpufreq_frequency_table *
 		 * about Freq nandc/Volt log.
 		 *
 		 */
+		return;
 
 		unsigned long delayline_val = 0;
 		unsigned long high_delayline = 0, low_delayline = 0;

@@ -107,6 +107,13 @@ int rk_tflag(void)
 	return efuse_buf[22] & (0x1 << 3);
 }
 
+int efuse_version_val(void)
+{
+	int ret = efuse_buf[4] & (~(0x1 << 3));
+	printk("%s: efuse version = %02x\n", __func__, ret);
+	return ret;
+}
+
 int rk_leakage_val(void)
 {
 	/*
@@ -115,10 +122,51 @@ int rk_leakage_val(void)
 	 * 	0:enable leakage level auto voltage scale
 	 * 	1:disalbe leakage level avs
 	 */
-	if ((efuse_buf[22] >> 2) & 0x1)
+	
+	int leakage_level = 0;
+	int leakage_val = 0;
+	int efuse_version = efuse_version_val();
+
+	if ((efuse_buf[22] >> 2) & 0x1){
 		return 0;
-	else
-		return  (efuse_buf[22] >> 4) & 0x0f;
+	} else {
+#if defined(CONFIG_ARCH_RK3066B) || defined(CONFIG_ARCH_RK3026)
+		if (efuse_version == 0x31){
+			leakage_level = ((efuse_buf[22] >> 4) & 0x0f);
+			if (leakage_level)
+				leakage_val = 1500 * (leakage_level - 1);
+			else
+				return 0;
+		} else if (efuse_version == 0x41){
+			leakage_level = ((efuse_buf[22] >> 4) & 0x0f) + ((efuse_buf[23] & 0x03) << 4);
+			if (leakage_level)
+				leakage_val = 1000 * (leakage_level - 1);
+			else
+				return 0;
+		} else {
+			return 0;
+		}
+
+		leakage_val = leakage_val < 1000 ? 1000 : leakage_val;
+#elif defined(CONFIG_ARCH_RK3188)
+		leakage_level = (efuse_buf[22] >> 4) & 0x0f;
+		if (leakage_level){
+			if (leakage_level <= 10)
+				leakage_val = 3000 * (leakage_level - 1);
+			else {
+				leakage_val = 30000 + 5000 * (leakage_level - 1 - 10);
+			}
+			if (efuse_version == 0x51){
+				leakage_val += 1000 * ((efuse_buf[23] & 0x3) + 1);
+			}
+		} else {
+			return 0;
+		}
+
+		leakage_val = leakage_val < 1000 ? 1000 : leakage_val;
+#endif
+		return leakage_val;
+	}
 }
 
 int rk3028_version_val(void)
@@ -128,5 +176,9 @@ int rk3028_version_val(void)
 
 int rk3026_version_val(void)
 {
-	return efuse_buf[5];
+	if (efuse_buf[24]){
+		return efuse_buf[24];
+	} else {
+		return efuse_buf[5];
+	}
 }

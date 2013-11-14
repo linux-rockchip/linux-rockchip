@@ -139,7 +139,7 @@ struct lkg_maxvolt {
 	int leakage_level;
 	unsigned int maxvolt;
 };
-#if 0
+
 #if 0
 /* avdd_com & vdd_arm separate circuit */
 static struct lkg_maxvolt lkg_volt_table[] = {
@@ -150,8 +150,8 @@ static struct lkg_maxvolt lkg_volt_table[] = {
 #else
 /* avdd_com & vdd_arm short circuit */
 static struct lkg_maxvolt lkg_volt_table[] = {
-	{.leakage_level = 3,	.maxvolt = 1350 * 1000},
-	{.leakage_level = 15,	.maxvolt = 1250 * 1000},
+	{.leakage_level = 3000,		.maxvolt = 1400 * 1000},
+	{.leakage_level = 15000,	.maxvolt = 1400 * 1000},
 };
 #endif
 static int leakage_level = 0;
@@ -183,6 +183,8 @@ void dvfs_adjust_table_lmtvolt(struct clk *clk, struct cpufreq_frequency_table *
 		 *
 		 */
 
+		return 0;
+		
 		unsigned long delayline_val = 0;
 		unsigned long high_delayline = 0, low_delayline = 0;
 		unsigned long rate_nandc = 0;
@@ -220,7 +222,6 @@ void dvfs_adjust_table_lmtvolt(struct clk *clk, struct cpufreq_frequency_table *
 		}
 	}
 }
-#endif
 
 //static struct clk_node *dvfs_clk_cpu;
 static struct vd_node vd_core;

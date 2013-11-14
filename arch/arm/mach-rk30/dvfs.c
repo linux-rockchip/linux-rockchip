@@ -83,9 +83,9 @@ struct lkg_maxvolt {
 	unsigned int maxvolt;
 };
 static struct lkg_maxvolt lkg_volt_table[] = {
-	{.leakage_level = 3,	.maxvolt = 1350 * 1000},
-	{.leakage_level = 6,	.maxvolt = 1300 * 1000},
-	{.leakage_level = 15,	.maxvolt = 1250 * 1000},
+	{.leakage_level = 4500,		.maxvolt = 1350 * 1000},
+	{.leakage_level = 90000,	.maxvolt = 1300 * 1000},
+	{.leakage_level = 22500,	.maxvolt = 1250 * 1000},
 };
 static int leakage_level = 0;
 #define MHZ	(1000 * 1000)
