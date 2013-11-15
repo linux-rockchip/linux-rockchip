@@ -328,7 +328,7 @@ static int uvc_queue_waiton(struct uvc_buffer *buf, int nonblocking)
 		buf->state != UVC_BUF_STATE_QUEUED &&
 		buf->state != UVC_BUF_STATE_ACTIVE &&
 		buf->state != UVC_BUF_STATE_READY,
-		msecs_to_jiffies(800));
+		msecs_to_jiffies(1500));
 #endif
 }
 
@@ -390,9 +390,9 @@ checks:
         /* ddl@rock-chips.com: It is timeout */
         if (ret == 0) {
             ret = -EINVAL;
-            printk(KERN_ERR "uvcvideo: uvc_dequeue_buffer is timeout!!");
+            printk(KERN_ERR "uvcvideo: uvc_dequeue_buffer is timeout!!\n");
         } else {
-            printk(KERN_ERR "uvcvideo: uvc_dequeue_buffer is failed!!(ret:%d)",ret);
+            printk(KERN_ERR "uvcvideo: uvc_dequeue_buffer is failed!!(ret:%d)\n",ret);
         }
 		goto done;
 	}
@@ -665,7 +665,7 @@ struct uvc_buffer *uvc_queue_next_buffer(struct uvc_video_queue *queue,
 		return buf;
 	}
 
-	spin_lock_irqsave(&queue->irqlock, flags);
+	//spin_lock_irqsave(&queue->irqlock, flags);
 	list_del(&buf->queue);
 	buf->error = 0;
 	buf->state = UVC_BUF_STATE_DONE;
@@ -674,7 +674,7 @@ struct uvc_buffer *uvc_queue_next_buffer(struct uvc_video_queue *queue,
 					   queue);
 	else
 		nextbuf = NULL;
-	spin_unlock_irqrestore(&queue->irqlock, flags);
+	//spin_unlock_irqrestore(&queue->irqlock, flags);
 
 	wake_up(&buf->wait);
 	return nextbuf;

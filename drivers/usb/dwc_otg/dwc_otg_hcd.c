@@ -1597,7 +1597,12 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	dwc_otg_hcd_t * dwc_otg_hcd;
 	dwc_otg_qtd_t * urb_qtd;
 	dwc_otg_qh_t * qh;
+	int ret = 0;
 	struct usb_host_endpoint *_ep;
+	
+	dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
+
+	spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
 
 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
 	
@@ -1609,22 +1614,23 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	{
 		DWC_PRINT("%s=====================================================\n",__func__);
 		DWC_PRINT("urb->ep is null\n");
-		return -1;
+		ret = -1;
+		goto out;
 	}
 		
 	urb_qtd = (dwc_otg_qtd_t *) _urb->hcpriv;
 	if(((uint32_t)urb_qtd&0xf0000000) == 0)
 	{
 		DWC_PRINT("%s,urb_qtd is %p urb %p, count %d\n",__func__, urb_qtd, _urb, atomic_read(&_urb->use_count));
-        if((atomic_read(&_urb->use_count)) == 0)
-            return 0;
+        if((atomic_read(&_urb->use_count)) == 1)
+            goto out;
         else
-		    return -1;
+		    ret = -1;
+
+		spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
+		return 0;
 	}
 	qh = (dwc_otg_qh_t *) _ep->hcpriv;
-	dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
-	spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
-
 #ifdef DEBUG
     if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
 		dump_urb_info(_urb, "dwc_otg_hcd_urb_dequeue");
@@ -1662,7 +1668,7 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	} else if (list_empty(&qh->qtd_list)) {
 		dwc_otg_hcd_qh_remove(dwc_otg_hcd, qh);
 	}
-	
+out:
 	_urb->hcpriv = NULL;
 	spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
     /* Higher layer software sets URB status. */
@@ -1725,7 +1731,6 @@ irqreturn_t dwc_otg_hcd_irq(struct usb_hcd *_hcd)
 	spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
 
 	result = IRQ_RETVAL(dwc_otg_hcd_handle_intr(dwc_otg_hcd));
-
 	spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
 
 	return result;
@@ -2325,6 +2330,7 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 			dwc_write_reg32(core_if->host_if->hprt0, hprt0.d32);
 			break;
 		case USB_PORT_FEAT_SUSPEND:
+			break;
 			DWC_DEBUGPL (DBG_HCD, "DWC OTG HCD HUB CONTROL - "
 				     "ClearPortFeature USB_PORT_FEAT_SUSPEND\n");
 			hprt0.d32 = dwc_otg_read_hprt0 (core_if);
@@ -2508,6 +2514,7 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 
 		switch (_wValue) {
 		case USB_PORT_FEAT_SUSPEND:
+			break;
 			DWC_DEBUGPL (DBG_HCD, "DWC OTG HCD HUB CONTROL - "
 				     "SetPortFeature - USB_PORT_FEAT_SUSPEND\n");
                         if (_hcd->self.otg_port == _wIndex &&
