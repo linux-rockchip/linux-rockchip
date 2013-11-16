@@ -1398,7 +1398,9 @@ int rk_fb_register(struct rk_lcdc_device_driver *dev_drv,
 		    ret = -EINVAL;
 		}
 		rkfb_create_sysfs(fbi);
-
+		fb_inf->fb[fb_inf->num_fb] = fbi;
+		printk("%s>>>>>%s\n",__func__,fb_inf->fb[fb_inf->num_fb]->fix.id);
+		fb_inf->num_fb++;	
 		if(i == 0)
 		{
 			init_waitqueue_head(&dev_drv->vsync_info.wait);
@@ -1419,9 +1421,6 @@ int rk_fb_register(struct rk_lcdc_device_driver *dev_drv,
 			dev_drv->vsync_info.active = 1;
 			fbi->fbops->fb_open(fbi, 1);
 		}
-		fb_inf->fb[fb_inf->num_fb] = fbi;
-		printk("%s>>>>>%s\n",__func__,fb_inf->fb[fb_inf->num_fb]->fix.id);
-		fb_inf->num_fb++;	
 	}
 #if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
     if(dev_drv->screen_ctr_info->prop == PRMRY) //show logo for primary display device
