@@ -280,7 +280,7 @@ config SND_RK_SOC_RK2928
 	  with the RK2928 internal codec.
 
 config SND_RK_SOC_RK3026
-	tristate "SoC I2S Audio support for rockchip - RK2928"
+	tristate "SoC I2S Audio support for rockchip - RK3026&R3028A"
 	depends on SND_RK29_SOC && ARCH_RK3026
 	select SND_RK29_SOC_I2S
 	select SND_SOC_RK3026
