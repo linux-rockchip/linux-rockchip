@@ -47,8 +47,7 @@
 #define BATTERY_DOWN_CHANGE   60                // the max time allow battery change quantity
 #define BATTERY_DOWN_MIN_CHANGE_RUN 30          // the min time allow battery change quantity when run
 #define BATTERY_DOWN_MIN_CHANGE_SLEEP 1800      // the min time allow battery change quantity when run 30min
-
-#define BATTERY_DOWN_MAX_CHANGE_RUN_AC_ONLINE 3600
+#define BATTERY_DOWN_MAX_CHANGE_RUN_AC_ONLINE 1800
 
 #define NO_STANDARD_AC_BIG_CHARGE_MODE 1
 // #define SYSTEM_SHUTDOWN_VOLTAGE  3400000        //set system shutdown voltage related in battery info.
@@ -179,7 +178,13 @@ static int cw_update_config_info(struct cw_battery *cw_bat)
                 return ret;
         
         if (!(reg_val & CONFIG_UPDATE_FLG)) {
-                dev_info(&cw_bat->client->dev, "update flag for new battery info have not set..\n");
+        	
+             dev_info(&cw_bat->client->dev, "update flag for new battery info have not set..\n");
+             reg_val = MODE_SLEEP;
+             ret = cw_write(cw_bat->client, REG_MODE, &reg_val);
+             dev_info(&cw_bat->client->dev, "report battery capacity error");
+             return -1;
+             
         }
 
         if ((reg_val & 0xf8) != ATHD) {
@@ -262,7 +267,7 @@ static int cw_init(struct cw_battery *cw_bat)
                 ret = cw_read(cw_bat->client, REG_SOC, &reg_val);
                 if (ret < 0)
                         return ret;
-                else if (ret != 0xff) 
+                else if (reg_val <= 0x64) 
                         break;
                 
                 msleep(100);
@@ -270,7 +275,12 @@ static int cw_init(struct cw_battery *cw_bat)
                         dev_err(&cw_bat->client->dev, "cw2015/cw2013 input unvalid power error\n");
 
         }
-        
+        if (i >=30){
+        	   reg_val = MODE_SLEEP;
+             ret = cw_write(cw_bat->client, REG_MODE, &reg_val);
+             dev_info(&cw_bat->client->dev, "report battery capacity error");
+             return -1;
+        } 
         return 0;
 }
 
@@ -340,7 +350,10 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
         int allow_capacity;
         static int if_quickstart = 0;
         static int jump_flag =0;
+        static int reset_loop =0;
         int charge_time;
+        u8 reset_val;
+
 
 
         // ret = cw_read(cw_bat->client, REG_SOC, &reg_val);
@@ -351,8 +364,31 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
         cw_capacity = reg_val[0];
         if ((cw_capacity < 0) || (cw_capacity > 100)) {
                 dev_err(&cw_bat->client->dev, "get cw_capacity error; cw_capacity = %d\n", cw_capacity);
-                return cw_capacity;
-        } 
+                reset_loop++;
+                
+            if (reset_loop >5){ 
+            	
+                reset_val = MODE_SLEEP;               
+                ret = cw_write(cw_bat->client, REG_MODE, &reset_val);
+                if (ret < 0)
+                    return ret;
+                reset_val = MODE_NORMAL;
+                msleep(10);
+                ret = cw_write(cw_bat->client, REG_MODE, &reset_val);
+                if (ret < 0)
+                    return ret;
+                dev_info(&cw_bat->client->dev, "report battery capacity error");                              
+                ret = cw_update_config_info(cw_bat);
+                   if (ret) 
+                     return ret;
+                reset_loop =0;  
+                             
+            }
+                                     
+            return cw_capacity;
+        }else {
+        	reset_loop =0;
+        }
 
         if (cw_capacity == 0) 
                 dev_dbg(&cw_bat->client->dev, "the cw201x capacity is 0 !!!!!!!, funciton: %s, line: %d\n", __func__, __LINE__);
@@ -421,7 +457,20 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	{		  
                 charge_time = new_sleep_time + new_run_time - cw_bat->sleep_time_charge_start - cw_bat->run_time_charge_start;
                 if ((charge_time > BATTERY_DOWN_MAX_CHANGE_RUN_AC_ONLINE) && (if_quickstart == 0)) {
-        		cw_quickstart(cw_bat);      // if the cw_capacity = 0 the cw2015 will qstrt
+        		       reset_val = MODE_SLEEP;               
+                   ret = cw_write(cw_bat->client, REG_MODE, &reset_val);
+                   if (ret < 0)
+                      return ret;
+                   reset_val = MODE_NORMAL;
+                   msleep(10);
+                   ret = cw_write(cw_bat->client, REG_MODE, &reset_val);
+                   if (ret < 0)
+                      return ret;
+                   dev_info(&cw_bat->client->dev, "report battery capacity error");                              
+                   ret = cw_update_config_info(cw_bat);
+                   if (ret) 
+                      return ret;
+        		      dev_info(&cw_bat->client->dev, "report battery capacity still 0 if in changing");
                         if_quickstart = 1;
                 }
 	} else if ((if_quickstart == 1)&&(cw_bat->charger_mode == 0)) {
