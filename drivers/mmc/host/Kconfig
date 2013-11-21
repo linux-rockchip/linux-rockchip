@@ -10,6 +10,11 @@ config EMMC_RK
 	default y if ARCH_RK3026
 	help
 		This selects the RK EMMC controller
+if EMMC_RK
+	config EMMC_DDR_MODE
+		default y
+		bool "RK emmc ddr mode support"
+endif
 
 config SDMMC_RK29
 	tristate "RK29 SDMMC controller suppport"
