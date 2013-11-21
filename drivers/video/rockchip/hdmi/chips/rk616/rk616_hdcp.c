@@ -70,7 +70,8 @@ static void hdcp_wq_authentication_failure(void)
 	}
 
 	rk616_hdcp_disable();
-	rk616_hdmi_control_output(false);
+	// rk616_hdmi_control_output(false);
+        rk616_set_colorbar(1);
 	
 	hdcp_cancel_work(&hdcp->pending_wq_event);
 	
@@ -114,11 +115,12 @@ static void hdcp_wq_start_authentication(void)
 		DBG("HDCP: authentication failed");
 		hdcp_wq_authentication_failure();
 	} else {
-		hdcp->hdcp_state = HDCP_WAIT_KSV_LIST;
-//		hdcp->hdcp_state = HDCP_LINK_INTEGRITY_CHECK;
+//		hdcp->hdcp_state = HDCP_WAIT_KSV_LIST;
+		hdcp->hdcp_state = HDCP_LINK_INTEGRITY_CHECK;
 	}
 }
 
+#if 0
 /*-----------------------------------------------------------------------------
  * Function: hdcp_wq_check_bksv
  *-----------------------------------------------------------------------------
@@ -148,6 +150,7 @@ static void hdcp_wq_check_bksv(void)
 			hdcp->retry_cnt = hdcp->retry_times;
 	}
 }
+#endif
 
 /*-----------------------------------------------------------------------------
  * Function: hdcp_wq_authentication_sucess
@@ -155,7 +158,8 @@ static void hdcp_wq_check_bksv(void)
  */
 static void hdcp_wq_authentication_sucess(void)
 {
-	rk616_hdmi_control_output(true);
+	// rk616_hdmi_control_output(true);
+        rk616_set_colorbar(0);
 	printk(KERN_INFO "HDCP: authentication pass");
 }
 
@@ -171,8 +175,10 @@ static void hdcp_wq_disable(int event)
 	rk616_hdcp_disable();
 	if(event == HDCP_DISABLE_CTL) {
 		hdcp->hdcp_state = HDCP_DISABLED;
-		if(hdcp->hdmi_state == HDMI_STARTED)
-			rk616_hdmi_control_output(true);
+		if(hdcp->hdmi_state == HDMI_STARTED) {
+			//rk616_hdmi_control_output(true);
+                        rk616_set_colorbar(0);
+                }
 	}
 	else if(event == HDCP_STOP_FRAME_EVENT)
 		hdcp->hdcp_state = HDCP_ENABLE_PENDING;
@@ -246,6 +252,7 @@ static void hdcp_work_queue(struct work_struct *work)
 	
 			break;
 		
+#if 0
 		case HDCP_WAIT_KSV_LIST:
 			/* KSV failure */
 			if (event == HDCP_FAIL_EVENT) {
@@ -257,9 +264,10 @@ static void hdcp_work_queue(struct work_struct *work)
 			else if (event == HDCP_KSV_LIST_RDY_EVENT)
 				hdcp_wq_check_bksv();
 			break;
+#endif
 		
 		case HDCP_LINK_INTEGRITY_CHECK:
-			/* Ri failure */
+			/* authentication failure */
 			if (event == HDCP_FAIL_EVENT) {
 				printk(KERN_INFO "HDCP: Ri check failure\n");
 				hdcp_wq_authentication_failure();
@@ -308,17 +316,20 @@ static void hdcp_irq_cb(int status)
 	char interrupt2;
 	
 	rk616_hdcp_interrupt(&interrupt1, &interrupt2);
+
+
 	DBG("%s 0x%02x 0x%02x", __FUNCTION__, interrupt1, interrupt2);
 	if(interrupt1 & m_INT_HDCP_ERR)
 	{
+
 		if( (hdcp->hdcp_state != HDCP_DISABLED) &&
 			(hdcp->hdcp_state != HDCP_ENABLE_PENDING) )
 		{	
 			hdcp_submit_work(HDCP_FAIL_EVENT, 0);
 		}
 	}
-	else if(interrupt1 & (m_INT_BKSV_READY | m_INT_BKSV_UPDATE))
-		hdcp_submit_work(HDCP_KSV_LIST_RDY_EVENT, 0);
+	// else if(interrupt1 & (m_INT_BKSV_READY | m_INT_BKSV_UPDATE))
+	//	hdcp_submit_work(HDCP_KSV_LIST_RDY_EVENT, 0);
 	else if(interrupt1 & m_INT_AUTH_SUCCESS)
 		hdcp_submit_work(HDCP_AUTH_PASS_EVENT, 0);
 }
@@ -330,7 +341,7 @@ static void hdcp_irq_cb(int status)
 static int hdcp_power_on_cb(void)
 {
 	DBG("%s", __FUNCTION__);
-//	return rk616_hdcp_load_key2mem(hdcp->keys);
+	return rk616_hdcp_load_key2mem(hdcp->keys);
 	return HDCP_OK;
 }
 
@@ -343,7 +354,8 @@ static void hdcp_power_off_cb(void)
 	DBG("%s", __FUNCTION__);
 	if(!hdcp->enable)
 		return;
-	
+
+        rk616_hdcp_stop_authentication();
 	hdcp_cancel_work(&hdcp->pending_start);
 	hdcp_cancel_work(&hdcp->pending_wq_event);
 	init_completion(&hdcp->complete);
@@ -559,5 +571,6 @@ static void __exit rk616_hdcp_exit(void)
 	kfree(hdcp);
 }
 
-module_init(rk616_hdcp_init);
+// module_init(rk616_hdcp_init);
+late_initcall_sync(rk616_hdcp_init);
 module_exit(rk616_hdcp_exit);

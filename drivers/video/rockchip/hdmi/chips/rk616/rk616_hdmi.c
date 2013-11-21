@@ -145,14 +145,16 @@ static void hdmi_early_resume(struct early_suspend *h)
 	mutex_lock(&hdmi->enable_mutex);
 
 	hdmi->suspend = 0;
+#ifndef CONFIG_HDCP_RK616
 	rk616_hdmi_initial();
+#endif
 	if(hdmi->enable && hdmi->irq) {
 		enable_irq(hdmi->irq);
 		// hdmi_irq();
                 rk616_hdmi_work();
 	}
         if (rk616_hdmi->rk616_drv && rk616_hdmi->rk616_drv->pdata->hdmi_irq == INVALID_GPIO) 
-                queue_delayed_work(hdmi->workqueue, &rk616_hdmi->rk616_delay_work, 100);
+                queue_delayed_work(hdmi->workqueue, &rk616_hdmi->rk616_delay_work, 50);
 	queue_delayed_work(hdmi->workqueue, &hdmi->delay_work, msecs_to_jiffies(10));	
 	mutex_unlock(&hdmi->enable_mutex);
 	return;
@@ -171,7 +173,7 @@ static void rk616_delay_work_func(struct work_struct *work)
 		}
 
                 if (rk616_hdmi->rk616_drv && rk616_hdmi->rk616_drv->pdata->hdmi_irq == INVALID_GPIO) {
-                        queue_delayed_work(hdmi->workqueue, &rk616_hdmi->rk616_delay_work, 100);
+                        queue_delayed_work(hdmi->workqueue, &rk616_hdmi->rk616_delay_work, 50);
                 }
 	}
 }
@@ -369,7 +371,7 @@ static int __devinit rk616_hdmi_probe (struct platform_device *pdev)
                 }
         }
 #endif
-	// rk616_delay_work_func(NULL);
+	//rk616_delay_work_func(NULL);
 	queue_delayed_work(hdmi->workqueue, &rk616_hdmi->rk616_delay_work, msecs_to_jiffies(0));
 	dev_info(hdmi->dev, "rk616 hdmi probe success.\n");
 	return 0;

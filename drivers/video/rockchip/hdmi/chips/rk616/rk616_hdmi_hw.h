@@ -243,6 +243,8 @@ enum {
 	#define m_DDC_SDA	(1 << 5)
 	#define m_DDC_SDC	(1 << 4)
 
+#define HDMI_COLORBAR				0xc9
+
 #define PHY_SYNC				0xce		//sync phy parameter				
 #define PHY_SYS_CTL 			0xe0
 	#define m_TMDS_CLK_SOURCE 	(1<<5)

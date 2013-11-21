@@ -105,7 +105,7 @@ static void rk616_hdmi_set_pwr_mode(int mode)
         		hdmi_writel(PHY_DRIVER,0xcc);
 	        	hdmi_writel(PHY_PRE_EMPHASIS,0x4f);
                 } else {
-        		hdmi_writel(PHY_DRIVER,0xaa);
+        		hdmi_writel(PHY_DRIVER,0x99);
 	        	hdmi_writel(PHY_PRE_EMPHASIS,0x0f);
                 }
 		hdmi_writel(PHY_SYS_CTL,0x2d);
@@ -294,8 +294,8 @@ static int rk616_hdmi_config_video(struct hdmi_video_para *vpara)
 
 
 	vpara->output_color = VIDEO_OUTPUT_RGB444;
-	if(hdmi->hdcp_power_off_cb)
-		hdmi->hdcp_power_off_cb();
+	//if(hdmi->hdcp_power_off_cb)
+	//	hdmi->hdcp_power_off_cb();
 		// Diable video and audio output
 	hdmi_writel(AV_MUTE, v_AUDIO_MUTE(1) | v_VIDEO_MUTE(1));
 	
@@ -509,7 +509,9 @@ void rk616_hdmi_control_output(int enable)
 
 int rk616_hdmi_removed(void)
 {
-
+        if(hdmi->hdcp_power_off_cb)
+		hdmi->hdcp_power_off_cb();
+        // rk616_hdcp_stop_authentication();
 	dev_printk(KERN_INFO , hdmi->dev , "Removed.\n");
 	rk616_hdmi_set_pwr_mode(LOWER_PWR);
 
@@ -544,9 +546,9 @@ void rk616_hdmi_work(void)
 		rk616_hdmi_set_pwr_mode(LOWER_PWR);
 	}
 #endif
-#if 0
+#if 1
 	if(hdmi->hdcp_irq_cb)
-		hdmi->hdcp_irq_cb(interrupt2);
+		hdmi->hdcp_irq_cb(0);
 #endif
 }
 
