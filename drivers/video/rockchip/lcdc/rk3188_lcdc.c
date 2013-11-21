@@ -1055,13 +1055,15 @@ static int rk3188_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 	}
 	rk3188_lcdc_clk_disable(lcdc_dev);
 #if defined(CONFIG_ARCH_RK3026)
-	int gpio_dclk = iomux_mode_to_gpio(LCDC0_DCLK);
-	int ret = gpio_request(gpio_dclk,NULL);
-	if(unlikely(ret < 0)){
-		printk("Failed to request gpio:lcdc dclk\n");
-		return ret;
+	if(dev_drv->screen0->type != SCREEN_LVDS){
+		int gpio_dclk = iomux_mode_to_gpio(LCDC0_DCLK);
+		int ret = gpio_request(gpio_dclk,NULL);
+		if(unlikely(ret < 0)){
+			printk("Failed to request gpio:lcdc dclk\n");
+			return ret;
+		}
+		gpio_direction_output(gpio_dclk,GPIO_LOW);
 	}
-	gpio_direction_output(gpio_dclk,GPIO_LOW);
 #endif
 	return 0;
 }
@@ -1074,9 +1076,11 @@ static int rk3188_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 	int __iomem *c;
 	int v;
 #if defined(CONFIG_ARCH_RK3026)
-	int gpio_dclk = iomux_mode_to_gpio(LCDC0_DCLK);
-	gpio_free(gpio_dclk);
-	iomux_set(LCDC0_DCLK);
+	if(dev_drv->screen0->type != SCREEN_LVDS){
+		int gpio_dclk = iomux_mode_to_gpio(LCDC0_DCLK);
+		gpio_free(gpio_dclk);
+		iomux_set(LCDC0_DCLK);
+	}
 #endif
 	if(dev_drv->screen_ctr_info->io_enable) 		//power on
 		dev_drv->screen_ctr_info->io_enable();
