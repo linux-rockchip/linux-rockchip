@@ -64,7 +64,7 @@ void rk_efuse_init(void)
 
 int rk_pll_flag(void)
 {
-	return efuse_buf[22] & 0x3;
+	return (efuse_buf[22] & 0x3) | (efuse_buf[22] & (0x1 << 3));	
 }
 int rk_tflag(void)
 {
