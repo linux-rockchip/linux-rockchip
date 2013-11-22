@@ -1282,6 +1282,36 @@ struct platform_device device_arm_pmu = {
 	.resource	= resource_arm_pmu,
 };
 
+
+#if defined(CONFIG_ARCH_RK319X) && defined(CONFIG_RK616_MIPI_DSI)
+static struct resource resources_mipi_dsi[] = {
+	{
+		.start	= IRQ_MIPI_DSI_CONTROLLER,
+		.end	= IRQ_MIPI_DSI_CONTROLLER,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= RK319X_MIPI_DSI_HOST_PHYS,
+		.end	= RK319X_MIPI_DSI_HOST_PHYS + RK319X_MIPI_DSI_HOST_SIZE - 1,
+		.name   = "mipi_dsi_host",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= RK319X_MIPI_DSI_PHY_PHYS,
+		.end	= RK319X_MIPI_DSI_PHY_PHYS + RK319X_MIPI_DSI_PHY_SIZE - 1,
+		.name   = "mipi_dsi_phy",
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device device_mipi_dsi = {
+	.name	= "rk616-mipi",
+	.id	= 1,
+	.num_resources	= ARRAY_SIZE(resources_mipi_dsi),
+	.resource	= resources_mipi_dsi,
+};
+#endif
+
 static int __init rk30_init_devices(void)
 {
 	rk30_init_dma();
@@ -1322,7 +1352,9 @@ static int __init rk30_init_devices(void)
 #ifdef CONFIG_MTD_NAND_RK29XX
 	platform_device_register(&device_nand);
 #endif
-
+#if defined(CONFIG_ARCH_RK319X) && defined(CONFIG_RK616_MIPI_DSI)
+	platform_device_register(&device_mipi_dsi);
+#endif		
 	return 0;
 }
 arch_initcall(rk30_init_devices);

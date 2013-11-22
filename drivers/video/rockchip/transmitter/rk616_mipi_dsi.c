@@ -17,8 +17,25 @@
 //config
 #define MIPI_DSI_REGISTER_IO	1
 #define CONFIG_MIPI_DSI_LINUX   1
-//#define CONFIG_MIPI_DSI_FT 		1
-//#define CONFIG_MFD_RK616   		1
+//#define CONFIG_MIPI_DSI_FT 	1
+//#define CONFIG_MFD_RK616   	1
+//#define CONFIG_ARCH_RK319X    1
+
+#ifdef CONFIG_MIPI_DSI_LINUX
+#if defined(CONFIG_MFD_RK616)
+#define DWC_DSI_VERSION		0x3131302A
+#define DWC_DSI_VERSION_0x3131302A 1
+#elif defined(CONFIG_ARCH_RK319X)
+#define DWC_DSI_VERSION		0x3132302A
+#define DWC_DSI_VERSION_0x3132302A 1
+#else
+#define DWC_DSI_VERSION -1
+#endif  /* CONFIG_MFD_RK616 */
+#else
+#define DWC_DSI_VERSION		0x3131302A
+#endif  /* end of CONFIG_MIPI_DSI_LINUX*/
+
+
 
 #ifdef CONFIG_MIPI_DSI_LINUX
 #include <linux/kernel.h>
@@ -40,6 +57,7 @@
 #else
 #include "ft_lcd.h"
 #endif
+
 #include "mipi_dsi.h"
 #include "rk616_mipi_dsi.h"
 
@@ -83,8 +101,9 @@
 		use I2C.
 *v1.5 : change early suspend level (BLANK_SCREEN + 1)
 *v1.6 : add dsi_rk616->resume to reduce the time driver resume takes
+*v2.0 : add mipi dsi support for rk319x
 */
-#define RK_MIPI_DSI_VERSION_AND_TIME  "rockchip mipi_dsi v1.6 2013-10-23"
+#define RK_MIPI_DSI_VERSION_AND_TIME  "rockchip mipi_dsi v2.0 2013-11-18"
 
 
 
@@ -92,7 +111,7 @@
 static struct mfd_rk616 *dsi_rk616;
 static struct rk29fb_screen *g_rk29fd_screen = NULL;
 #endif
-static struct dsi gDsi;
+static struct dsi *gDsi;
 static struct mipi_dsi_ops rk_mipi_dsi_ops;
 static struct mipi_dsi_screen *g_screen = NULL;
 
@@ -111,37 +130,71 @@ static int rk_mipi_dsi_send_dcs_packet(unsigned char regs[], u32 n);
 static u32 *host_mem = NULL;
 static u32 *phy_mem = NULL;
 #endif
+
 static int dsi_read_reg(u16 reg, u32 *pval)
 {
+#ifdef CONFIG_MIPI_DSI_LINUX
+
+#if defined(CONFIG_MFD_RK616)
+	return dsi_rk616->read_dev(dsi_rk616, reg, pval);
+#elif defined(CONFIG_ARCH_RK319X)
+	if(reg >= MIPI_DSI_HOST_OFFSET)
+		*pval = __raw_readl(gDsi->host.membase + (reg - MIPI_DSI_HOST_OFFSET));
+	else if(reg >= MIPI_DSI_PHY_OFFSET)
+		*pval = __raw_readl(gDsi->phy.membase + (reg - MIPI_DSI_PHY_OFFSET));
+	return 0;
+#endif  /* CONFIG_MFD_RK616 */
+
+#else
+
 #ifdef CONFIG_MIPI_DSI_FT
 	return JETTA_ReadControlRegister(reg, pval);
-#else
-	return dsi_rk616->read_dev(dsi_rk616, reg, pval);
-#endif
+#endif  /* CONFIG_MIPI_DSI_FT */
+
+#endif  /* end of CONFIG_MIPI_DSI_LINUX */
 }
 
 
 static int dsi_write_reg(u16 reg, u32 *pval)
 {
+#ifdef CONFIG_MIPI_DSI_LINUX
+
+#if defined(CONFIG_MFD_RK616)
+	return dsi_rk616->write_dev(dsi_rk616, reg, pval);
+#elif defined(CONFIG_ARCH_RK319X)
+	if(reg >= MIPI_DSI_HOST_OFFSET)
+		__raw_writel(*pval, gDsi->host.membase + (reg - MIPI_DSI_HOST_OFFSET));
+	else if(reg >= MIPI_DSI_PHY_OFFSET)
+		__raw_writel(*pval, gDsi->phy.membase + (reg - MIPI_DSI_PHY_OFFSET));	
+	return 0;
+#endif  /* CONFIG_MFD_RK616 */
+
+#else
+
 #ifdef CONFIG_MIPI_DSI_FT
 	return JETTA_WriteControlRegister(reg, *pval);
-#else
-	return dsi_rk616->write_dev(dsi_rk616, reg, pval);
-#endif
+#endif  /* CONFIG_MIPI_DSI_FT */
+
+#endif  /* end of CONFIG_MIPI_DSI_LINUX */
 }
 
+#ifdef CONFIG_MFD_RK616
 static int dsi_write_reg_bulk(u16 reg, u32 count, u32 *pval)
 {
 	return dsi_rk616->write_bulk(dsi_rk616, reg, count, pval);
 }
+#endif
 
-static int dsi_get_bits(u32 reg) 
+static int dsi_get_bits(u32 reg)
 {
 	u32 val = 0;
 	u32 bits = (reg >> 8) & 0xff;
 	u16 reg_addr = (reg >> 16) & 0xffff;
 	u8 offset = reg & 0xff;
-	bits = (1 << bits) - 1;
+	if(bits < 32)
+		bits = (1 << bits) - 1;
+	else
+		bits = 0xffffffff;
 	dsi_read_reg(reg_addr, &val);
 	val >>= offset;
 	val &= bits;
@@ -154,7 +207,7 @@ static int dsi_set_bits(u32 data, u32 reg)
 	u32 bits = (reg >> 8) & 0xff;
 	u16 reg_addr = (reg >> 16) & 0xffff;
 	u8 offset = reg & 0xff;
-	if(bits)
+	if(bits < 32)
 		bits = (1 << bits) - 1;
 	else
 		bits = 0xffffffff;
@@ -175,6 +228,7 @@ static int dsi_set_bits(u32 data, u32 reg)
 
 	val &= ~(bits << offset);
 	val |= (data & bits) << offset;
+	//printk("%s:%04x->%08x\n", __func__, reg_addr, val);
 	dsi_write_reg(reg_addr, &val);
 #ifdef CONFIG_MFD_RK616
 	if(reg_addr >= MIPI_DSI_HOST_OFFSET) {
@@ -237,10 +291,10 @@ loop2:		reg_addr = i - (count<<2);
 static int rk_mipi_dsi_phy_set_gotp(u32 offset, int n) 
 {
 	u32 val = 0, temp = 0, Tlpx = 0;
-	u32 ddr_clk = gDsi.phy.ddr_clk;
-	u32 Ttxbyte_clk = gDsi.phy.Ttxbyte_clk;
-	u32 Tsys_clk = gDsi.phy.Tsys_clk;
-	u32 Ttxclkesc = gDsi.phy.Ttxclkesc;
+	u32 ddr_clk = gDsi->phy.ddr_clk;
+	u32 Ttxbyte_clk = gDsi->phy.Ttxbyte_clk;
+	u32 Tsys_clk = gDsi->phy.Tsys_clk;
+	u32 Ttxclkesc = gDsi->phy.Ttxclkesc;
 	
 	switch(offset) {
 		case DPHY_CLOCK_OFFSET:
@@ -305,11 +359,11 @@ static int rk_mipi_dsi_phy_set_gotp(u32 offset, int n)
 	else if(ddr_clk < 700 * MHz)
 		val = 0x3e;
 	else if(ddr_clk < 800 * MHz)
-		val = 0x21;		
+		val = 0x21;
 	else if(ddr_clk <= 1000 * MHz)
-		val = 0x09;								
+		val = 0x09;
 	dsi_set_bits(val, reg_hs_ths_prepare + offset);
-	
+
 	if(offset != DPHY_CLOCK_OFFSET) {
 	
 		if(ddr_clk < 110 * MHz)
@@ -382,17 +436,18 @@ static int rk_mipi_dsi_phy_set_gotp(u32 offset, int n)
 	else if(ddr_clk < 800 * MHz)
 		val = 0x29;		
 	else if(ddr_clk <= 1000 * MHz)
-		val = 0x21;
+		val = 0x21;   //0x27
+
 	dsi_set_bits(val, reg_hs_ths_trail + offset);
 	val = 120000 / Ttxbyte_clk + 1;
 	MIPI_DBG("reg_hs_ths_exit: %d, %d\n", val, val*Ttxbyte_clk/1000);
 	dsi_set_bits(val, reg_hs_ths_exit + offset);
 	
 	if(offset == DPHY_CLOCK_OFFSET) {
-		val = (60000 + 52*gDsi.phy.UI) / Ttxbyte_clk + 1;
+		val = (60000 + 52*gDsi->phy.UI) / Ttxbyte_clk + 1;
 		MIPI_DBG("reg_hs_tclk_post: %d, %d\n", val, val*Ttxbyte_clk/1000);
 		dsi_set_bits(val, reg_hs_tclk_post + offset);
-		val = 10*gDsi.phy.UI / Ttxbyte_clk + 1;
+		val = 10*gDsi->phy.UI / Ttxbyte_clk + 1;
 		MIPI_DBG("reg_hs_tclk_pre: %d, %d\n", val, val*Ttxbyte_clk/1000);	
 		dsi_set_bits(val, reg_hs_tclk_pre + offset);
 	}
@@ -402,7 +457,7 @@ static int rk_mipi_dsi_phy_set_gotp(u32 offset, int n)
 	if(val > 0x3ff) {
 		val = 0x2ff;
 		MIPI_DBG("val is too large, 0x3ff is the largest\n");	
-	}	
+	}
 	temp = (val >> 8) & 0x03;
 	val &= 0xff;	
 	dsi_set_bits(temp, reg_hs_twakup_h + offset);	
@@ -433,15 +488,21 @@ static int rk_mipi_dsi_phy_set_gotp(u32 offset, int n)
 
 static void rk_mipi_dsi_set_hs_clk(void) 
 {
-	dsi_set_bits(gDsi.phy.prediv, reg_prediv);
-	dsi_set_bits(gDsi.phy.fbdiv & 0xff, reg_fbdiv);
-	dsi_set_bits((gDsi.phy.fbdiv >> 8) & 0x01, reg_fbdiv_8);
+	dsi_set_bits(gDsi->phy.prediv, reg_prediv);
+	dsi_set_bits(gDsi->phy.fbdiv & 0xff, reg_fbdiv);
+	dsi_set_bits((gDsi->phy.fbdiv >> 8) & 0x01, reg_fbdiv_8);
 }
 
-static int rk_mipi_dsi_phy_power_up(void) 
+static int rk_mipi_dsi_phy_power_up(void)
 {
-	dsi_set_bits(0xe4, DPHY_REGISTER1 << 16);
-	switch(gDsi.host.lane) {
+	rk_mipi_dsi_set_hs_clk();
+#if defined(CONFIG_ARCH_RK319X)
+	//enable ref clock
+	clk_enable(gDsi->phy.refclk);
+	udelay(10);
+#endif
+	dsi_set_bits(0xe4, DPHY_REGISTER1);
+	switch(gDsi->host.lane) {
 		case 4:
 			dsi_set_bits(1, lane_en_3);
 		case 3:
@@ -456,31 +517,34 @@ static int rk_mipi_dsi_phy_power_up(void)
 			break;	
 	}
 
-	dsi_set_bits(0xe0, DPHY_REGISTER1 << 16);
+	dsi_set_bits(0xe0, DPHY_REGISTER1);
 	udelay(10);
 
-	dsi_set_bits(0x1e, DPHY_REGISTER20 << 16);
-	dsi_set_bits(0x1f, DPHY_REGISTER20 << 16);
-	rk_mipi_dsi_set_hs_clk();
+	dsi_set_bits(0x1e, DPHY_REGISTER20);
+	dsi_set_bits(0x1f, DPHY_REGISTER20);
 	return 0;
 }
 
 static int rk_mipi_dsi_phy_power_down(void) 
 {
-	dsi_set_bits(0x01, DPHY_REGISTER0 << 16);
-	dsi_set_bits(0xe3, DPHY_REGISTER1 << 16);
+	dsi_set_bits(0x01, DPHY_REGISTER0);
+	dsi_set_bits(0xe3, DPHY_REGISTER1);
+#if defined(CONFIG_ARCH_RK319X)
+	//disable ref clock
+	clk_disable(gDsi->phy.refclk);
+#endif
 	return 0;
 }
 
 static int rk_mipi_dsi_phy_init(void *array, int n) 
 {
 	//DPHY init
-	dsi_set_bits(0x11, RK_ADDR(0x06) << 16);
-	dsi_set_bits(0x11, RK_ADDR(0x07) << 16);
-	dsi_set_bits(0xcc, RK_ADDR(0x09) << 16);
+	dsi_set_bits(0x11, DSI_DPHY_BITS(0x06<<2, 32, 0));
+	dsi_set_bits(0x11, DSI_DPHY_BITS(0x07<<2, 32, 0));
+	dsi_set_bits(0xcc, DSI_DPHY_BITS(0x09<<2, 32, 0));
 #if 0
-	dsi_set_bits(0x4e, RK_ADDR(0x08) << 16);
-	dsi_set_bits(0x84, RK_ADDR(0x0a) << 16);
+	dsi_set_bits(0x4e, DSI_DPHY_BITS(0x08<<2, 32, 0));
+	dsi_set_bits(0x84, DSI_DPHY_BITS(0x0a<<2, 32, 0));
 #endif
 
 	/*reg1[4] 0: enable a function of "pll phase for serial data being captured 
@@ -488,15 +552,14 @@ static int rk_mipi_dsi_phy_init(void *array, int n)
 	          1: disable it 
 	  we disable it here because reg5[6:4] is not compatible with the HS speed. 		
 	*/
-#if 1
-	if(gDsi.phy.ddr_clk >= 800*MHz) {
-		dsi_set_bits(0x30, RK_ADDR(0x05) << 16);
+
+	if(gDsi->phy.ddr_clk >= 800*MHz) {
+		dsi_set_bits(0x30, DSI_DPHY_BITS(0x05<<2, 32, 0));
 	} else {
 		dsi_set_bits(1, reg_da_ppfc);
 	}
-#endif
-			
-	switch(gDsi.host.lane) {
+
+	switch(gDsi->host.lane) {
 		case 4:
 			rk_mipi_dsi_phy_set_gotp(DPHY_LANE3_OFFSET, n);
 		case 3:
@@ -519,8 +582,14 @@ static int rk_mipi_dsi_host_power_up(void)
 	u32 val = 0;
 	
 	//disable all interrupt            
-	dsi_set_bits(0x1fffff, ERROR_MSK0 << 16);
-	dsi_set_bits(0x1ffff, ERROR_MSK1 << 16);
+#ifdef DWC_DSI_VERSION_0x3131302A
+	dsi_set_bits(0x1fffff, ERROR_MSK0);
+	dsi_set_bits(0x1ffff, ERROR_MSK1);
+#else
+	dsi_set_bits(0x1fffff, INT_MKS0);
+	dsi_set_bits(0x1ffff, INT_MKS1);
+#endif
+
 	dsi_set_bits(1, shutdownz);
 	
 	val = 10;
@@ -551,18 +620,19 @@ static int rk_mipi_dsi_host_init(void *array, int n)
 {
 	u32 val = 0, bytes_px = 0;
 	struct mipi_dsi_screen *screen = array;
-	u32 decimals = gDsi.phy.Ttxbyte_clk, temp = 0, i = 0;
-	u32 m = 1, lane = gDsi.host.lane, Tpclk = gDsi.phy.Tpclk, 
-			Ttxbyte_clk = gDsi.phy.Ttxbyte_clk;
-#ifdef CONFIG_MFD_RK616	
-	dsi_set_bits(0x04000000, CRU_CRU_CLKSEL1_CON << 16);
+	u32 decimals = gDsi->phy.Ttxbyte_clk, temp = 0, i = 0;
+	u32 m = 1, lane = gDsi->host.lane, Tpclk = gDsi->phy.Tpclk, 
+			Ttxbyte_clk = gDsi->phy.Ttxbyte_clk;
+#ifdef CONFIG_MFD_RK616
+	val = 0x04000000;
+	dsi_write_reg(CRU_CRU_CLKSEL1_CON, &val);
 #endif	
-	dsi_set_bits(gDsi.host.lane - 1, n_lanes);
-	dsi_set_bits(gDsi.vid, dpi_vid);
+	dsi_set_bits(gDsi->host.lane - 1, n_lanes);
+	dsi_set_bits(gDsi->vid, dpi_vcid);
 	
 	switch(screen->face) {
 		case OUT_P888:
-			dsi_set_bits(7, dpi_color_coding);
+			dsi_set_bits(5, dpi_color_coding);
 			bytes_px = 3;
 			break;
 		case OUT_D888_P666:
@@ -584,8 +654,8 @@ static int rk_mipi_dsi_host_init(void *array, int n)
 	dsi_set_bits(1, colorm_active_low);
 	dsi_set_bits(1, shutd_active_low);
 	
-	dsi_set_bits(gDsi.host.video_mode, vid_mode_type);	  //burst mode
-	switch(gDsi.host.video_mode) {
+	dsi_set_bits(gDsi->host.video_mode, vid_mode_type);	  //burst mode
+	switch(gDsi->host.video_mode) {
 		case VM_BM:
 			dsi_set_bits(screen->x_res, vid_pkt_size);
 			break;
@@ -600,38 +670,41 @@ static int rk_mipi_dsi_host_init(void *array, int n)
 				if(decimals == 0)
 					break;
 			}
+#ifdef CONFIG_MFD_RK616
 			dsi_set_bits(1, en_multi_pkt);
+#endif
 			dsi_set_bits(screen->x_res / m + 1, num_chunks);
 			dsi_set_bits(m, vid_pkt_size);
 			temp = m * lane * Tpclk / Ttxbyte_clk - m * bytes_px;
 			MIPI_DBG("%s:%d, %d\n", __func__, m, temp);
 			if(temp >= 12) {
+#ifdef CONFIG_MFD_RK616
 				dsi_set_bits(1, en_null_pkt);
+#endif
 				dsi_set_bits(temp - 12, null_pkt_size);
 			}
 			break;
 		default:
 			break;
 	}	
-	
 
-	dsi_set_bits(0, CMD_MODE_CFG << 16);
-	dsi_set_bits(gDsi.phy.Tpclk * (screen->x_res + screen->left_margin + 
+	//dsi_set_bits(0, CMD_MODE_CFG << 16);
+	dsi_set_bits(gDsi->phy.Tpclk * (screen->x_res + screen->left_margin + 
 					screen->hsync_len + screen->right_margin) \
-						/ gDsi.phy.Ttxbyte_clk, hline_time);
-	dsi_set_bits(gDsi.phy.Tpclk * screen->left_margin / gDsi.phy.Ttxbyte_clk, 
-					hbp_time);
-	dsi_set_bits(gDsi.phy.Tpclk * screen->hsync_len / gDsi.phy.Ttxbyte_clk, 
-					hsa_time);
+						/ gDsi->phy.Ttxbyte_clk, vid_hline_time);
+	dsi_set_bits(gDsi->phy.Tpclk * screen->left_margin / gDsi->phy.Ttxbyte_clk, 
+					vid_hbp_time);
+	dsi_set_bits(gDsi->phy.Tpclk * screen->hsync_len / gDsi->phy.Ttxbyte_clk, 
+					vid_hsa_time);
 	
-	dsi_set_bits(screen->y_res, v_active_lines);
-	dsi_set_bits(screen->lower_margin, vfp_lines);
-	dsi_set_bits(screen->upper_margin, vbp_lines);
-	dsi_set_bits(screen->vsync_len, vsa_lines);
+	dsi_set_bits(screen->y_res, vid_active_lines);
+	dsi_set_bits(screen->lower_margin, vid_vfp_lines);
+	dsi_set_bits(screen->upper_margin, vid_vbp_lines);
+	dsi_set_bits(screen->vsync_len, vid_vsa_lines);
 	
-	gDsi.phy.txclkesc = 20 * MHz;
-	val = gDsi.phy.txbyte_clk / gDsi.phy.txclkesc + 1;
-	gDsi.phy.txclkesc = gDsi.phy.txbyte_clk / val;
+	gDsi->phy.txclkesc = 20 * MHz;
+	val = gDsi->phy.txbyte_clk / gDsi->phy.txclkesc + 1;
+	gDsi->phy.txclkesc = gDsi->phy.txbyte_clk / val;
 	dsi_set_bits(val, TX_ESC_CLK_DIVISION);
 	
 	dsi_set_bits(10, TO_CLK_DIVISION);
@@ -646,17 +719,18 @@ static int rk_mipi_dsi_host_init(void *array, int n)
 	dsi_set_bits(16, phy_lp2hs_time);	
 	
 	dsi_set_bits(10000, max_rd_time);
-	dsi_set_bits(1, dpicolom);
-	dsi_set_bits(1, dpishutdn);
 
-	dsi_set_bits(1, en_lp_hfp);
-	//dsi_set_bits(1, en_lp_hbp);
-	dsi_set_bits(1, en_lp_vact);
-	dsi_set_bits(1, en_lp_vfp);
-	dsi_set_bits(1, en_lp_vbp);
-	dsi_set_bits(1, en_lp_vsa);
+	//dsi_set_bits(1, dpicolom);
+	//dsi_set_bits(1, dpishutdn);
+
+	dsi_set_bits(1, lp_hfp_en);
+	//dsi_set_bits(1, lp_hbp_en);
+	dsi_set_bits(1, lp_vact_en);
+	dsi_set_bits(1, lp_vfp_en);
+	dsi_set_bits(1, lp_vbp_en);
+	dsi_set_bits(1, lp_vsa_en);
 	
-	//dsi_set_bits(1, frame_BTA_ack);
+	//dsi_set_bits(1, frame_bta_ack_en);
 	//dsi_set_bits(1, phy_enableclk);
 	//dsi_set_bits(0, phy_tx_triggers);
 	//dsi_set_bits(1, phy_txexitulpslan);
@@ -682,77 +756,84 @@ static int rk_mipi_dsi_init(void *array, u32 n)
 	}
 	
 #ifdef CONFIG_MIPI_DSI_FT
-	gDsi.phy.pclk = screen->pixclock;
-	gDsi.phy.ref_clk = MIPI_DSI_MCLK;
+	gDsi->phy.pclk = screen->pixclock;
+	gDsi->phy.ref_clk = MIPI_DSI_MCLK;
 #else
-	gDsi.phy.Tpclk = rk_fb_get_prmry_screen_pixclock();
-	if(dsi_rk616->mclk)
-		gDsi.phy.ref_clk = clk_get_rate(dsi_rk616->mclk);
-	else
-		gDsi.phy.ref_clk = 24 * MHz;	
-#endif
 
-	gDsi.phy.sys_clk = gDsi.phy.ref_clk;
+	gDsi->phy.Tpclk = rk_fb_get_prmry_screen_pixclock();
+
+#if defined(CONFIG_MFD_RK616)
+	if(dsi_rk616->mclk)
+		gDsi->phy.ref_clk = clk_get_rate(dsi_rk616->mclk);
+#elif defined(CONFIG_ARCH_RK319X)
+	if(gDsi->phy.refclk)
+		gDsi->phy.ref_clk = clk_get_rate(gDsi->phy.refclk);
+#endif   /* CONFIG_MFD_RK616 */
+	else
+		gDsi->phy.ref_clk = 24 * MHz;
+#endif   /* CONFIG_MIPI_DSI_FT */
+
+	gDsi->phy.sys_clk = gDsi->phy.ref_clk;
 	
 	if((screen->hs_tx_clk <= 80 * MHz) || (screen->hs_tx_clk >= 1000 * MHz))
-		gDsi.phy.ddr_clk = 1000 * MHz;    //default is 1HGz
+		gDsi->phy.ddr_clk = 1000 * MHz;    //default is 1HGz
 	else
-		gDsi.phy.ddr_clk = screen->hs_tx_clk;	
+		gDsi->phy.ddr_clk = screen->hs_tx_clk;	
 	
 	if(n != 0) {
-		gDsi.phy.ddr_clk = n;
-	} 
+		gDsi->phy.ddr_clk = n;
+	}
 
-	decimals = gDsi.phy.ref_clk;
+	decimals = gDsi->phy.ref_clk;
 	for(i = 1; i < 6; i++) {
-		pre = gDsi.phy.ref_clk / i;
-		if((decimals > (gDsi.phy.ddr_clk % pre)) && (gDsi.phy.ddr_clk / pre < 512)) {
-			decimals = gDsi.phy.ddr_clk % pre;
-			gDsi.phy.prediv = i;
-			gDsi.phy.fbdiv = gDsi.phy.ddr_clk / pre;
+		pre = gDsi->phy.ref_clk / i;
+		if((decimals > (gDsi->phy.ddr_clk % pre)) && (gDsi->phy.ddr_clk / pre < 512)) {
+			decimals = gDsi->phy.ddr_clk % pre;
+			gDsi->phy.prediv = i;
+			gDsi->phy.fbdiv = gDsi->phy.ddr_clk / pre;
 		}	
 		if(decimals == 0) 
 			break;		
 	}
 
-	MIPI_DBG("prediv:%d, fbdiv:%d\n", gDsi.phy.prediv, gDsi.phy.fbdiv);
-	gDsi.phy.ddr_clk = gDsi.phy.ref_clk / gDsi.phy.prediv * gDsi.phy.fbdiv;	
-	gDsi.phy.txbyte_clk = gDsi.phy.ddr_clk / 8;
+	MIPI_DBG("prediv:%d, fbdiv:%d\n", gDsi->phy.prediv, gDsi->phy.fbdiv);
+	gDsi->phy.ddr_clk = gDsi->phy.ref_clk / gDsi->phy.prediv * gDsi->phy.fbdiv;	
+	gDsi->phy.txbyte_clk = gDsi->phy.ddr_clk / 8;
 	
-	gDsi.phy.txclkesc = 20 * MHz;        // < 20MHz
-	gDsi.phy.txclkesc = gDsi.phy.txbyte_clk / (gDsi.phy.txbyte_clk / gDsi.phy.txclkesc + 1);
+	gDsi->phy.txclkesc = 20 * MHz;        // < 20MHz
+	gDsi->phy.txclkesc = gDsi->phy.txbyte_clk / (gDsi->phy.txbyte_clk / gDsi->phy.txclkesc + 1);
 #ifdef CONFIG_MIPI_DSI_FT	
-	gDsi.phy.Tpclk = fre_to_period(gDsi.phy.pclk);
-	gDsi.phy.Ttxclkesc = fre_to_period(gDsi.phy.txclkesc);
-	gDsi.phy.Tsys_clk = fre_to_period(gDsi.phy.sys_clk);
-	gDsi.phy.Tddr_clk = fre_to_period(gDsi.phy.ddr_clk);
-	gDsi.phy.Ttxbyte_clk = fre_to_period(gDsi.phy.txbyte_clk);	
+	gDsi->phy.Tpclk = fre_to_period(gDsi->phy.pclk);
+	gDsi->phy.Ttxclkesc = fre_to_period(gDsi->phy.txclkesc);
+	gDsi->phy.Tsys_clk = fre_to_period(gDsi->phy.sys_clk);
+	gDsi->phy.Tddr_clk = fre_to_period(gDsi->phy.ddr_clk);
+	gDsi->phy.Ttxbyte_clk = fre_to_period(gDsi->phy.txbyte_clk);	
 #else
-	gDsi.phy.pclk = div_u64(1000000000000llu, gDsi.phy.Tpclk);
-	gDsi.phy.Ttxclkesc = div_u64(1000000000000llu, gDsi.phy.txclkesc);
-	gDsi.phy.Tsys_clk = div_u64(1000000000000llu, gDsi.phy.sys_clk);
-	gDsi.phy.Tddr_clk = div_u64(1000000000000llu, gDsi.phy.ddr_clk);
-	gDsi.phy.Ttxbyte_clk = div_u64(1000000000000llu, gDsi.phy.txbyte_clk);	
+	gDsi->phy.pclk = div_u64(1000000000000llu, gDsi->phy.Tpclk);
+	gDsi->phy.Ttxclkesc = div_u64(1000000000000llu, gDsi->phy.txclkesc);
+	gDsi->phy.Tsys_clk = div_u64(1000000000000llu, gDsi->phy.sys_clk);
+	gDsi->phy.Tddr_clk = div_u64(1000000000000llu, gDsi->phy.ddr_clk);
+	gDsi->phy.Ttxbyte_clk = div_u64(1000000000000llu, gDsi->phy.txbyte_clk);	
 #endif
 	
-	gDsi.phy.UI = gDsi.phy.Tddr_clk;
-	gDsi.vid = 0;
+	gDsi->phy.UI = gDsi->phy.Tddr_clk;
+	gDsi->vid = 0;
 	
 	if(screen->dsi_lane > 0 && screen->dsi_lane <= 4)
-		gDsi.host.lane = screen->dsi_lane;
+		gDsi->host.lane = screen->dsi_lane;
 	else
-		gDsi.host.lane = 4;
+		gDsi->host.lane = 4;
 		
-	gDsi.host.video_mode = VM_BM;
+	gDsi->host.video_mode = VM_BM;
 	
-	MIPI_DBG("UI:%d\n", gDsi.phy.UI);	
-	MIPI_DBG("ref_clk:%d\n", gDsi.phy.ref_clk);
-	MIPI_DBG("pclk:%d, Tpclk:%d\n", gDsi.phy.pclk, gDsi.phy.Tpclk);
-	MIPI_DBG("sys_clk:%d, Tsys_clk:%d\n", gDsi.phy.sys_clk, gDsi.phy.Tsys_clk);
-	MIPI_DBG("ddr_clk:%d, Tddr_clk:%d\n", gDsi.phy.ddr_clk, gDsi.phy.Tddr_clk);
-	MIPI_DBG("txbyte_clk:%d, Ttxbyte_clk:%d\n", gDsi.phy.txbyte_clk, 
-				gDsi.phy.Ttxbyte_clk);
-	MIPI_DBG("txclkesc:%d, Ttxclkesc:%d\n", gDsi.phy.txclkesc, gDsi.phy.Ttxclkesc);
+	MIPI_DBG("UI:%d\n", gDsi->phy.UI);	
+	MIPI_DBG("ref_clk:%d\n", gDsi->phy.ref_clk);
+	MIPI_DBG("pclk:%d, Tpclk:%d\n", gDsi->phy.pclk, gDsi->phy.Tpclk);
+	MIPI_DBG("sys_clk:%d, Tsys_clk:%d\n", gDsi->phy.sys_clk, gDsi->phy.Tsys_clk);
+	MIPI_DBG("ddr_clk:%d, Tddr_clk:%d\n", gDsi->phy.ddr_clk, gDsi->phy.Tddr_clk);
+	MIPI_DBG("txbyte_clk:%d, Ttxbyte_clk:%d\n", gDsi->phy.txbyte_clk, 
+				gDsi->phy.Ttxbyte_clk);
+	MIPI_DBG("txclkesc:%d, Ttxclkesc:%d\n", gDsi->phy.txclkesc, gDsi->phy.Ttxclkesc);
 	
 	rk_mipi_dsi_phy_power_up();
 	rk_mipi_dsi_host_power_up();
@@ -799,52 +880,55 @@ int rk_mipi_dsi_init_lite(void)
 	
 	if(rk_mipi_dsi_is_active() == 0)
 		return -1;
-	
+#if defined(CONFIG_MFD_RK616)
 	ref_clk = clk_get_rate(dsi_rk616->mclk);
-	if(gDsi.phy.ref_clk == ref_clk)
+#elif defined(CONFIG_ARCH_RK319X)
+	ref_clk = clk_get_rate(gDsi->phy.refclk);
+#endif
+	if(gDsi->phy.ref_clk == ref_clk)
 		return -1;
 		
-	gDsi.phy.ref_clk = ref_clk;
-	gDsi.phy.sys_clk = gDsi.phy.ref_clk;
+	gDsi->phy.ref_clk = ref_clk;
+	gDsi->phy.sys_clk = gDsi->phy.ref_clk;
 	
 	if((screen->hs_tx_clk <= 80 * MHz) || (screen->hs_tx_clk >= 1000 * MHz))
-		gDsi.phy.ddr_clk = 1000 * MHz;    //default is 1HGz
+		gDsi->phy.ddr_clk = 1000 * MHz;    //default is 1HGz
 	else
-		gDsi.phy.ddr_clk = screen->hs_tx_clk;
+		gDsi->phy.ddr_clk = screen->hs_tx_clk;
 		
-	decimals = gDsi.phy.ref_clk;
+	decimals = gDsi->phy.ref_clk;
 	for(i = 1; i < 6; i++) {
-		pre = gDsi.phy.ref_clk / i;
-		if((decimals > (gDsi.phy.ddr_clk % pre)) && (gDsi.phy.ddr_clk / pre < 512)) {
-			decimals = gDsi.phy.ddr_clk % pre;
-			gDsi.phy.prediv = i;
-			gDsi.phy.fbdiv = gDsi.phy.ddr_clk / pre;
+		pre = gDsi->phy.ref_clk / i;
+		if((decimals > (gDsi->phy.ddr_clk % pre)) && (gDsi->phy.ddr_clk / pre < 512)) {
+			decimals = gDsi->phy.ddr_clk % pre;
+			gDsi->phy.prediv = i;
+			gDsi->phy.fbdiv = gDsi->phy.ddr_clk / pre;
 		}	
 		if(decimals == 0) 
 			break;		
 	}
 
-	MIPI_DBG("prediv:%d, fbdiv:%d\n", gDsi.phy.prediv, gDsi.phy.fbdiv);
-	gDsi.phy.ddr_clk = gDsi.phy.ref_clk / gDsi.phy.prediv * gDsi.phy.fbdiv;	
-	gDsi.phy.txbyte_clk = gDsi.phy.ddr_clk / 8;
+	MIPI_DBG("prediv:%d, fbdiv:%d\n", gDsi->phy.prediv, gDsi->phy.fbdiv);
+	gDsi->phy.ddr_clk = gDsi->phy.ref_clk / gDsi->phy.prediv * gDsi->phy.fbdiv;	
+	gDsi->phy.txbyte_clk = gDsi->phy.ddr_clk / 8;
 	
-	gDsi.phy.txclkesc = 20 * MHz;        // < 20MHz
-	gDsi.phy.txclkesc = gDsi.phy.txbyte_clk / (gDsi.phy.txbyte_clk / gDsi.phy.txclkesc + 1);
+	gDsi->phy.txclkesc = 20 * MHz;        // < 20MHz
+	gDsi->phy.txclkesc = gDsi->phy.txbyte_clk / (gDsi->phy.txbyte_clk / gDsi->phy.txclkesc + 1);
 	
-	gDsi.phy.pclk = div_u64(1000000000000llu, gDsi.phy.Tpclk);
-	gDsi.phy.Ttxclkesc = div_u64(1000000000000llu, gDsi.phy.txclkesc);
-	gDsi.phy.Tsys_clk = div_u64(1000000000000llu, gDsi.phy.sys_clk);
-	gDsi.phy.Tddr_clk = div_u64(1000000000000llu, gDsi.phy.ddr_clk);
-	gDsi.phy.Ttxbyte_clk = div_u64(1000000000000llu, gDsi.phy.txbyte_clk);
-	gDsi.phy.UI = gDsi.phy.Tddr_clk;
+	gDsi->phy.pclk = div_u64(1000000000000llu, gDsi->phy.Tpclk);
+	gDsi->phy.Ttxclkesc = div_u64(1000000000000llu, gDsi->phy.txclkesc);
+	gDsi->phy.Tsys_clk = div_u64(1000000000000llu, gDsi->phy.sys_clk);
+	gDsi->phy.Tddr_clk = div_u64(1000000000000llu, gDsi->phy.ddr_clk);
+	gDsi->phy.Ttxbyte_clk = div_u64(1000000000000llu, gDsi->phy.txbyte_clk);
+	gDsi->phy.UI = gDsi->phy.Tddr_clk;
 		
-	MIPI_DBG("UI:%d\n", gDsi.phy.UI);	
-	MIPI_DBG("ref_clk:%d\n", gDsi.phy.ref_clk);
-	MIPI_DBG("pclk:%d, Tpclk:%d\n", gDsi.phy.pclk, gDsi.phy.Tpclk);
-	MIPI_DBG("sys_clk:%d, Tsys_clk:%d\n", gDsi.phy.sys_clk, gDsi.phy.Tsys_clk);
-	MIPI_DBG("ddr_clk:%d, Tddr_clk:%d\n", gDsi.phy.ddr_clk, gDsi.phy.Tddr_clk);
-	MIPI_DBG("txbyte_clk:%d, Ttxbyte_clk:%d\n", gDsi.phy.txbyte_clk, gDsi.phy.Ttxbyte_clk);
-	MIPI_DBG("txclkesc:%d, Ttxclkesc:%d\n", gDsi.phy.txclkesc, gDsi.phy.Ttxclkesc);
+	MIPI_DBG("UI:%d\n", gDsi->phy.UI);	
+	MIPI_DBG("ref_clk:%d\n", gDsi->phy.ref_clk);
+	MIPI_DBG("pclk:%d, Tpclk:%d\n", gDsi->phy.pclk, gDsi->phy.Tpclk);
+	MIPI_DBG("sys_clk:%d, Tsys_clk:%d\n", gDsi->phy.sys_clk, gDsi->phy.Tsys_clk);
+	MIPI_DBG("ddr_clk:%d, Tddr_clk:%d\n", gDsi->phy.ddr_clk, gDsi->phy.Tddr_clk);
+	MIPI_DBG("txbyte_clk:%d, Ttxbyte_clk:%d\n", gDsi->phy.txbyte_clk, gDsi->phy.Ttxbyte_clk);
+	MIPI_DBG("txclkesc:%d, Ttxclkesc:%d\n", gDsi->phy.txclkesc, gDsi->phy.Ttxclkesc);
 		
 	rk_mipi_dsi_host_power_down();
 	rk_mipi_dsi_phy_power_down();
@@ -862,14 +946,22 @@ int rk_mipi_dsi_init_lite(void)
 
 static int rk_mipi_dsi_enable_video_mode(u32 enable)
 {
+#ifdef DWC_DSI_VERSION_0x3131302A
 	dsi_set_bits(enable, en_video_mode);
+#else
+	dsi_set_bits(!enable, cmd_video_mode);
+#endif
 	return 0;
 }
 
 
 static int rk_mipi_dsi_enable_command_mode(u32 enable)
 {
+#ifdef DWC_DSI_VERSION_0x3131302A
 	dsi_set_bits(enable, en_cmd_mode);
+#else
+	dsi_set_bits(enable, cmd_video_mode);
+#endif
 	return 0;
 }
 
@@ -886,8 +978,10 @@ static int rk_mipi_dsi_is_active(void)
 
 static int rk_mipi_dsi_send_packet(u32 type, unsigned char regs[], u32 n)
 {
-	u32 data = 0, i = 0, j = 0, flag = 0;
-	
+	u32 data = 0, i = 0, j = 0;
+#ifdef DWC_DSI_VERSION_0x3131302A	
+	u32 flag = 0;
+#endif	
 	if((n == 0) && (type != DTYPE_GEN_SWRITE_0P))
 		return -1;
 #ifndef CONFIG_MFD_RK616
@@ -897,18 +991,20 @@ static int rk_mipi_dsi_send_packet(u32 type, unsigned char regs[], u32 n)
 	}
 #endif	
 
+#ifdef DWC_DSI_VERSION_0x3131302A
 	if(dsi_get_bits(en_video_mode) == 1) {
 		rk_mipi_dsi_enable_video_mode(0);
 		flag = 1;
 	}
+#endif
 	rk_mipi_dsi_enable_command_mode(1);
 	udelay(10);
 	
 	if(n <= 2) {
 		if(type == DTYPE_GEN_SWRITE_0P)
-			data = (gDsi.vid << 6) | (n << 4) | type;
+			data = (gDsi->vid << 6) | (n << 4) | type;
 		else 
-			data = (gDsi.vid << 6) | ((n-1) << 4) | type;
+			data = (gDsi->vid << 6) | ((n-1) << 4) | type;
 		data |= regs[0] << 8;
 		if(n == 2)
 			data |= regs[1] << 16;
@@ -924,18 +1020,17 @@ static int rk_mipi_dsi_send_packet(u32 type, unsigned char regs[], u32 n)
 					break;
 				}
 				#endif
-				dsi_write_reg(GEN_PLD_DATA, &data);
+				dsi_set_bits(data, GEN_PLD_DATA);
 				MIPI_DBG("write GEN_PLD_DATA:%d, %08x\n", i, data);
 				data = 0;
 			}
 		}
-		data = (gDsi.vid << 6) | type;		
+		data = (gDsi->vid << 6) | type;		
 		data |= (n & 0xffff) << 8;
 	}
 	
 	MIPI_DBG("write GEN_HDR:%08x\n", data);
-	dsi_write_reg(GEN_HDR, &data);
-	
+	dsi_set_bits(data, GEN_HDR);
 #ifndef CONFIG_MFD_RK616
 	i = 10;
 	while(!dsi_get_bits(gen_cmd_empty) && i--) {
@@ -945,10 +1040,12 @@ static int rk_mipi_dsi_send_packet(u32 type, unsigned char regs[], u32 n)
 	udelay(10);
 #endif
 
+#ifdef DWC_DSI_VERSION_0x3131302A
 	rk_mipi_dsi_enable_command_mode(0);
 	if(flag == 1) {
 		rk_mipi_dsi_enable_video_mode(1);
 	}
+#endif
 	return 0;
 }
 
@@ -1004,15 +1101,15 @@ static int rk_mipi_dsi_power_up(void)
 
 static int rk_mipi_dsi_power_down(void)
 {
+	rk_mipi_dsi_host_power_down();
 	rk_mipi_dsi_phy_power_down();
-	rk_mipi_dsi_host_power_down();	
 	return 0;
 }
 
 static int rk_mipi_dsi_get_id(void)
 {
 	u32 id = 0;
-	dsi_read_reg(VERSION, &id);
+	id = dsi_get_bits(VERSION);
 	return id;
 }
 
@@ -1110,7 +1207,9 @@ int reg_proc_write(struct file *file, const char __user *buff, size_t count, lof
 					read_val = 11289600;
 				else	
 					read_val *= MHz;
+#ifdef CONFIG_MFD_RK616
 				clk_set_rate(dsi_rk616->mclk, read_val);	
+#endif
 				//rk_mipi_dsi_init_lite();
 			break;
 		case 'd':
@@ -1154,7 +1253,7 @@ int reg_proc_write(struct file *file, const char __user *buff, size_t count, lof
 
 reg_proc_write_exit:
 	kfree(buf);
-	msleep(20);	
+	msleep(20);
  	return count;
 }
 
@@ -1166,66 +1265,58 @@ int reg_proc_read(struct file *file, char __user *buff, size_t count,
 	int i = 0;
 	u32 val = 0;
 	
-	for(i = VERSION; i <= LP_CMD_TIM; i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = VERSION; i < (VERSION + (MIPI_DSI_HOST_SIZE<<16)); i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
 	
 	MIPI_TRACE("\n");
-	for(i = DPHY_REGISTER0; i <= DPHY_REGISTER4; i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = DPHY_REGISTER0; i <= DPHY_REGISTER4; i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
 	MIPI_TRACE("\n");
 	i = DPHY_REGISTER20;
-	dsi_read_reg(i, &val);
-	MIPI_TRACE("%04x: %08x\n", i, val);
+	val = dsi_get_bits(i);
+	MIPI_TRACE("%04x: %08x\n", i>>16, val);
 	msleep(1);
-#if 1
+
 	MIPI_TRACE("\n");
-	for(i = DPHY_CLOCK_OFFSET >> 16; i <= ((DPHY_CLOCK_OFFSET + reg_hs_tta_wait) >> 16); i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = (DPHY_CLOCK_OFFSET + DSI_DPHY_BITS(0x0000, 32, 0)); i <= ((DPHY_CLOCK_OFFSET + DSI_DPHY_BITS(0x0048, 32, 0))); i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
 	
 	MIPI_TRACE("\n");
-	for(i = DPHY_LANE0_OFFSET >> 16; i <= ((DPHY_LANE0_OFFSET + reg_hs_tta_wait) >> 16); i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = (DPHY_LANE0_OFFSET + DSI_DPHY_BITS(0x0000, 32, 0)); i <= ((DPHY_LANE0_OFFSET + DSI_DPHY_BITS(0x0048, 32, 0))); i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
 
 	MIPI_TRACE("\n");
-	for(i = DPHY_LANE1_OFFSET >> 16; i <= ((DPHY_LANE1_OFFSET + reg_hs_tta_wait) >> 16); i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = (DPHY_LANE1_OFFSET + DSI_DPHY_BITS(0x0000, 32, 0)); i <= ((DPHY_LANE1_OFFSET + DSI_DPHY_BITS(0x0048, 32, 0))); i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
 
 	MIPI_TRACE("\n");
-	for(i = DPHY_LANE2_OFFSET >> 16; i <= ((DPHY_LANE2_OFFSET + reg_hs_tta_wait) >> 16); i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = (DPHY_LANE2_OFFSET + DSI_DPHY_BITS(0x0000, 32, 0)); i <= ((DPHY_LANE2_OFFSET + DSI_DPHY_BITS(0x0048, 32, 0))); i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
 	
 	MIPI_TRACE("\n");
-	for(i = DPHY_LANE3_OFFSET >> 16; i <= ((DPHY_LANE3_OFFSET + reg_hs_tta_wait) >> 16); i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
+	for(i = (DPHY_LANE3_OFFSET + DSI_DPHY_BITS(0x0000, 32, 0)); i <= ((DPHY_LANE3_OFFSET + DSI_DPHY_BITS(0x0048, 32, 0))); i += 4<<16) {
+		val = dsi_get_bits(i);
+		MIPI_TRACE("%04x: %08x\n", i>>16, val);
 		msleep(1);
 	}
-	MIPI_TRACE("****************rk616 core:\n");
-	for(i = 0; i <= 0x009c; i += 4) {
-		dsi_read_reg(i, &val);
-		MIPI_TRACE("%04x: %08x\n", i, val);
-		msleep(1);
-	}
-	
-#endif
 	return -1;
 }
 
@@ -1356,14 +1447,22 @@ static void rk616_mipi_dsi_early_suspend(struct early_suspend *h)
 		g_screen->standby(1);
 	}	
 		
-	rk_mipi_dsi_phy_power_down();
 	rk_mipi_dsi_host_power_down();
+	rk_mipi_dsi_phy_power_down();
+#if defined(CONFIG_ARCH_RK319X)
+	clk_disable(gDsi->dsi_pd);
+	clk_disable(gDsi->dsi_pclk);
+#endif
 	MIPI_TRACE("%s:%d\n", __func__, __LINE__);
 }
 
 static void rk616_mipi_dsi_late_resume(struct early_suspend *h)
 {
 	u8 dcs[4] = {0};
+#if defined(CONFIG_ARCH_RK319X)
+	clk_enable(gDsi->dsi_pd);
+	clk_enable(gDsi->dsi_pclk);
+#endif
 	rk_mipi_dsi_phy_power_up();
 	rk_mipi_dsi_host_power_up();
 
@@ -1411,33 +1510,137 @@ static int rk616_mipi_dsi_notifier_event(struct notifier_block *this,
 struct notifier_block mipi_dsi_nb= {
 	.notifier_call = rk616_mipi_dsi_notifier_event,
 };
+#if defined(CONFIG_ARCH_RK319X)
+static irqreturn_t rk616_mipi_dsi_irq_handler(int irq, void *data)
+{
+	
+
+
+	return IRQ_HANDLED;
+	//return IRQ_NONE;
+}
+#endif
 
 static int rk616_mipi_dsi_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	rk_screen *screen; 
-	struct mfd_rk616 *rk616 = dev_get_drvdata(pdev->dev.parent);
-	if(!rk616)
-	{
-		dev_err(&pdev->dev,"null mfd device rk616!\n");
-		return -ENODEV;
+	rk_screen *screen;
+#if defined(CONFIG_ARCH_RK319X)
+	struct resource *res_host, *res_phy, *res_irq;
+#endif
+#if defined(CONFIG_MFD_RK616)
+	struct mfd_rk616 *rk616;
+#endif
+
+	gDsi = kzalloc(sizeof(struct dsi), GFP_KERNEL);
+	if(!gDsi) {
+		dev_err(&pdev->dev,"request struct dsi fail!\n");
+		return -ENOMEM;
 	}
-	else
+
+#if defined(CONFIG_MFD_RK616)
+	rk616 = dev_get_drvdata(pdev->dev.parent);
+	if(!rk616) {
+		dev_err(&pdev->dev,"null mfd device rk616!\n");
+		ret = -ENODEV;
+		goto probe_err1;
+	} else {
 		dsi_rk616 = rk616;
-	
+	}
 	clk_notifier_register(rk616->mclk, &mipi_dsi_nb);
+#elif defined(CONFIG_ARCH_RK319X)
+	res_host = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mipi_dsi_host");
+	if (!res_host) {
+		dev_err(&pdev->dev, "get resource mipi_dsi_host fail\n");
+		ret = -EINVAL;
+		goto probe_err1;
+	}
+	if (!request_mem_region(res_host->start, resource_size(res_host), pdev->name)) {
+		dev_err(&pdev->dev, "host memory region already claimed\n");
+		ret = -EBUSY;
+		goto probe_err1;
+	}
+	gDsi->host.iobase = res_host->start;
+	gDsi->host.membase = ioremap_nocache(res_host->start, resource_size(res_host));
+	if (!gDsi->host.membase) {
+		dev_err(&pdev->dev, "ioremap mipi_dsi_host fail\n");
+		ret = -ENXIO;
+		goto probe_err2;
+	}
+
+	res_phy = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mipi_dsi_phy");
+	if (!res_phy) {
+		dev_err(&pdev->dev, "get resource mipi_dsi_phy fail\n");
+		ret = -EINVAL;
+		goto probe_err3;
+	}
+	if (!request_mem_region(res_phy->start, resource_size(res_phy), pdev->name)) {
+		dev_err(&pdev->dev, "phy memory region already claimed\n");
+		ret = -EBUSY;
+		goto probe_err3;
+	}
+	gDsi->phy.iobase = res_phy->start;
+	gDsi->phy.membase = ioremap_nocache(res_phy->start, resource_size(res_phy));
+	if (!gDsi->phy.membase) {
+		dev_err(&pdev->dev, "ioremap mipi_dsi_phy fail\n");
+		ret = -ENXIO;
+		goto probe_err4;
+	}
+
+	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!res_irq) {
+		dev_err(&pdev->dev, "get resource mipi_dsi irq fail\n");
+		ret = -EINVAL;
+		goto probe_err5;
+	}
+	gDsi->host.irq = res_irq->start;
+	ret = request_irq(gDsi->host.irq, rk616_mipi_dsi_irq_handler, 0,
+					dev_name(&pdev->dev), gDsi);
+	if(ret) {
+		dev_err(&pdev->dev, "request mipi_dsi irq fail\n");
+		ret = -EINVAL;
+		goto probe_err5;
+	}
+	disable_irq(gDsi->host.irq);
 	
+	gDsi->phy.refclk = clk_get(NULL, "mipi_ref");
+	if (unlikely(IS_ERR(gDsi->phy.refclk))) {
+		dev_err(&pdev->dev, "get mipi_ref clock fail\n");
+		ret = PTR_ERR(gDsi->phy.refclk);
+		goto probe_err6;
+	}
+	gDsi->dsi_pclk = clk_get(NULL, "pclk_mipi_dsi");
+	if (unlikely(IS_ERR(gDsi->dsi_pclk))) {
+		dev_err(&pdev->dev, "get pclk_mipi_dsi clock fail\n");
+		ret = PTR_ERR(gDsi->dsi_pclk);
+		goto probe_err7;
+	}
+	gDsi->dsi_pd = clk_get(NULL, "pd_mipi_dsi");
+	if (unlikely(IS_ERR(gDsi->dsi_pd))) {
+		dev_err(&pdev->dev, "get pd_mipi_dsi clock fail\n");
+		ret = PTR_ERR(gDsi->dsi_pd);
+		goto probe_err8;
+	}
+
+	clk_enable(gDsi->dsi_pd);
+	clk_enable(gDsi->dsi_pclk);
+	//clk_enable(gDsi->phy.refclk);
+#endif  /* CONFIG_MFD_RK616 */
+
 	screen = rk_fb_get_prmry_screen();
 	if(!screen) {
 		dev_err(&pdev->dev,"the fb prmry screen is null!\n");
-		return -ENODEV;
+		goto probe_err9;
 	}
+
+#ifdef CONFIG_MFD_RK616
 	g_rk29fd_screen = screen;
-	
+#endif	
 	g_screen = kzalloc(sizeof(struct mipi_dsi_screen), GFP_KERNEL);
 	if (g_screen == NULL) {
+		dev_err(&pdev->dev,"request g_screen memory fail!\n");
 		ret = -ENOMEM;
-		goto do_release_region;
+		goto probe_err9;
 	}
 	g_screen->type = screen->type;
 	g_screen->face = screen->face;
@@ -1460,49 +1663,80 @@ static int rk616_mipi_dsi_probe(struct platform_device *pdev)
 	g_screen->dsi_video_mode = screen->dsi_video_mode;
 	g_screen->hs_tx_clk = screen->hs_tx_clk;
 	g_screen->init = screen->init;
-	g_screen->standby = screen->standby;	
-	
+	g_screen->standby = screen->standby;
+
+#ifdef CONFIG_MFD_RK616
 	host_mem = kzalloc(MIPI_DSI_HOST_SIZE, GFP_KERNEL);
 	if(!host_mem) {
-		dev_info(&pdev->dev,"request host_mem fail!\n");
+		dev_err(&pdev->dev,"request host_mem fail!\n");
 		ret = -ENOMEM;
-		goto do_release_region;
+		goto probe_err10;
 	}
 	phy_mem = kzalloc(MIPI_DSI_PHY_SIZE, GFP_KERNEL);
 	if(!phy_mem) {
-		dev_info(&pdev->dev,"request phy_mem fail!\n");
+		kfree(host_mem);
+		dev_err(&pdev->dev,"request phy_mem fail!\n");
 		ret = -ENOMEM;
-		goto do_release_region;	
+		goto probe_err10;
 	}
 	
 	memset(host_mem, 0xaa, MIPI_DSI_HOST_SIZE);	
 	memset(phy_mem, 0xaa, MIPI_DSI_PHY_SIZE);
+#endif
 
 	ret = rk_mipi_dsi_probe(g_screen, 0);
 	if(ret) {
-		dev_info(&pdev->dev,"rk mipi_dsi probe fail!\n");
-		dev_info(&pdev->dev,"%s\n", RK_MIPI_DSI_VERSION_AND_TIME);
-		goto do_release_region;
+		dev_err(&pdev->dev,"rk mipi_dsi probe fail!\n");
+		dev_err(&pdev->dev,"%s\n", RK_MIPI_DSI_VERSION_AND_TIME);
+		goto probe_err11;
 	}	
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	gDsi.early_suspend.suspend = rk616_mipi_dsi_early_suspend;
-	gDsi.early_suspend.resume = rk616_mipi_dsi_late_resume;
-	gDsi.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	register_early_suspend(&gDsi.early_suspend);
+	gDsi->early_suspend.suspend = rk616_mipi_dsi_early_suspend;
+	gDsi->early_suspend.resume = rk616_mipi_dsi_late_resume;
+	gDsi->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	register_early_suspend(&gDsi->early_suspend);
 #endif
 	
 	dev_info(&pdev->dev,"rk mipi_dsi probe success!\n");
 	dev_info(&pdev->dev,"%s\n", RK_MIPI_DSI_VERSION_AND_TIME);
 	return 0;
-do_release_region:	
+
+probe_err11:
+#ifdef CONFIG_MFD_RK616
+	kfree(host_mem);
+	kfree(phy_mem);
+probe_err10:
+#endif
 	kfree(g_screen);
+probe_err9:
+#if defined(CONFIG_ARCH_RK319X)
+	clk_put(gDsi->dsi_pd);
+probe_err8:
+	clk_put(gDsi->dsi_pclk);
+probe_err7:
+	clk_put(gDsi->phy.refclk);
+probe_err6:
+	free_irq(gDsi->host.irq, gDsi);
+probe_err5:
+	iounmap(gDsi->phy.membase);
+probe_err4:
+	release_mem_region(res_phy->start, resource_size(res_phy));
+probe_err3:
+	iounmap(gDsi->host.membase);
+probe_err2:
+	release_mem_region(res_host->start, resource_size(res_host));
+#endif
+probe_err1:
+	kfree(gDsi);
 	return ret;
 	
 }
 
 static int rk616_mipi_dsi_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_MFD_RK616
 	clk_notifier_unregister(dsi_rk616->mclk, &mipi_dsi_nb);
+#endif
 	return 0;
 }
 
@@ -1524,9 +1758,10 @@ static void rk616_mipi_dsi_shutdown(struct platform_device *pdev)
 		g_screen->standby(1);
 	}
 		
-	rk_mipi_dsi_phy_power_down();
-	rk_mipi_dsi_host_power_down();
 	
+	rk_mipi_dsi_host_power_down();
+	rk_mipi_dsi_phy_power_down();
+
 	MIPI_TRACE("%s:%d\n", __func__, __LINE__);
 	return;
 }
