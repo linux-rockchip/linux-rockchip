@@ -1373,7 +1373,7 @@ static int rk_mmc_probe(struct platform_device *pdev)
 		    /*MMC_CAP_WAIT_WHILE_BUSY |*/
 		    MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED;	
 #ifdef CONFIG_EMMC_DDR_MODE
-	mmc->caps |= MMC_CAP_1_8V_DDR | MMC_CAP_UHS_DDR50
+	mmc->caps |= MMC_CAP_1_8V_DDR | MMC_CAP_UHS_DDR50;
 #endif
 
 	//mmc->caps2 = MMC_CAP2_CACHE_CTRL;
