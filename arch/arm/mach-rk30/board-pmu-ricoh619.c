@@ -19,7 +19,7 @@ static int ricoh619_pre_init(struct ricoh619 *ricoh619){
 	printk("%s,line=%d\n", __func__,__LINE__);	
 	int ret;
 
-	ret = ricoh619_set_bits(ricoh619->dev,RICOH619_PWR_REP_CNT,(1 << 0));  //set restart when power off
+	ret = ricoh619_clr_bits(ricoh619->dev,RICOH619_PWR_REP_CNT,(1 << 0));  //set restart when power off
 
 	/**********set dcdc mode when in sleep mode **************/
 	

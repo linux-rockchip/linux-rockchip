@@ -1853,7 +1853,7 @@ static int __init rt5025_battery_init(void)
 {
 	return platform_driver_register(&rt5025_battery_driver);
 }
-module_init(rt5025_battery_init);
+fs_initcall(rt5025_battery_init);
 
 static void __exit rt5025_battery_exit(void)
 {

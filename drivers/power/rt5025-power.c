@@ -368,7 +368,7 @@ static void usb_detect_work_func(struct work_struct *work)
 				break;
 			case 1: //normal USB
 			default:
-				rt5025_set_charging_current(pi->i2c, 2000);
+				rt5025_set_charging_current(pi->i2c, 500);
 				rt5025_notify_charging_cable(pi->chip->jeita_info, JEITA_NORMAL_USB);
 				RTINFO("rt5025: detect normal usb\n");
 				break;
@@ -550,7 +550,7 @@ static int __init rt5025_power_init(void)
 {
 	return platform_driver_register(&rt5025_power_driver);
 }
-late_initcall_sync(rt5025_power_init);
+fs_initcall_sync(rt5025_power_init);
 
 static void __exit rt5025_power_exit(void)
 {

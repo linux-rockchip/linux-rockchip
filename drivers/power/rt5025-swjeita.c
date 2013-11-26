@@ -492,7 +492,7 @@ static int __init rt5025_swjeita_init(void)
 {
 	return platform_driver_register(&rt5025_swjeita_driver);
 }
-module_init(rt5025_swjeita_init);
+fs_initcall(rt5025_swjeita_init);
 
 static void __exit rt5025_swjeita_exit(void)
 {

@@ -78,6 +78,7 @@ static void rt5025_work_func(struct work_struct *work)
 		irq_enable[5] = rt5025_reg_read(ii->i2c, RT5025_REG_GAUGEIRQEN);
 		#if 1
 		rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN2, irq_enable[1]&(~RT5025_CHTERMI_MASK));
+		rt5025_reg_write(ii->i2c, RT5025_REG_GAUGEIRQEN, 0x00);
 		#else
 		/* disable all irq enable bit first */
 		rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN1, irq_enable[0]&RT5025_ADAPIRQ_MASK);
@@ -174,8 +175,13 @@ static void rt5025_work_func(struct work_struct *work)
 	#ifdef CONFIG_POWER_RT5025
 	if (irq_stat[5] & RT5025_FLG_TEMP)
 		rt5025_swjeita_irq_handler(ii->chip->jeita_info, irq_stat[5] & RT5025_FLG_TEMP);
+	else
+		rt5025_assign_bits(ii->i2c, RT5025_REG_GAUGEIRQEN, RT5025_FLG_TEMP, irq_enable[5]&RT5025_FLG_TEMP);
+
 	if (irq_stat[5] & RT5025_FLG_VOLT)
 		rt5025_gauge_irq_handler(ii->chip->battery_info, irq_stat[5] & RT5025_FLG_VOLT);
+	else
+		rt5025_assign_bits(ii->i2c, RT5025_REG_GAUGEIRQEN, RT5025_FLG_VOLT, irq_enable[5]&RT5025_FLG_VOLT);
 	#endif /* CONFIG_POWER_RT5025 */
 
 	#if 1
@@ -224,7 +230,7 @@ static int __devinit rt5025_interrupt_init(struct rt5025_irq_info* ii)
 			return ret;
 	#endif
 
-		if (request_irq(ii->irq, rt5025_interrupt, IRQ_TYPE_EDGE_FALLING|IRQF_DISABLED, "RT5025_IRQ", ii))
+		if (request_irq(ii->irq, rt5025_interrupt, IRQ_TYPE_EDGE_FALLING|IRQF_ONESHOT|IRQF_DISABLED, "RT5025_IRQ", ii))
 		{
 			dev_err(ii->dev, "couldn't allocate IRQ_NO(%d) !\n", ii->irq);
 			return -EINVAL;
@@ -331,6 +337,7 @@ static int rt5025_irq_suspend(struct platform_device *pdev, pm_message_t state)
 	struct rt5025_irq_info *ii = platform_get_drvdata(pdev);
 
 	RTINFO("\n");
+	rt5025_interrupt_deinit(ii);
 	ii->suspend = 1;
 	return 0;
 }
@@ -338,9 +345,14 @@ static int rt5025_irq_suspend(struct platform_device *pdev, pm_message_t state)
 static int rt5025_irq_resume(struct platform_device *pdev)
 {
 	struct rt5025_irq_info *ii = platform_get_drvdata(pdev);
+	struct rt5025_chip *chip = dev_get_drvdata(pdev->dev.parent);
+	struct rt5025_platform_data *pdata = chip->dev->platform_data;
 
 	RTINFO("\n");
 	ii->suspend = 0;
+	rt5025_irq_reg_init(ii, pdata->irq_data);
+	rt5025_interrupt_init(ii);
+	queue_delayed_work(ii->wq, &ii->delayed_work, 0);
 	return 0;
 }
 

@@ -2511,7 +2511,10 @@ static void rk30_pm_power_off(void)
 
 	#if defined(CONFIG_MFD_RT5025) 
 	if(pmic_is_rt5025()){
-	rt5025_power_off();    //rt5025 shutdown
+		if (rt5025_cable_exist())
+        		arm_pm_restart(0, "charge");
+		else
+			rt5025_power_off(); //rt5025 shutdown
 	}
 	#endif
 
