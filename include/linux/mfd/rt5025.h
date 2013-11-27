@@ -15,9 +15,12 @@
 
 #include <linux/power_supply.h>
 #include <linux/android_alarm.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 #define RT5025_DEVICE_NAME "RT5025"
-#define RT5025_DRV_VER	   "1.0.9_R"
+#define RT5025_DRV_VER	   "1.0.10_R"
 
 enum {
 	RT5025_RSTDELAY1_100MS,
@@ -420,6 +423,10 @@ struct rt5025_power_info {
 	struct power_supply	usb;
 	struct mutex	var_lock;
 	struct delayed_work usb_detect_work;
+	struct delayed_work power_detect_work;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend early_suspend;
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 	int usb_cnt;
 	int chg_term;
 	int otg_en;
@@ -432,6 +439,9 @@ struct rt5025_swjeita_info {
 	struct i2c_client *i2c;
 	struct rt5025_chip *chip;
 	struct delayed_work thermal_reg_work;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend early_suspend;
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 	int *temp;
 	u8 *temp_scalar;
 	int (*temp_cc)[5];

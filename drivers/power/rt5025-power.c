@@ -20,6 +20,9 @@
 #include <linux/version.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 #include <linux/mfd/rt5025.h>
 #include <linux/power/rt5025-power.h>
 #include <linux/delay.h>
@@ -90,7 +93,7 @@ int rt5025_charger_reset_and_reinit(struct rt5025_power_info *pi)
 	if (ret < 0)
 		return ret;
 	rt5025_reg_write(pi->i2c, RT5025_REG_CHGCTL4, ret|RT5025_CHGRST_MASK);
-	mdelay(200);
+	mdelay(350);
 
 	rt5025_reg_write(pi->i2c, RT5025_REG_CHGCTL2, pdata->power_data->CHGControl2.val);
 	rt5025_reg_write(pi->i2c, RT5025_REG_CHGCTL3, pdata->power_data->CHGControl3.val);
@@ -231,8 +234,10 @@ int rt5025_power_passirq_to_gauge(struct rt5025_power_info *info)
 EXPORT_SYMBOL(rt5025_power_passirq_to_gauge);
 #endif
 
-int rt5025_power_charge_detect(struct rt5025_power_info *info)
+static void power_detect_work_func(struct work_struct *work)
 {
+	struct delayed_work *delayed_work = (struct delayed_work *)container_of(work, struct delayed_work, work);
+	struct rt5025_power_info *info = (struct rt5025_power_info *)container_of(delayed_work, struct rt5025_power_info, power_detect_work);
 	int ret = 0;
 	unsigned char chgstatval = 0;
 	unsigned old_usbval, old_acval, old_chgval, new_usbval, new_acval, new_chgval;
@@ -241,13 +246,13 @@ int rt5025_power_charge_detect(struct rt5025_power_info *info)
 	old_usbval = info->usb_online;
 	old_chgval = info->chg_stat;
 
-	mdelay(50);
+	//mdelay(50);
 	
 	ret = rt5025_reg_read(info->i2c, RT5025_REG_CHGSTAT);
 	if (ret<0)
 	{
 		dev_err(info->dev, "read chg stat reg fail\n");
-		return ret;
+		return;
 	}
 	chgstatval = ret;
 	RTINFO("chgstat = 0x%02x\n", chgstatval);
@@ -283,7 +288,7 @@ int rt5025_power_charge_detect(struct rt5025_power_info *info)
 	if (new_acval || new_usbval)
 	{
 		info->usb_cnt = 0;
-		schedule_delayed_work(&info->usb_detect_work, 0); //no delay
+		schedule_delayed_work(&info->usb_detect_work, msecs_to_jiffies(10)); //no delay
 	}
 
 	new_chgval = (chgstatval&RT5025_CHGSTAT_MASK)>>RT5025_CHGSTAT_SHIFT;
@@ -312,8 +317,12 @@ int rt5025_power_charge_detect(struct rt5025_power_info *info)
 			info->event_callback->rt5025_gauge_set_status(POWER_SUPPLY_STATUS_NOT_CHARGING);
 		#endif
 	}
+}
 
-	return ret;
+int rt5025_power_charge_detect(struct rt5025_power_info *info)
+{
+	schedule_delayed_work(&info->power_detect_work, msecs_to_jiffies(50));
+	return 0;
 }
 EXPORT_SYMBOL(rt5025_power_charge_detect);
 
@@ -432,6 +441,23 @@ static int __devinit rt5025_init_charger(struct rt5025_power_info *info, struct 
 	return 0;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void rt5025_power_earlysuspend(struct early_suspend *h)
+{
+	RTINFO("\n");
+}
+
+static void rt5025_power_earlyresume(struct early_suspend *h)
+{
+	#if 0
+	struct rt5025_power_info *pi;
+	pi = container_of(h, struct rt5025_power_info, early_suspend);
+	rt5025_power_charge_detect(pi);
+	#endif
+	RTINFO("\n");
+}
+#endif /* CONFIG_HAS_EARLYSUSPEND */
+
 static int __devinit rt5025_power_probe(struct platform_device *pdev)
 {
 	struct rt5025_chip *chip = dev_get_drvdata(pdev->dev.parent);
@@ -448,6 +474,7 @@ static int __devinit rt5025_power_probe(struct platform_device *pdev)
 	pi->chip = chip;
 	mutex_init(&pi->var_lock);
 	INIT_DELAYED_WORK(&pi->usb_detect_work, usb_detect_work_func);
+	INIT_DELAYED_WORK(&pi->power_detect_work, power_detect_work_func);
 
 	#if 0
 	ret = rt5025_gauge_init(pi);
@@ -480,6 +507,13 @@ static int __devinit rt5025_power_probe(struct platform_device *pdev)
 
 	rt5025_init_charger(pi, pdata->power_data);
 	chip->power_info = pi;
+
+	#ifdef CONFIG_HAS_EARLYSUSPEND
+	pi->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
+	pi->early_suspend.suspend = rt5025_power_earlysuspend;
+	pi->early_suspend.resume = rt5025_power_earlyresume;
+	register_early_suspend(&pi->early_suspend);
+	#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 	pr_info("rt5025-power driver is successfully loaded\n");
 

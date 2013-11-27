@@ -50,7 +50,7 @@ void rt5025_gauge_set_status(struct rt5025_battery_info *bi, int status)
   else
 	power_supply_changed(&bi->battery);
   wake_lock_timeout(&bi->status_wake_lock, 1.5*HZ);
-  schedule_delayed_work(&bi->monitor_work, 0);
+  schedule_delayed_work(&bi->monitor_work, msecs_to_jiffies(100));
 }
 EXPORT_SYMBOL(rt5025_gauge_set_status);
 
@@ -181,6 +181,9 @@ static int rt5025_get_property(struct power_supply *psy,
 			//val->intval = 50;
       if (val->intval > 100)
 				val->intval = 100;
+      //If there's no battery, always show capacity to 50
+      if (!bi->present)
+	val->intval = 50;
       break;
     case POWER_SUPPLY_PROP_TECHNOLOGY:
       val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -769,8 +772,8 @@ void rt5025_gauge_irq_handler(struct rt5025_battery_info *bi, u8 irq_flag)
 	}
 	
 	//wake_lock(&bi->monitor_wake_lock);
-	wake_lock_timeout(&bi->status_wake_lock, 1.5*HZ);
-	schedule_delayed_work(&bi->monitor_work, 0);
+	//wake_lock_timeout(&bi->status_wake_lock, 1.5*HZ);
+	//schedule_delayed_work(&bi->monitor_work, 0);
 }
 EXPORT_SYMBOL(rt5025_gauge_irq_handler);
 

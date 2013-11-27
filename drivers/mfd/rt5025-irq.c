@@ -40,6 +40,7 @@ struct rt5025_irq_info {
 	int suspend;
 	int acin_cnt;
 	int usbin_cnt;
+	int init_once;
 };
 
 static void rt5025_work_func(struct work_struct *work)
@@ -78,7 +79,7 @@ static void rt5025_work_func(struct work_struct *work)
 		irq_enable[5] = rt5025_reg_read(ii->i2c, RT5025_REG_GAUGEIRQEN);
 		#if 1
 		rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN2, irq_enable[1]&(~RT5025_CHTERMI_MASK));
-		rt5025_reg_write(ii->i2c, RT5025_REG_GAUGEIRQEN, 0x00);
+		rt5025_reg_write(ii->i2c, RT5025_REG_GAUGEIRQEN, irq_enable[5]&RT5025_FLG_TEMP);
 		#else
 		/* disable all irq enable bit first */
 		rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN1, irq_enable[0]&RT5025_ADAPIRQ_MASK);
@@ -116,24 +117,44 @@ static void rt5025_work_func(struct work_struct *work)
 
 			if (chg_event & (CHG_EVENT_CHSLPI_INAC | CHG_EVENT_CHSLPI_INUSB))
 			{
-				ii->chip->power_info->chg_term = 0;
 				if (chg_event & CHG_EVENT_CHSLPI_INAC)
+				{
 					ii->acin_cnt = 0;
+					if (ii->usbin_cnt == 1)
+					{
+						ii->usbin_cnt++;
+						if (ii->chip->power_info->chg_term > 3)
+							ii->chip->power_info->chg_term = 3;
+					}
+				}
 				if (chg_event & CHG_EVENT_CHSLPI_INUSB)
+				{
 					ii->usbin_cnt = 0;
+					if (ii->acin_cnt == 1)
+					{
+						ii->acin_cnt++;
+						if (ii->chip->power_info->chg_term > 3)
+							ii->chip->power_info->chg_term = 3;
+					}
+				}
+				if (ii->acin_cnt == 0 && ii->usbin_cnt == 0)
+					ii->chip->power_info->chg_term = 0;
 				
 			}
 
+			RTINFO("acin_cnt %d, usbin_cnt %d\n", ii->acin_cnt, ii->usbin_cnt);
 			if (chg_event & (CHG_EVENT_INAC_PLUGIN | CHG_EVENT_INUSB_PLUGIN))
 			{
-				RTINFO("acin_cnt %d, usbin_cnt %d\n", ii->acin_cnt, ii->usbin_cnt);
 				if (ii->acin_cnt == 0 && ii->usbin_cnt == 0)
 				{
 					#if 1
-					rt5025_charger_reset_and_reinit(ii->chip->power_info);
-					rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN1, irq_enable[0]);
-					rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN2, irq_enable[1]&(~RT5025_CHTERMI_MASK));
-					rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN3, irq_enable[2]);
+					if (ii->chip->battery_info->present)
+					{
+						rt5025_charger_reset_and_reinit(ii->chip->power_info);
+						rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN1, irq_enable[0]);
+						rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN2, irq_enable[1]&(~RT5025_CHTERMI_MASK));
+						rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN3, irq_enable[2]);
+					}
 					#else
 					rt5025_set_charging_buck(ii->i2c, 0);
 					mdelay(50);
@@ -147,15 +168,26 @@ static void rt5025_work_func(struct work_struct *work)
 				}
 
 				if (chg_event & CHG_EVENT_INAC_PLUGIN)
-					ii->acin_cnt = 1;
+					ii->acin_cnt = (ii->acin_cnt>1)?2:ii->acin_cnt+1;
 				if (chg_event & CHG_EVENT_INUSB_PLUGIN)
-					ii->usbin_cnt = 1;
-				RTINFO("acin_cnt %d, usbin_cnt %d\n", ii->acin_cnt, ii->usbin_cnt);
+					ii->usbin_cnt = (ii->usbin_cnt>1)?2:ii->usbin_cnt+1;
+
+				if (ii->acin_cnt == 1 && !ii->chip->battery_info->present)
+					ii->acin_cnt++;
+
+				if (ii->usbin_cnt == 1 && !ii->chip->battery_info->present)
+					ii->usbin_cnt++;
+
+				if ((ii->acin_cnt > 1 && ii->usbin_cnt == 0) ||
+				    (ii->acin_cnt == 0 && ii->usbin_cnt > 1))
+					ii->chip->power_info->chg_term = 0;
 			}
+			RTINFO("acin_cnt %d, usbin_cnt %d, chg_term %d\n", ii->acin_cnt, ii->usbin_cnt, ii->chip->power_info->chg_term);
 
-			if (ii->chip->power_info->chg_term <= 3)
+			if (ii->chip->power_info->chg_term <= 3 && (ii->acin_cnt > 1|| ii->usbin_cnt > 1))
 				rt5025_power_charge_detect(ii->chip->power_info);
-
+			else if (ii->acin_cnt == 0 && ii->usbin_cnt == 0)
+				rt5025_power_charge_detect(ii->chip->power_info);
 		}
 		#endif /* CONFIG_POWER_RT5025 */
 		if (ii->event_cb)
@@ -178,14 +210,17 @@ static void rt5025_work_func(struct work_struct *work)
 	else
 		rt5025_assign_bits(ii->i2c, RT5025_REG_GAUGEIRQEN, RT5025_FLG_TEMP, irq_enable[5]&RT5025_FLG_TEMP);
 
+	#if 0
 	if (irq_stat[5] & RT5025_FLG_VOLT)
 		rt5025_gauge_irq_handler(ii->chip->battery_info, irq_stat[5] & RT5025_FLG_VOLT);
 	else
 		rt5025_assign_bits(ii->i2c, RT5025_REG_GAUGEIRQEN, RT5025_FLG_VOLT, irq_enable[5]&RT5025_FLG_VOLT);
+	#endif /* #if 0 */
 	#endif /* CONFIG_POWER_RT5025 */
 
 	#if 1
 	rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN2, irq_enable[1]);
+	ii->init_once = 0;
 	#else
 	/* restore all irq enable bit */
 	rt5025_reg_write(ii->i2c, RT5025_REG_IRQEN1, irq_enable[0]);
@@ -230,7 +265,7 @@ static int __devinit rt5025_interrupt_init(struct rt5025_irq_info* ii)
 			return ret;
 	#endif
 
-		if (request_irq(ii->irq, rt5025_interrupt, IRQ_TYPE_EDGE_FALLING|IRQF_ONESHOT|IRQF_DISABLED, "RT5025_IRQ", ii))
+		if (request_threaded_irq(ii->irq, NULL, rt5025_interrupt, IRQ_TYPE_EDGE_FALLING|IRQF_NO_SUSPEND, "RT5025_IRQ", ii))
 		{
 			dev_err(ii->dev, "couldn't allocate IRQ_NO(%d) !\n", ii->irq);
 			return -EINVAL;
@@ -296,6 +331,7 @@ static int __devinit rt5025_irq_probe(struct platform_device *pdev)
 	if (pdata->cb)
 		ii->event_cb = pdata->cb;
 	wake_lock_init(&ii->irq_wake_lock, WAKE_LOCK_SUSPEND, "rt_irq_wake");
+	ii->init_once = 1;
 
 	rt5025_irq_reg_init(ii, pdata->irq_data);
 	rt5025_interrupt_init(ii);
@@ -337,7 +373,7 @@ static int rt5025_irq_suspend(struct platform_device *pdev, pm_message_t state)
 	struct rt5025_irq_info *ii = platform_get_drvdata(pdev);
 
 	RTINFO("\n");
-	rt5025_interrupt_deinit(ii);
+	//rt5025_interrupt_deinit(ii);
 	ii->suspend = 1;
 	return 0;
 }
@@ -345,14 +381,14 @@ static int rt5025_irq_suspend(struct platform_device *pdev, pm_message_t state)
 static int rt5025_irq_resume(struct platform_device *pdev)
 {
 	struct rt5025_irq_info *ii = platform_get_drvdata(pdev);
-	struct rt5025_chip *chip = dev_get_drvdata(pdev->dev.parent);
-	struct rt5025_platform_data *pdata = chip->dev->platform_data;
+	//struct rt5025_chip *chip = dev_get_drvdata(pdev->dev.parent);
+	//struct rt5025_platform_data *pdata = chip->dev->platform_data;
 
 	RTINFO("\n");
 	ii->suspend = 0;
-	rt5025_irq_reg_init(ii, pdata->irq_data);
-	rt5025_interrupt_init(ii);
-	queue_delayed_work(ii->wq, &ii->delayed_work, 0);
+	//rt5025_irq_reg_init(ii, pdata->irq_data);
+	//rt5025_interrupt_init(ii);
+	//queue_delayed_work(ii->wq, &ii->delayed_work, 0);
 	return 0;
 }
 

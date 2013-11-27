@@ -18,6 +18,9 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 #include <linux/mfd/rt5025.h>
 #include <linux/power/rt5025-swjeita.h>
@@ -390,6 +393,37 @@ static void thermal_reg_work_func(struct work_struct *work)
 	RTINFO("%s --", __func__);
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void rt5025_swjeita_earlysuspend(struct early_suspend *h)
+{
+	#if 0
+	struct rt5025_swjeita_info *swji;
+	swji = container_of(h, struct rt5025_swjeita_info, early_suspend);
+	swji->suspend = 1;
+	cancel_delayed_work_sync(&swji->thermal_reg_work);
+	swji->cur_therm_region = swji->dec_current = 0;
+	rt5025_notify_charging_cable(swji, swji->cur_cable);
+	if (swji->cur_cable == JEITA_AC_ADAPTER || swji->cur_cable == JEITA_USB_TA)
+		rt5025_set_charging_cc(swji->i2c, swji->temp_cc[swji->cur_cable][swji->cur_section]\
+				+1400);
+	#endif /* #if 0 */
+	RTINFO("\n");
+}
+
+static void rt5025_swjeita_earlyresume(struct early_suspend *h)
+{
+	#if 0
+	struct rt5025_swjeita_info *swji;
+	swji = container_of(h, struct rt5025_swjeita_info, early_suspend);
+	if (swji->cur_cable == JEITA_AC_ADAPTER || swji->cur_cable == JEITA_USB_TA)
+		rt5025_set_charging_cc(swji->i2c, swji->temp_cc[swji->cur_cable][swji->cur_section]);
+	swji->suspend = 0;
+	schedule_delayed_work(&swji->thermal_reg_work, 0);
+	#endif /* #if 0 */
+	RTINFO("\n");
+}
+#endif /* CONFIG_HAS_EARLYSUSPEND */
+
 static int __devinit rt5025_swjeita_probe(struct platform_device *pdev)
 {
 	struct rt5025_chip *chip = dev_get_drvdata(pdev->dev.parent);
@@ -434,6 +468,13 @@ static int __devinit rt5025_swjeita_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&swji->thermal_reg_work, thermal_reg_work_func);
 	platform_set_drvdata(pdev, swji);
 
+	#ifdef CONFIG_HAS_EARLYSUSPEND
+	swji->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
+	swji->early_suspend.suspend = rt5025_swjeita_earlysuspend;
+	swji->early_suspend.resume = rt5025_swjeita_earlyresume;
+	register_early_suspend(&swji->early_suspend);
+	#endif /* CONFIG_HAS_EARLYSUSPEND */
+
 	rt5025_set_ainadc_onoff(swji, 1);
 	rt5025_set_intadc_onoff(swji, 1);
 	mdelay(100);
@@ -457,21 +498,24 @@ static int __devexit rt5025_swjeita_remove(struct platform_device *pdev)
 
 static int rt5025_swjeita_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	#if 1
 	struct rt5025_swjeita_info *swji = platform_get_drvdata(pdev);
 	swji->suspend = 1;
 	cancel_delayed_work_sync(&swji->thermal_reg_work);
 	swji->cur_therm_region = swji->dec_current = 0;
 	rt5025_notify_charging_cable(swji, swji->cur_cable);
+	#endif /* #if 1 */
 	RTINFO("\n");
 	return 0;
 }
 
 static int rt5025_swjeita_resume(struct platform_device *pdev)
 {
+	#if 1
 	struct rt5025_swjeita_info *swji = platform_get_drvdata(pdev);
-
 	swji->suspend = 0;
 	schedule_delayed_work(&swji->thermal_reg_work, 0);
+	#endif /* #if 1 */
 	RTINFO("\n");
 	return 0;
 }
