@@ -163,6 +163,9 @@ static void hdmi_wq_insert(struct hdmi *hdmi)
 		hdmi->ops->insert(hdmi);
 	hdmi_wq_parse_edid(hdmi);
 	hdmi_wq_set_video(hdmi);
+	#ifdef CONFIG_SWITCH
+	switch_set_state(&(hdmi->switchdev), 1);
+	#endif
 	hdmi_wq_set_audio(hdmi);
 	hdmi_wq_set_output(hdmi, hdmi->mute);
 	if(hdmi->ops->hdcp_cb) {
@@ -196,9 +199,10 @@ static void hdmi_wq_remove(struct hdmi *hdmi)
 	memset(&hdmi->edid, 0, sizeof(struct hdmi_edid));
 	hdmi_init_modelist(hdmi);
 	hdmi->mute	= HDMI_AV_UNMUTE;
-	hdmi->hotplug = HDMI_HPD_REMOVED;
 	hdmi->mode_3d = HDMI_3D_NONE;
-	rk_fb_switch_screen(NULL, 0, hdmi->lcdc->id);
+	if(hdmi->hotplug == HDMI_HPD_ACTIVED)
+		rk_fb_switch_screen(NULL, 0, hdmi->lcdc->id);
+	hdmi->hotplug = HDMI_HPD_REMOVED;
 	hdmi_send_uevent(hdmi, KOBJ_REMOVE);
 	#ifdef CONFIG_SWITCH
 	switch_set_state(&(hdmi->switchdev), 0);
