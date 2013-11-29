@@ -1165,107 +1165,118 @@ static ssize_t rk3188_lcdc_get_disp_info(struct rk_lcdc_device_driver *dev_drv,c
 	char format_w1[9]= "NULL";
 	char status_w0[9]= "NULL";
 	char status_w1[9]= "NULL";
-        u32 fmt_id = lcdc_readl(lcdc_dev,SYS_CTRL);
-        u32 act_info,dsp_info,dsp_st,factor;
-        u16 xvir_w0,x_act_w0,y_act_w0,x_dsp_w0,y_dsp_w0,x_st_w0,y_st_w0,x_factor,y_factor;
+	u32 fmt_id , act_info,dsp_info,dsp_st,factor;
+	u16 xvir_w0,x_act_w0,y_act_w0,x_dsp_w0,y_dsp_w0,x_st_w0,y_st_w0,x_factor,y_factor;
 	u16 xvir_w1,x_dsp_w1,y_dsp_w1,x_st_w1,y_st_w1;
-        u16 x_scale,y_scale;
-	int ovl = lcdc_read_bit(lcdc_dev,DSP_CTRL0,m_WIN0_TOP);
+	u16 x_scale,y_scale,ovl;
+        spin_lock(&lcdc_dev->reg_lock);
+        if(lcdc_dev->clk_on)
+        {
+                fmt_id = lcdc_readl(lcdc_dev,SYS_CTRL);
+	        ovl = lcdc_read_bit(lcdc_dev,DSP_CTRL0,m_WIN0_TOP);
 	
-        switch((fmt_id&m_WIN0_FORMAT)>>3)
-        {
-                case 0:
-                        strcpy(format_w0,"ARGB888");
-                        break;
-                case 1:
-                        strcpy(format_w0,"RGB888");
-                        break;
-                case 2:
-                        strcpy(format_w0,"RGB565");
-                        break;
-                case 4:
-                        strcpy(format_w0,"YCbCr420");
-                        break;
-                case 5:
-                        strcpy(format_w0,"YCbCr422");
-                        break;
-                case 6:
-                        strcpy(format_w0,"YCbCr444");
-                        break;
-                default:
-                        strcpy(format_w0,"invalid\n");
-                        break;
+                switch((fmt_id&m_WIN0_FORMAT)>>3)
+                {
+                        case 0:
+                                strcpy(format_w0,"ARGB888");
+                                break;
+                        case 1:
+                                strcpy(format_w0,"RGB888");
+                                break;
+                        case 2:
+                                strcpy(format_w0,"RGB565");
+                                break;
+                        case 4:
+                                strcpy(format_w0,"YCbCr420");
+                                break;
+                        case 5:
+                                strcpy(format_w0,"YCbCr422");
+                                break;
+                        case 6:
+                                strcpy(format_w0,"YCbCr444");
+                                break;
+                        default:
+                                strcpy(format_w0,"invalid\n");
+                                break;
+                }
+
+	        switch((fmt_id&m_WIN1_FORMAT)>>6)
+                {
+                        case 0:
+                                strcpy(format_w1,"ARGB888");
+                                break;
+                        case 1:
+                                strcpy(format_w1,"RGB888");
+                                break;
+                        case 2:
+                                strcpy(format_w1,"RGB565");
+                                break;
+                        case 4:
+                                strcpy(format_w1,"8bpp");
+                                break;
+                        case 5:
+	                        strcpy(format_w1,"4bpp");
+	                        break;
+                        case 6:
+                                strcpy(format_w1,"2bpp");
+                                break;
+                        case 7:
+                                strcpy(format_w1,"1bpp");
+                                break;
+                        default:
+                                strcpy(format_w1,"invalid\n");
+                                break;
+                }
+
+	        if(fmt_id&m_WIN0_EN)
+	        {
+		        strcpy(status_w0,"enabled");
+	        }
+	        else
+	        {
+		        strcpy(status_w0,"disabled");
+	        }
+
+	        if((fmt_id&m_WIN1_EN)>>1)
+	        {
+		        strcpy(status_w1,"enabled");
+	        }
+	        else
+	        {
+		        strcpy(status_w1,"disabled");
+	        }
+
+                xvir_w0 = lcdc_readl(lcdc_dev,WIN_VIR)&0x1fff;
+                act_info = lcdc_readl(lcdc_dev,WIN0_ACT_INFO);
+                dsp_info = lcdc_readl(lcdc_dev,WIN0_DSP_INFO);
+                dsp_st = lcdc_readl(lcdc_dev,WIN0_DSP_ST);
+                factor = lcdc_readl(lcdc_dev,WIN0_SCL_FACTOR_YRGB);
+                x_act_w0= (act_info&0x1fff) + 1;
+                y_act_w0= ((act_info>>16)&0x1fff) + 1;
+                x_dsp_w0= (dsp_info&0x7ff) + 1;
+                y_dsp_w0= ((dsp_info>>16)&0x7ff) + 1;
+	        x_st_w0 = dsp_st&0xffff;
+                y_st_w0 = dsp_st>>16;
+	        x_factor = factor&0xffff;
+                y_factor = factor>>16;
+                x_scale = 4096*100/x_factor;
+                y_scale = 4096*100/y_factor;
+
+	        xvir_w1= (lcdc_readl(lcdc_dev,WIN_VIR)>> 16)&0x1fff;
+                dsp_info = lcdc_readl(lcdc_dev,WIN1_DSP_INFO);
+                dsp_st = lcdc_readl(lcdc_dev,WIN1_DSP_ST);
+                x_dsp_w1= (dsp_info&0x7ff) + 1;
+                y_dsp_w1= ((dsp_info>>16)&0x7ff) + 1;
+	        x_st_w1 = dsp_st&0xffff;
+                y_st_w1 = dsp_st>>16;
         }
-
-	 switch((fmt_id&m_WIN1_FORMAT)>>6)
+        else
         {
-                case 0:
-                        strcpy(format_w1,"ARGB888");
-                        break;
-                case 1:
-                        strcpy(format_w1,"RGB888");
-                        break;
-                case 2:
-                        strcpy(format_w1,"RGB565");
-                        break;
-                case 4:
-                        strcpy(format_w1,"8bpp");
-                        break;
-                case 5:
-	                strcpy(format_w1,"4bpp");
-	                break;
-                case 6:
-                        strcpy(format_w1,"2bpp");
-                        break;
-                case 7:
-                        strcpy(format_w1,"1bpp");
-                        break;
-                default:
-                        strcpy(format_w1,"invalid\n");
-                        break;
+                spin_unlock(&lcdc_dev->reg_lock);
+                return  -EPERM;
         }
-
-	if(fmt_id&m_WIN0_EN)
-	{
-		strcpy(status_w0,"enabled");
-	}
-	else
-	{
-		strcpy(status_w0,"disabled");
-	}
-
-	if((fmt_id&m_WIN1_EN)>>1)
-	{
-		strcpy(status_w1,"enabled");
-	}
-	else
-	{
-		strcpy(status_w1,"disabled");
-	}
-
-        xvir_w0 = lcdc_readl(lcdc_dev,WIN_VIR)&0x1fff;
-        act_info = lcdc_readl(lcdc_dev,WIN0_ACT_INFO);
-        dsp_info = lcdc_readl(lcdc_dev,WIN0_DSP_INFO);
-        dsp_st = lcdc_readl(lcdc_dev,WIN0_DSP_ST);
-        factor = lcdc_readl(lcdc_dev,WIN0_SCL_FACTOR_YRGB);
-        x_act_w0= (act_info&0x1fff) + 1;
-        y_act_w0= ((act_info>>16)&0x1fff) + 1;
-        x_dsp_w0= (dsp_info&0x7ff) + 1;
-        y_dsp_w0= ((dsp_info>>16)&0x7ff) + 1;
-	x_st_w0 = dsp_st&0xffff;
-        y_st_w0 = dsp_st>>16;
-	x_factor = factor&0xffff;
-        y_factor = factor>>16;
-        x_scale = 4096*100/x_factor;
-        y_scale = 4096*100/y_factor;
-
-	xvir_w1= (lcdc_readl(lcdc_dev,WIN_VIR)>> 16)&0x1fff;
-        dsp_info = lcdc_readl(lcdc_dev,WIN1_DSP_INFO);
-        dsp_st = lcdc_readl(lcdc_dev,WIN1_DSP_ST);
-        x_dsp_w1= (dsp_info&0x7ff) + 1;
-        y_dsp_w1= ((dsp_info>>16)&0x7ff) + 1;
-	x_st_w1 = dsp_st&0xffff;
-        y_st_w1 = dsp_st>>16;
+        spin_unlock(&lcdc_dev->reg_lock);
+      
         return snprintf(buf,PAGE_SIZE,
 		"win0:%s\n"
 		"xvir:%d\n"

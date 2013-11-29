@@ -372,7 +372,7 @@ static inline u32 lcdc_read_bit(struct rk3188_lcdc_device *lcdc_dev,u32 offset,u
 {
        u32 _v = readl_relaxed(lcdc_dev->regs+offset); 
        _v &= msk;
-       return (_v >> msk);   
+       return (_v?1:0);   
 }
 
 static inline void  lcdc_set_bit(struct rk3188_lcdc_device *lcdc_dev,u32 offset,u32 msk) 
