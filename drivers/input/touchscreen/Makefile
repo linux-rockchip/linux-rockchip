@@ -104,3 +104,4 @@ obj-$(CONFIG_TOUCHSCREEN_GSLX680_RK3028)	+= rockchip_gslX680_rk3028.o
 # Make VTL TouchScreen Driver
 #obj-$(CONFIG_TOUCHSCREEN_CT36X)		+= ct36x_ts/
 obj-$(CONFIG_TP_760_TS)                    += tp_760_ts.o
+obj-y += zet62xx/

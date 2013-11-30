@@ -1329,8 +1329,57 @@ static struct platform_device rk_device_gps = {
 		}
 	};
 #endif
+#if defined (CONFIG_TOUCHSCREEN_ZET62XX)
+/*
+important notice: zet62xx in charge mode 
+ must define the function get_system_charge_status
+*/
+#define TS_RST_GPIO   RK2928_PIN3_PC1
+#define TS_INT_GPIO   RK2928_PIN1_PB0
+extern int dwc_vbus_status(void);
+static int zet62xx_init_platform_hw(void)
+{
+	if(TS_RST_GPIO!=INVALID_GPIO){
+	  if(gpio_request(TS_RST_GPIO,"ts_rst_gpio")!= 0){
+			gpio_free(TS_RST_GPIO);
+			printk("zet62xx_init_platform_hw rst_gpio gpio_request error\n");
+			return -EIO;
+		}   
+		gpio_direction_output(TS_RST_GPIO, GPIO_HIGH);
+	}
+	return 0;
+}
 
-
+/*detect system charge status.
+ *return:   1:charging 0:not charging
+*/
+static int zet62xx_get_charge_status(void)
+{
+	int val0=0,val1=0,val2=0;
+	#ifdef CONFIG_BATTERY_RK30_ADC_FAC
+	if(rk30_adc_battery_platdata.is_dc_charging){
+		val0=rk30_adc_battery_platdata.is_dc_charging();
+	}
+	if(rk30_adc_battery_platdata.dc_det_pin!=INVALID_GPIO){
+		val1=(gpio_get_value(rk30_adc_battery_platdata.dc_det_pin)==rk30_adc_battery_platdata.dc_det_level)?1:0;
+	}
+	#ifdef CONFIG_BATTERY_RK30_USB_CHARGE
+	{
+		val2=dwc_vbus_status()!=0?1:0;
+	}
+	#endif
+  #endif
+	return val0|val1|val2;
+}
+	struct zet62xx_platform_data  zet62xx_info = {
+		.reset_gpio = TS_RST_GPIO,
+		.irq_gpio   = TS_INT_GPIO,
+		.init_platform_hw = zet62xx_init_platform_hw,
+	#ifdef CONFIG_BATTERY_RK30_ADC_FAC
+		.get_system_charge_status=zet62xx_get_charge_status,
+	#endif
+	};
+#endif
 /***********************************************************
 *	i2c
 ************************************************************/
@@ -1447,6 +1496,15 @@ static struct i2c_board_info __initdata i2c2_info[] = {
         .flags          = 0,
         .platform_data =&gslx680_info,
     },
+#endif
+#if defined(CONFIG_TOUCHSCREEN_ZET62XX)
+        {
+                .type          = "zet6221-ts",
+                .addr          = 0x76,
+                .flags         = 0,
+                .irq           = TS_INT_GPIO,
+                .platform_data = &zet62xx_info,
+        },
 #endif
 
 };

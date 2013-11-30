@@ -1098,4 +1098,6 @@ config ATMEL_MXT1386
                 default n
                 help
                   RK29 ATMEL_MXT1386 touch debug
+comment "zet62xx support" 
+source  "drivers/input/touchscreen/zet62xx/Kconfig"  
 endif
