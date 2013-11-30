@@ -368,6 +368,13 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			if (copy_from_user(&enable, argp, sizeof(enable)))
 				return -EFAULT;
 			dev_drv->vsync_info.active = enable;
+			#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+			if(inf->num_lcdc >= 2) {
+				info2 = inf->fb[inf->num_fb>>1];
+				dev_drv1  = (struct rk_lcdc_device_driver * )info2->par;
+				dev_drv1->vsync_info.active = dev_drv->vsync_info.active;
+			}
+			#endif
 			break;
         	default:
 			dev_drv->ioctl(dev_drv,cmd,arg,layer_id);
@@ -754,17 +761,23 @@ static struct fb_fix_screeninfo def_fix = {
 static int rk_fb_wait_for_vsync_thread(void *data)
 {
 	struct rk_lcdc_device_driver  *dev_drv = data;
+	#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+	struct rk_lcdc_device_driver *dev_drv_fb0;
+	#endif
 	struct rk_fb_inf *inf =  platform_get_drvdata(g_fb_pdev);
 	struct fb_info *fbi = inf->fb[0];
-	
+
 	while (!kthread_should_stop()) {
-		dev_drv = (struct rk_lcdc_device_driver * )fbi->par;
 		ktime_t timestamp = dev_drv->vsync_info.timestamp;
 		int ret = wait_event_interruptible(dev_drv->vsync_info.wait,
 			!ktime_equal(timestamp, dev_drv->vsync_info.timestamp) &&
 			dev_drv->vsync_info.active);
 
 		if (!ret) {
+			#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+			dev_drv_fb0 = (struct rk_lcdc_device_driver * )fbi->par;
+			if(dev_drv_fb0->enable || (!dev_drv_fb0->enable && dev_drv_fb0!=dev_drv))
+			#endif
 			sysfs_notify(&fbi->dev->kobj, NULL, "vsync");
 		}
 	}
@@ -876,12 +889,6 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 			dev_drv->x_scale = dev_drv1->x_scale;
 			dev_drv->y_scale = dev_drv1->y_scale;
 			dev_drv->vsync_info.active = dev_drv1->vsync_info.active;
-			// We need to notify vsync thread that lcdc mapped to fb0 is changed.
-			if(i == 0) {
-				dev_drv1->vsync_info.timestamp = ktime_get();
-				dev_drv1->vsync_info.active = 1;
-				wake_up_interruptible_all(&dev_drv1->vsync_info.wait);
-			}
 		}
 		memcpy(dev_drv->cur_screen, screen, sizeof(rk_screen));
 		#else
