@@ -600,8 +600,8 @@ static ssize_t remote_wakeup_show( struct device *_dev,
 	dctl_data_t val;
 	val.d32 = 
                 dwc_read_reg32( &otg_dev->core_if->dev_if->dev_global_regs->dctl);
-	return sprintf( buf, "Remote Wakeup = %d Enabled = %d\n", 
-                        val.b.rmtwkupsig, otg_dev->pcd->remote_wakeup_enable);
+	return sprintf( buf, "Remote Wakeup = %d\n", 
+                        val.b.rmtwkupsig);
 #else
 	return sprintf(buf, "Host Only Mode!\n");
 #endif
