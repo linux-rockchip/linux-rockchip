@@ -567,9 +567,65 @@ int rk29sdk_wifi_combo_get_GPS_SYNC_gpio(void)
 EXPORT_SYMBOL(rk29sdk_wifi_combo_get_GPS_SYNC_gpio);
 
 
+#if defined(CONFIG_MTK_COMBO_MT66XX)
+    static struct mtk_wmt_platform_data mtk_wmt_pdata = {
+        .pmu = RK30SDK_WIFI_GPIO_POWER_N,//RK30_PIN0_PB5, //MUST set to pin num in target system
+        .rst = RK30SDK_WIFI_GPIO_RESET_N,//RK30_PIN3_PD0, //MUST set to pin num in target system
+        .bgf_int = RK30SDK_WIFI_GPIO_BGF_INT_B,//RK30_PIN0_PA5,//MUST set to pin num in target system if use UART interface.
+        .urt_cts = -EINVAL, // set it to the correct GPIO num if use common SDIO, otherwise set it to -EINVAL.
+        .rtc = -EINVAL, //Optipnal. refer to HW design.
+        .gps_sync = -EINVAL, //Optional. refer to HW design.
+        .gps_lna = -EINVAL, //Optional. refer to HW design.
+    };
+    static struct mtk_sdio_eint_platform_data mtk_sdio_eint_pdata = {
+        .sdio_eint = RK30_PIN3_PD2,//53, //MUST set pin num in target system.
+    };
+    static struct platform_device mtk_wmt_dev = {
+        .name = "mtk_wmt",
+        .id = 1,
+        .dev = {
+       
+       
+        .platform_data = &mtk_wmt_pdata,
+        },
+    };
+    static struct platform_device mtk_sdio_eint_dev = {
+        .name = "mtk_sdio_eint",
+        .id = 1,
+        .dev = {
+        .platform_data = &mtk_sdio_eint_pdata,
+        },
+    };
+    static void __init mtk_combo_init(void)
+    {
+        /* gpio number align target system¡¯s setting */
+        gpio_request(mtk_wmt_pdata.pmu, "MT66XX PMUEN");
+        gpio_request(mtk_wmt_pdata.rst, "MT66XX SYSRST");
+        gpio_direction_output(mtk_wmt_pdata.pmu, 0);
+        gpio_direction_output(mtk_wmt_pdata.rst, 0);
+        gpio_free(mtk_wmt_pdata.pmu);
+        gpio_free(mtk_wmt_pdata.rst);
+        
+        /* step3. if use UART interface, config UART_CTS(host end) to UART_CTS mode;
+        if use common SDIO interface, config UART_CTS(host_end) to GPIO mode. */
+        if (mtk_wmt_pdata.urt_cts == -EINVAL) {
+            //UART interface,config to UART CTS mode
+        } else {
+            //SDIO interface,config to GPIO mode.
+            //omap_mux_set_gpio(3,mtk_wmt_pdata.urt_cts);
+        }
+        return;
+    }
+#endif---//#if defined(CONFIG_MTK_COMBO_MT66XX)
+
 static int rk29sdk_wifi_combo_module_gpio_init(void)
 {
-    //VDDIO
+#if defined(CONFIG_MTK_COMBO_MT66XX)
+    mtk_combo_init();
+    platform_device_register(&mtk_wmt_dev);
+    platform_device_register(&mtk_sdio_eint_dev);
+#else  
+  //VDDIO
     #ifdef RK30SDK_WIFI_GPIO_VCCIO_WL
         #ifdef RK30SDK_WIFI_GPIO_VCCIO_WL_PIN_NAME
         rk30_mux_api_set(rk_platform_wifi_gpio.vddio.iomux.name, rk_platform_wifi_gpio.vddio.iomux.fgpio);
@@ -638,6 +694,7 @@ static int rk29sdk_wifi_combo_module_gpio_init(void)
 
 	#endif//#if COMBO_MODULE_MT6620_CDT ---#endif 
 
+#endif
     return 0;
 }
 

@@ -2704,7 +2704,9 @@ static const struct mmc_host_ops rk29_sdmmc_ops[] = {
 		.set_ios	= rk29_sdmmc_set_ios,
 		.get_ro		= rk29_sdmmc_get_ro,
 		.get_cd		= rk29_sdmmc_get_cd,
+	#if !defined(CONFIG_MTK_COMBO_MT66XX)
 		.enable_sdio_irq = rk29_sdmmc_enable_sdio_irq,
+	#endif
 		.init_card       = rk29_sdmmc_init_card,
 	},
 };
@@ -3875,7 +3877,7 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 
 #endif
 	
-#ifndef CONFIG_BCM_OOB_ENABLED
+#if !defined( CONFIG_BCM_OOB_ENABLED) || !defined(CONFIG_MTK_COMBO_MT66XX)
 #if defined(CONFIG_RK29_SDIO_IRQ_FROM_GPIO)
     if(RK29_CTRL_SDIO1_ID == host->pdev->id)
     {
