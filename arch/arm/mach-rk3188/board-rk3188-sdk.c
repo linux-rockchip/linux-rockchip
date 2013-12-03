@@ -80,9 +80,18 @@
 #include "../../../drivers/staging/android/timed_gpio.h"
 #endif
 
-#if defined(CONFIG_MT6620)
+#if defined(CONFIG_BOARD_ID)
+#include <linux/board-id.h>
+#endif
+
+#if defined(CONFIG_MT6620) && !defined(CONFIG_MTK_COMBO_MT66XX)
 #include <linux/gps.h>
 #endif
+
+#if defined(CONFIG_MTK_COMBO_MT66XX)
+#include <linux/combo_mt66xx.h>
+#endif
+
 #include "../mach-rk30/board-rk3168-tb-camera.c"
 
 #if defined(CONFIG_TOUCHSCREEN_GT8XX)
