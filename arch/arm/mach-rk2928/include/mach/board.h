@@ -23,6 +23,14 @@ void __init rk2928_fixup(struct machine_desc *desc, struct tag *tags, char **cmd
 void __init rk2928_clock_data_init(unsigned long gpll,unsigned long cpll,u32 flags);
 void __init rk2928_iomux_init(void);
 extern struct sys_timer rk2928_timer;
+#if defined(CONFIG_TOUCHSCREEN_AW5209)
+struct aw5x0x_platform_data{
+   int reset_gpio;
+   int irq_gpio;
+   int (*init_platform_hw)(void);
+   int (*get_system_charge_status)(void);
+};
+#endif
 #if defined(CONFIG_TOUCHSCREEN_ZET62XX)
 struct zet62xx_platform_data {
 	 int reset_gpio;

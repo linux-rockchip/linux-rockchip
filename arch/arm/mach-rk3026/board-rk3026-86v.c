@@ -1529,6 +1529,72 @@ static int zet62xx_get_charge_status(void)
 	#endif
 	};
 #endif
+
+#if defined(CONFIG_TOUCHSCREEN_AW5209)
+/*important notice :use the aw5x0x,when system  suspend,vcc_tp can not be closed.if vcc_tp is closed,
+suspend current will be too large.
+RK3026 use pmu tps65910,
+board-pmu-tps65910.c
+must modify 
+#if defined (CONFIG_ARCH_RK3026)
+	val |= 0x0b;
+#else	
+	val |= 0x0b;
+#endif
+avoid vcc_tp is closed when system suspend.
+*/
+#define TOUCH_RESET_PIN RK30_PIN3_PC3
+#define TOUCH_INT_PIN   RK30_PIN3_PC7
+extern int dwc_vbus_status(void);
+static int aw5x0x_init_platform_hw(void)
+{
+	if(TOUCH_RESET_PIN!=INVALID_GPIO){
+	  if(gpio_request(TOUCH_RESET_PIN,NULL)!= 0){
+			gpio_free(TOUCH_RESET_PIN);
+			printk("aw5x0x_init_platform_hw rst_gpio gpio_request error\n");
+			return -EIO;
+		}     
+		gpio_direction_output(TOUCH_RESET_PIN,GPIO_HIGH);
+		msleep(10);
+		gpio_set_value(TOUCH_RESET_PIN,GPIO_LOW);
+		msleep(100);
+		gpio_set_value(TOUCH_RESET_PIN,GPIO_HIGH);
+		msleep(10);
+	}
+	return 0;
+}
+
+/*detect system charge status.
+ *return:   1:charging 0:not charging
+*/
+static int aw5x0x_get_charge_status(void)
+{
+	int val0=0,val1=0,val2=0;
+	#ifdef CONFIG_BATTERY_RK30_ADC_FAC
+	if(rk30_adc_battery_platdata.is_dc_charging){
+		val0=rk30_adc_battery_platdata.is_dc_charging();
+	}
+	if(rk30_adc_battery_platdata.dc_det_pin!=INVALID_GPIO){
+		val1=(gpio_get_value(rk30_adc_battery_platdata.dc_det_pin)==rk30_adc_battery_platdata.dc_det_level)?1:0;
+	}
+	#ifdef CONFIG_BATTERY_RK30_USB_CHARGE
+	{
+		val2=dwc_vbus_status()!=0?1:0;
+	}
+	#endif
+  #endif
+	return val0|val1|val2;
+}
+
+struct aw5x0x_platform_data  aw5x0x_info = {
+		.reset_gpio = TOUCH_RST_PIN,
+		.irq_gpio = TOUCH_INT_PIN,
+		.init_platform_hw = aw5x0x_init_platform_hw,
+	  #ifdef CONFIG_BATTERY_RK30_ADC_FAC	
+		.get_system_charge_status=aw5x0x_get_charge_status,
+		#endif
+};
+#endif
 /***********************************************************
 *	i2c
 ************************************************************/
@@ -1656,6 +1722,14 @@ static struct i2c_board_info __initdata i2c2_info[] = {
         },
 #endif
 
+#if defined (CONFIG_TOUCHSCREEN_AW5209)
+    {
+        .type           = "aw5306_ts",
+        .addr           = 0x38,
+        .flags          = 0,
+        .platform_data  = &aw5x0x_info,
+    },
+#endif
 };
 #endif
 
