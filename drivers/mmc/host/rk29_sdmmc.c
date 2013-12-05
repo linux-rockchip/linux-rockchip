@@ -3877,7 +3877,7 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 
 #endif
 	
-#if !defined( CONFIG_BCM_OOB_ENABLED) || !defined(CONFIG_MTK_COMBO_MT66XX)
+#if !defined( CONFIG_BCM_OOB_ENABLED) && !defined(CONFIG_MTK_COMBO_MT66XX)
 #if defined(CONFIG_RK29_SDIO_IRQ_FROM_GPIO)
     if(RK29_CTRL_SDIO1_ID == host->pdev->id)
     {
