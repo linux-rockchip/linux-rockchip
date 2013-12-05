@@ -1,0 +1,11 @@
+menuconfig MTK_MT6622
+	bool "MediaTek Discrete BT Chip MT6622"
+	help
+	  MTK Discrete BT chip MT6622
+
+config MTK_MT6622_HW_CTL
+	bool "MediaTek BT Hardware Control driver"
+	depends on MTK_MT6622
+	default y
+	help
+	  MTK BT hardware control driver for discrete BT chip

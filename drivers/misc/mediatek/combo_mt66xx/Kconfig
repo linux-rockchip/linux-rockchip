@@ -1,0 +1,35 @@
+menuconfig MTK_COMBO_MT66XX
+	bool "MediaTek combo_mt66xx Config"
+	help
+	  Config MTK combo chip mt6628&mt6620
+
+if MTK_COMBO_MT66XX
+
+config MTK_COMBO_WMT
+	tristate "MediaTek Combo Chip wireless managment tool"
+	default y
+	help
+	  MTK wireless managment tool for WIFI/BT/GPS/FM
+
+config MTK_COMBO_BT
+	tristate "MediaTek Combo Chip BT driver"
+	default y
+	#depends on MTK_COMBO_WMT
+	help
+	  MTK BT /dev/stpbt driver for Bluedroid (mtk_stp_bt.ko)
+
+config MTK_COMBO_FM
+	tristate "MediaTek Combo Chip FM driver"
+	default y
+	#depends on MTK_COMBO_WMT
+	help
+	  MTK FM /dev/fm driver 
+
+config MTK_COMBO_GPS
+	tristate "MediaTek GPS Support"
+	default y
+	#depends on MTK_COMBO_WMT
+	help
+	  MTK GPS /dev/gps driver (mtk_gps.ko)
+
+endif

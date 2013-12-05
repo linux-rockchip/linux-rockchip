@@ -184,5 +184,15 @@ choice
 
 endchoice
 
+menuconfig MTK_WIRELESS_SOLUTION	
+	bool "MTK wireless chip configuration"
+	help
+	  "enable/disable and config MTK wireless solution"
+
+if MTK_WIRELESS_SOLUTION
+source "drivers/net/wireless/combo_mt66xx/Kconfig"
+source "drivers/net/wireless/mt5931_kk/Kconfig"
+endif # MTK_WIRELESS_SOLUTION
+
 endif
 

@@ -177,6 +177,11 @@ static ssize_t wifi_chip_read(struct class *cls, char *_buf)
     printk("Current WiFi chip is MT5931.\n");
 #endif
 
+#ifdef CONFIG_MTK_MT5931
+    count = sprintf(_buf, "%s", "MT5931");
+    printk("Current WiFi chip is MT5931.\n");
+#endif
+
 #ifdef CONFIG_MT7601
     count = sprintf(_buf, "%s", "MT7601");
     printk("Current WiFi chip is MT7601.\n");
