@@ -1443,7 +1443,7 @@ static struct platform_device device_rfkill_rk = {
 };
 #endif
 
-#if defined(CONFIG_MT5931_MT6622)
+#if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 static struct mt6622_platform_data mt6622_platdata = {
     .power_gpio         = { // BT_REG_ON
         .io             = RK30_PIN3_PC7, // set io to INVALID_GPIO for disable it
@@ -1521,7 +1521,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_RFKILL_RK
 	&device_rfkill_rk,
 #endif
-#ifdef CONFIG_MT5931_MT6622
+#if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 	&device_mt6622,
 #endif
 };
@@ -1881,6 +1881,15 @@ static void __init machine_rk30_board_init(void)
 
 #if defined(CONFIG_MT6620)
     clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 48*1000000);
+#endif
+#if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
+    clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 24*1000000);
+#endif
+#if defined (CONFIG_SND_SOC_RT3224) || defined (CONFIG_SND_SOC_RT3261)
+	//add for codec_en 
+	gpio_request(RK30_PIN4_PD7, "codec_en");
+	rk30_mux_api_set(GPIO4D7_SMCDATA15_TRACEDATA15_NAME, GPIO4D_GPIO4D7);
+	gpio_direction_output(RK30_PIN4_PD7, GPIO_HIGH);
 #endif
 }
 

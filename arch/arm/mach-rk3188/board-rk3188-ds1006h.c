@@ -103,7 +103,7 @@ struct rk29_keys_platform_data rk29_keys_pdata = {
      v1.1 :      rk610 lvds + rk610 codec + MT5931_MT6622 + light photoresistor + adc/cw2015
      v1.2 :      lvds       + rt5631      + M500          + us5151              + adc
 */
-#define DS1006H_V1_2_SUPPORT  1
+#define DS1006H_V1_2_SUPPORT  0
 int get_harware_version()
 {
     #if DS1006H_V1_2_SUPPORT
@@ -1167,7 +1167,7 @@ struct platform_device rk_device_gps = {
 	};
 #endif
 
-#if defined(CONFIG_MT5931_MT6622)
+#if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 static struct mt6622_platform_data mt6622_platdata = {
 		    .power_gpio         = { // BT_REG_ON
 		      #if DS1006H_V1_2_SUPPORT
@@ -1267,7 +1267,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_GPS_RK
 	&rk_device_gps,
 #endif
-#ifdef CONFIG_MT5931_MT6622
+#if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 	&device_mt6622,
 #endif
 #if defined(CONFIG_MT6229)
@@ -1966,7 +1966,7 @@ static void __init machine_rk30_board_init(void)
 	    clk_set_rate(clk_get_sys("rk_serial.1", "uart"), 48*1000000);
 #endif
 
-#if defined(CONFIG_MT5931_MT6622)
+#if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 		clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 24*1000000);
 #endif		
 }

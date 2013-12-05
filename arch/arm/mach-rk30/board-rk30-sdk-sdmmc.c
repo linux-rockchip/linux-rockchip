@@ -152,7 +152,7 @@
         #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME        "wifi_reset"
         #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FGPIO     GPIO2_A7
     
-    #elif defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MT5931)
+    #elif defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MT5931) || defined(CONFIG_MTK_MT5931)
 
 		#ifdef  CONFIG_MACH_RK3168_LR097 
 	    	#define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD0 
@@ -242,7 +242,7 @@
     #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME        GPIO3D1_SDMMC1BACKENDPWR_NAME
     #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FGPIO     GPIO3D_GPIO3D1
     
-    #elif defined(CONFIG_MT5931) || defined(CONFIG_MT5931_MT6622)
+    #elif defined(CONFIG_MT5931) || defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT5931)
     //power
     #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PC6 //RK30_PIN3_PD0       // huweiguo          
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_HIGH                   
@@ -1155,7 +1155,7 @@ void rk29_sdmmc_gpio_open(int device_id, int on)
                 gpio_request(rksdmmc1_gpio_init.data0_gpio.io, "mmc1-data0");
                 gpio_direction_output(rksdmmc1_gpio_init.data0_gpio.io,GPIO_LOW);//set mmc1-data0 to low.
                 
-            #if defined(CONFIG_WIFI_COMBO_MODULE_CONTROL_FUNC) || defined(CONFIG_MT5931) || defined(CONFIG_MT5931_MT6622)
+            #if defined(CONFIG_WIFI_COMBO_MODULE_CONTROL_FUNC) || defined(CONFIG_MT5931) || defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT5931)
                 #if SDMMC_USE_NEW_IOMUX_API
                 iomux_set(rksdmmc1_gpio_init.data1_gpio.iomux.fgpio);
                 #else

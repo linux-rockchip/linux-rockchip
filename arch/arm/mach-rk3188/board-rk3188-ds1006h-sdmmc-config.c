@@ -12,7 +12,7 @@
  *
  ******************************************************************************************/
 
-#define DS1006H_V1_2_SUPPORT  1
+#define DS1006H_V1_2_SUPPORT  0
 
 /*
 ** If you select the macro of CONFIG_SDMMC0_RK29_WRITE_PROTECT, You must define the following values.
@@ -86,7 +86,7 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
 	#define RK30SDK_WIFI_GPIO_WIFI_INT_B                RK30_PIN3_PD2
     #define RK30SDK_WIFI_GPIO_WIFI_INT_B_ENABLE_VALUE   GPIO_HIGH
 
-#elif defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MT5931)
+#elif defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MT5931) || defined(CONFIG_MTK_MT5931)
 
 	#ifdef  CONFIG_MACH_RK3168_LR097 
     	#define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD0 
@@ -154,7 +154,7 @@ int rk31sdk_get_sdio_wifi_voltage(void)
 #if defined(CONFIG_BCM4329) || defined(CONFIG_BCM4319) || defined(CONFIG_RKWIFI)
     voltage = 1800 ; //power 1800mV
     
-#elif defined(CONFIG_MT5931_MT6622)||defined(CONFIG_MT5931)
+#elif defined(CONFIG_MT5931_MT6622)||defined(CONFIG_MT5931) || defined(CONFIG_MTK_MT5931)
     voltage = 2800 ; //power 1800V
 #elif defined(CONFIG_MT6620) 
     voltage = 2800 ; //power 2800V
