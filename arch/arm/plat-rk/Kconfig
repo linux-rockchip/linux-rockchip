@@ -227,4 +227,6 @@ config RK_USB_DETECT_BY_OTG_BVALID
 config RK_CHECK_UACCESS
 	bool "Enable explicitly check __user pointer when {get,put}_user"
 
+config TRACK_LOCALHOST
+	bool "Enable xt_qtaguid track traffic stat for loopback"
 endif
