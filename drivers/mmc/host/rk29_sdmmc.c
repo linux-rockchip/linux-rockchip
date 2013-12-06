@@ -2626,6 +2626,17 @@ static void rk29_sdmmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
     
 }
 
+#ifdef CONFIG_ESP8089
+void sdmmc_ack_interrupt(struct mmc_host *mmc)
+{
+       struct rk29_sdmmc *host;
+       host = mmc_priv(mmc);
+       rk29_sdmmc_write(host->regs, SDMMC_RINTSTS, SDMMC_INT_SDIO);
+}
+EXPORT_SYMBOL_GPL(sdmmc_ack_interrupt);
+#endif
+
+
 static void  rk29_sdmmc_init_card(struct mmc_host *mmc, struct mmc_card *card)
 {
         card->quirks = MMC_QUIRK_BLKSZ_FOR_BYTE_MODE;
