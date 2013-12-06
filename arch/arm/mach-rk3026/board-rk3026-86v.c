@@ -1587,7 +1587,7 @@ static int aw5x0x_get_charge_status(void)
 }
 
 struct aw5x0x_platform_data  aw5x0x_info = {
-		.reset_gpio = TOUCH_RST_PIN,
+		.reset_gpio = TOUCH_RESET_PIN,
 		.irq_gpio = TOUCH_INT_PIN,
 		.init_platform_hw = aw5x0x_init_platform_hw,
 	  #ifdef CONFIG_BATTERY_RK30_ADC_FAC	
