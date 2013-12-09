@@ -20,7 +20,7 @@
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
 #define RT5025_DEVICE_NAME "RT5025"
-#define RT5025_DRV_VER	   "1.0.10_R"
+#define RT5025_DRV_VER	   "1.0.11_R"
 
 enum {
 	RT5025_RSTDELAY1_100MS,
@@ -424,6 +424,7 @@ struct rt5025_power_info {
 	struct mutex	var_lock;
 	struct delayed_work usb_detect_work;
 	struct delayed_work power_detect_work;
+	struct wake_lock usb_wake_lock;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif /* CONFIG_HAS_EARLYSUSPEND */
@@ -467,6 +468,7 @@ struct rt5025_battery_info {
 	struct wake_lock monitor_wake_lock;
 	struct wake_lock low_battery_wake_lock;
 	struct wake_lock status_wake_lock;
+	struct wake_lock smooth_wake_lock;
 //#if RT5025_TEST_WAKE_LOCK
 	struct wake_lock test_wake_lock;
 //#endif
@@ -536,6 +538,7 @@ struct rt5025_battery_info {
   u8 internal_status;
   u8 health;
   u8 present;
+  u8 batt_present;
 
   /* IRQ flag */
   u8 irq_flag;
@@ -590,6 +593,7 @@ struct rt5025_battery_info {
   s16 curr_raw;
   u32 empty_edv;
   u8  edv_region;
+  u32  soc1_lock_cnt;
 
   bool init_once;
   bool device_suspend;
@@ -633,6 +637,9 @@ extern int rt5025_cable_exist(void);
 #endif /* CONFIG_MFD_RT5025_MISC */
 
 #ifdef CONFIG_POWER_RT5025
+extern int rt5025_set_dcdc_tracking(struct i2c_client *, int);
+extern int rt5025_set_battery_detection(struct i2c_client *, int);
+extern int rt5025_set_charging_termination(struct i2c_client *, int);
 extern int rt5025_charger_reset_and_reinit(struct rt5025_power_info *);
 extern int rt5025_ext_set_charging_buck(int);
 extern int rt5025_set_charging_buck(struct i2c_client *, int);

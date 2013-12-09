@@ -310,7 +310,7 @@ static struct rt5025_power_data rt5025_power_data = {
 		.bitfield = {
 			.CHGC_EN = 1,
 			.CHG_DCDC_MODE = 0,
-			.BATD_EN = 0,
+			.BATD_EN = 1,
 		},
 	},
 //	.fcc = 6200, //6200 mAh
@@ -364,7 +364,7 @@ static struct rt5025_misc_data rt5025_misc_data = {
 static struct rt5025_irq_data rt5025_irq_data = {
 	.irq_enable1 = {
 		.bitfield = {
-			.BATABS = 0,
+			.BATABS = 1,
 			.INUSB_PLUGIN = 1,
 			.INUSBOVP = 1,
 			.INAC_PLUGIN = 1,
