@@ -45,6 +45,9 @@
 #define RK29SDK_SD_CARD_DETECT_N                RK30_PIN3_PB0  //According to your own project to set the value of card-detect-pin.
 #define RK29SDK_SD_CARD_INSERT_LEVEL            GPIO_LOW       // set the voltage of insert-card. Please pay attention to the default setting.
 
+#define RK30SDK_WIFI_GPIO_WIFI_INT_B                RK30_PIN3_PD2
+#define RK30SDK_WIFI_GPIO_WIFI_INT_B_ENABLE_VALUE   GPIO_HIGH
+
 /*
 * Define wifi module's power and reset gpio, and gpio sensitive level.
 * Please set the value according to your own project.
@@ -64,7 +67,7 @@
     #define RK30SDK_WIFI_GPIO_RESET_N               RK30_PIN2_PA7
     #define RK30SDK_WIFI_GPIO_RESET_ENABLE_VALUE    GPIO_HIGH 
 
-#elif defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MT5931)
+#elif defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MT5931) || defined(CONFIG_MTK_MT5931)
 
 	#if 1
     	#define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD0 
@@ -127,7 +130,7 @@ double rk31sdk_get_sdio_wifi_voltage(void)
 #if defined(CONFIG_BCM4329) || defined(CONFIG_BCM4319) || defined(CONFIG_RK903) || defined(CONFIG_RK901)
     voltage = 1800 ; //power 1.8V
     
-#elif defined(CONFIG_MT5931_MT6622)||defined(CONFIG_MT5931)||defined(CONFIG_MT6620)
+#elif defined(CONFIG_MT5931_MT6622)||defined(CONFIG_MT5931)||defined(CONFIG_MT6620)||defined(CONFIG_MTK_MT5931)
     voltage = 1800 ; //power 2.8V
 #elif defined(CONFIG_RDA5990)||defined(CONFIG_RTL8723AS)  
     voltage = 3300 ; //power 3.3V
