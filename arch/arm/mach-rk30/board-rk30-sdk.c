@@ -1885,12 +1885,6 @@ static void __init machine_rk30_board_init(void)
 #if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
     clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 24*1000000);
 #endif
-#if defined (CONFIG_SND_SOC_RT3224) || defined (CONFIG_SND_SOC_RT3261)
-	//add for codec_en 
-	gpio_request(RK30_PIN4_PD7, "codec_en");
-	rk30_mux_api_set(GPIO4D7_SMCDATA15_TRACEDATA15_NAME, GPIO4D_GPIO4D7);
-	gpio_direction_output(RK30_PIN4_PD7, GPIO_HIGH);
-#endif
 }
 
 static void __init rk30_reserve(void)
