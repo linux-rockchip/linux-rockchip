@@ -103,7 +103,7 @@ struct rk29_keys_platform_data rk29_keys_pdata = {
      v1.1 :      rk610 lvds + rk610 codec + MT5931_MT6622 + light photoresistor + adc/cw2015
      v1.2 :      lvds       + rt5631      + M500          + us5151              + adc
 */
-#define DS1006H_V1_2_SUPPORT  0
+#define DS1006H_V1_2_SUPPORT  1
 int get_harware_version()
 {
     #if DS1006H_V1_2_SUPPORT
