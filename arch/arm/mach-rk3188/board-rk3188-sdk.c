@@ -2393,7 +2393,7 @@ static struct cpufreq_frequency_table dvfs_ddr_table_volt_level0[] = {
 };
 
 //if you board is good for volt quality,select dvfs_arm_table_volt_level0
-#define dvfs_arm_table dvfs_arm_table_volt_level1
+#define dvfs_arm_table dvfs_arm_table_volt_level2
 #define dvfs_gpu_table dvfs_gpu_table_volt_level1
 #define dvfs_ddr_table dvfs_ddr_table_volt_level0
 
