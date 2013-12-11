@@ -2964,6 +2964,8 @@ source "drivers/net/benet/Kconfig"
 
 endif # NETDEV_10000
 
+source "drivers/net/eth_mac/Kconfig"
+
 source "drivers/net/tokenring/Kconfig"
 
 source "drivers/net/wireless/Kconfig"
