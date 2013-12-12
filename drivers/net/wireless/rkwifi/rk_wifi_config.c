@@ -48,7 +48,11 @@ int rkwifi_set_firmware(char *fw, char *nvram)
 
 #ifdef CONFIG_BCM4330
 	sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_bcm4330.bin");
+#ifdef CONFIG_RK_CHECK_UACCESS
+    sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_4330_oob.txt");
+#else
 	sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_4330.txt");
+#endif
 #endif
 
 #ifdef CONFIG_AP6181
