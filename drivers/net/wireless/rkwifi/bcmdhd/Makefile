@@ -44,9 +44,9 @@ ifeq ($(CONFIG_BCMDHD_POWER_OFF_IN_SUSPEND),y)
 DHDCFLAGS += -DPOWER_OFF_IN_SUSPEND
 endif
 
-ifeq ($(CONFIG_BCMDHD_AG),y)
+#ifeq ($(CONFIG_BCMDHD_AG),y)
 DHDCFLAGS += -DBAND_AG
-endif
+#endif
 
 ifneq ($(CONFIG_WIRELESS_EXT),)
 $(MODULE_NAME)-y += wl_iw.o
