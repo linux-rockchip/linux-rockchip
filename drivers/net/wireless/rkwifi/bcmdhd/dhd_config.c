@@ -54,31 +54,31 @@ uint config_msg_level = CONFIG_ERROR_LEVEL;
 #define FW_TYPE_AG      1
 
 const static char *bcm4330b2_fw_name[] = {
-	"fw_bcm40183b2.bin",
-	"fw_bcm40183b2_apsta.bin",
-	"fw_bcm40183b2_p2p.bin",
-	"fw_bcm40183b2_mfg.bin"
+	"fw_RK903b2.bin",
+	"fw_RK903b2_apsta.bin",
+	"fw_RK903b2_p2p.bin",
+	"fw_RK903b2_mfg.bin"
 };
 
 const static char *bcm4330b2ag_fw_name[] = {
-	"fw_bcm40183b2_ag.bin",
-	"fw_bcm40183b2_ag_apsta.bin",
-	"fw_bcm40183b2_ag_p2p.bin",
-	"fw_bcm40183b2_ag_mfg.bin"
+	"fw_RK903_ag.bin",
+	"fw_RK903_ag_apsta.bin",
+	"fw_RK903_ag_p2p.bin",
+	"fw_RK903_ag_mfg.bin"
 };
 
 const static char *bcm43362a0_fw_name[] = {
-	"fw_bcm40181a0.bin",
-	"fw_bcm40181a0_apsta.bin",
-	"fw_bcm40181a0_p2p.bin",
-	"fw_bcm40181a0_mfg.bin"
+	"fw_RK901a0.bin",
+	"fw_RK901a0_apsta.bin",
+	"fw_RK901a0_p2p.bin",
+	"fw_RK901a0_mfg.bin"
 };
 
 const static char *bcm43362a2_fw_name[] = {
-	"fw_bcm40181a2.bin",
-	"fw_bcm40181a2_apsta.bin",
-	"fw_bcm40181a2_p2p.bin",
-	"fw_bcm40181a2_mfg.bin"
+	"fw_RK901a2.bin",
+	"fw_RK901a2_apsta.bin",
+	"fw_RK901a2_p2p.bin",
+	"fw_RK901a2_mfg.bin"
 };
 
 const static char *bcm43341b0ag_fw_name[] = {
