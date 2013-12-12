@@ -105,84 +105,73 @@ const static char *bcm4339a0ag_fw_name[] = {
 void
 dhd_conf_set_fw_name_by_chip(dhd_pub_t *dhd, char *dst, char *src)
 {
-	int fw_type, ag_type;
-	static uint chip, chiprev, first=1;
-	int i;
+    int fw_type, ag_type;
+    static uint chip, chiprev, first=1;
+    int i;
 
-	if (first) {
-		chip = dhd_bus_chip_id(dhd);
-		chiprev = dhd_bus_chiprev_id(dhd);
-		first = 0;
-	}
+    //if(src[0] == '\0')
+    // rule out bcm4330 (gwl)
+    if (strstr(dst, "bcm4330"))
+        return;
 
-	if (src[0] == '\0') {
-#ifdef CONFIG_BCMDHD_FW_PATH
-		bcm_strncpy_s(src, sizeof(fw_path), CONFIG_BCMDHD_FW_PATH, MOD_PARAM_PATHLEN-1);
-		if (src[0] == '\0')
-#endif
-		{
-			printf("src firmware path is null\n");
-			return;
-		}
-	}
+    //strcpy(dst, src);
 
-	strcpy(dst, src);
-#ifndef FW_PATH_AUTO_SELECT
-	return;
-#endif
+    /* find out the last '/' */
+    i = strlen(dst);
+    while (i>0){
+        if (dst[i] == '/') break;
+        i--;
+    }
 
-	/* find out the last '/' */
-	i = strlen(dst);
-	while (i>0){
-		if (dst[i] == '/') break;
-		i--;
-	}
-#ifdef BAND_AG
-	ag_type = FW_TYPE_AG;
-#else
-	ag_type = strstr(&dst[i], "_ag") ? FW_TYPE_AG : FW_TYPE_G;
-#endif
-	fw_type = (strstr(&dst[i], "_mfg") ?
-		FW_TYPE_MFG : (strstr(&dst[i], "_apsta") ?
-		FW_TYPE_APSTA : (strstr(&dst[i], "_p2p") ?
-		FW_TYPE_P2P : FW_TYPE_STA)));
+    ag_type = strstr(&dst[i], "_ag") ? FW_TYPE_AG : FW_TYPE_G;
+    fw_type = (strstr(&src[i], "_mfg") ?
+        FW_TYPE_MFG : (strstr(&src[i], "_apsta") ?
+        FW_TYPE_APSTA : (strstr(&src[i], "_p2p") ?
+        FW_TYPE_P2P : FW_TYPE_STA)));
 
-	switch (chip) {
-		case BCM4330_CHIP_ID:
-			if (ag_type == FW_TYPE_G) {
-				if (chiprev == BCM4330B2_CHIP_REV)
-					strcpy(&dst[i+1], bcm4330b2_fw_name[fw_type]);
-				break;
-			} else {
-				if (chiprev == BCM4330B2_CHIP_REV)
-					strcpy(&dst[i+1], bcm4330b2ag_fw_name[fw_type]);
-				break;
-			}
-		case BCM43362_CHIP_ID:
-			if (chiprev == BCM43362A0_CHIP_REV)
-				strcpy(&dst[i+1], bcm43362a0_fw_name[fw_type]);
-			else
-				strcpy(&dst[i+1], bcm43362a2_fw_name[fw_type]);
-			break;
-		case BCM43341_CHIP_ID:
-			if (chiprev == BCM43341B0_CHIP_REV)
-				strcpy(&dst[i+1], bcm43341b0ag_fw_name[fw_type]);
-			break;
-		case BCM4324_CHIP_ID:
-			if (chiprev == BCM43241B4_CHIP_REV)
-				strcpy(&dst[i+1], bcm43241b4ag_fw_name[fw_type]);
-			break;
-		case BCM4335_CHIP_ID:
-			if (chiprev == BCM4335A0_CHIP_REV)
-				strcpy(&dst[i+1], bcm4339a0ag_fw_name[fw_type]);
-			break;
-		case BCM4339_CHIP_ID:
-			if (chiprev == BCM4339A0_CHIP_REV)
-				strcpy(&dst[i+1], bcm4339a0ag_fw_name[fw_type]);
-			break;
-	}
+    if (first) {
+        chip = dhd_bus_chip_id(dhd);
+        chiprev = dhd_bus_chiprev_id(dhd);
+        first = 0;
+    }
 
-	printf("%s: firmware_path=%s\n", __FUNCTION__, dst);
+    if (ag_type == FW_TYPE_G) {
+        switch (chip) {
+            case BCM4330_CHIP_ID:
+                    strcpy(&dst[i+1], bcm4330b2_fw_name[fw_type]);
+                break;
+            case BCM43362_CHIP_ID:
+                if (chiprev==BCM43362A0_CHIP_REV)
+                    strcpy(&dst[i+1], bcm43362a0_fw_name[fw_type]);
+                else
+                    strcpy(&dst[i+1], bcm43362a2_fw_name[fw_type]);
+                break;
+            case BCM43341_CHIP_ID:
+                if (chiprev == BCM43341B0_CHIP_REV)
+                    strcpy(&dst[i+1], bcm43341b0ag_fw_name[fw_type]);
+                break;
+            case BCM4324_CHIP_ID:
+                if (chiprev == BCM43241B4_CHIP_REV)
+                    strcpy(&dst[i+1], bcm43241b4ag_fw_name[fw_type]);
+                break;
+            case BCM4335_CHIP_ID:
+                if (chiprev == BCM4335A0_CHIP_REV)
+                    strcpy(&dst[i+1], bcm4339a0ag_fw_name[fw_type]);
+                break;
+            case BCM4339_CHIP_ID:
+                if (chiprev == BCM4339A0_CHIP_REV)
+                    strcpy(&dst[i+1], bcm4339a0ag_fw_name[fw_type]);
+                break;
+        }
+    } else {
+        switch (chip) {
+            case BCM4330_CHIP_ID:
+                    strcpy(&dst[i+1], bcm4330b2ag_fw_name[fw_type]);
+                break;
+        }
+    }
+
+    printk("%s: firmware_path=%s\n", __FUNCTION__, dst);
 }
 
 #if defined(HW_OOB)
