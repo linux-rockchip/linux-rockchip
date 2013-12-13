@@ -92,13 +92,6 @@ static struct rk29_keys_button key_button[] = {
 		.active_low = PRESS_LEV_LOW,
 		.wakeup	= 1,
 	},
-	{
-		.desc	= "esc",
-		.code	= KEY_BACK,
-		.adc_value	= 1,
-		.gpio = INVALID_GPIO,
-		.active_low = PRESS_LEV_LOW,
-	},
 };
 struct rk29_keys_platform_data rk29_keys_pdata = {
 	.buttons	= key_button,
