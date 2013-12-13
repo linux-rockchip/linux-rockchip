@@ -158,7 +158,7 @@ endchoice
 config RK29_VPU
 	tristate "VPU (Video Processing Unit) service driver in kernel"
 	depends on ARCH_RK29 || ARCH_RK30 || ARCH_RK2928 || ARCH_RK3026 || ARCH_RK3188
-	default y
+	default m
 
 config RK29_LAST_LOG
 	bool "Save the last kernel log on /proc/last_log"
