@@ -160,11 +160,15 @@ static INT32 wmt_plat_gps_lna_ctrl (ENUM_PIN_STATE state);
 
 static INT32 wmt_plat_dump_pin_conf (VOID);
 
+
+extern int rk29sdk_wifi_power(int on);
+extern int rk29sdk_wifi_set_carddetect(int val);
+
 /*******************************************************************************
 *                            P U B L I C   D A T A
 ********************************************************************************
 */
-UINT32 gWmtDbgLvl = WMT_LOG_INFO;
+UINT32 gWmtDbgLvl = WMT_LOG_ERR;//WMT_LOG_DBG;//xbw
 
 unsigned int g_bgf_irq = -1;//bgf eint number
 unsigned int g_sdio_irq = -1;//bgf eint number
@@ -402,15 +406,19 @@ INT32 wmt_plat_sdio_ctrl (WMT_SDIO_SLOT_NUM sdioPortType, ENUM_FUNC_STATE on)
          * controller. SDIO card removal operation and remove success messages
          * are expected.
          */
+	rk29sdk_wifi_power(0);
+	rk29sdk_wifi_set_carddetect(0);
     }
     else {
         /* add control logic here to generate SDIO CARD INSERTION event to mmc/sd
          * controller. SDIO card detection operation and detect success messages
          * are expected.
          */
+	rk29sdk_wifi_power(1);
+	rk29sdk_wifi_set_carddetect(1);
     }
-	extern int omap_mmc_update_mtk_card_status(int state);
-	ret = omap_mmc_update_mtk_card_status((FUNC_OFF == on)? 0: 1);
+	//extern int omap_mmc_update_mtk_card_status(int state);
+//	ret = omap_mmc_update_mtk_card_status((FUNC_OFF == on)? 0: 1);
 	WMT_INFO_FUNC(KERN_INFO "%s, on=%d, ret=%d\n", __FUNCTION__, on, ret);
 	return ret;
 }
@@ -480,6 +488,8 @@ wmt_plat_eirq_ctrl (
     )
 {
     INT32 iRet = 0;
+    int gpio_value=0;
+
     // TODO: [ChangeFeature][GeorgeKuo]: use another function to handle this, as done in gpio_ctrls
 
     if ( (PIN_STA_INIT != state )
@@ -494,8 +504,16 @@ wmt_plat_eirq_ctrl (
     switch (id) {
     case PIN_BGF_EINT:
         if (PIN_STA_INIT == state) {
-			iRet = request_irq(g_bgf_irq, bgf_irq_handler,  IRQF_TRIGGER_LOW | IRQF_DISABLED, "MTK6620_BT", NULL);
-			if (iRet) {
+			//iRet = request_irq(g_bgf_irq, bgf_irq_handler,  IRQF_TRIGGER_LOW | IRQF_DISABLED, "MTK6620_BT", NULL);
+			gpio_value = gpio_get_value(g_bgf_irq);
+                        printk("%d..%s:  BGF_INT gpio_init value = %d  ====mt6620===\n", __LINE__, __FUNCTION__, gpio_value );
+                        
+                        iRet = request_irq(g_bgf_irq, bgf_irq_handler, 
+					    //(gpio_get_value(MT6620_GPIO_BGF_INT_B))?IRQF_TRIGGER_FALLING : IRQF_TRIGGER_RISING,
+					    ( (gpio_value)?IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH ) |IRQF_DISABLED,
+					    "MTK6620_BT", NULL);
+ 
+                        if (iRet) {
 				WMT_INFO_FUNC("WMT-PLAT: request IRQ fail for BGF IRQ : %d\n", g_bgf_irq);
 			} else {
            		enable_irq_wake(g_bgf_irq);
