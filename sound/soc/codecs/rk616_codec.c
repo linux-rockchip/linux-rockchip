@@ -627,8 +627,11 @@ void codec_set_spk(bool on)
 		}
 		else
 		{
+			mutex_lock(&codec->mutex);
 			snd_soc_dapm_enable_pin(&codec->dapm, "Headphone Jack");
 			snd_soc_dapm_enable_pin(&codec->dapm, "Ext Spk");
+			snd_soc_dapm_sync(&codec->dapm);
+			mutex_unlock(&codec->mutex);
 		}
 	} else {
 		rk616_set_gpio(RK616_CODEC_SET_SPK | RK616_CODEC_SET_HP, GPIO_LOW);
@@ -646,11 +649,13 @@ void codec_set_spk(bool on)
 		}
 		else
 		{
+			mutex_lock(&codec->mutex);
 			snd_soc_dapm_disable_pin(&codec->dapm, "Headphone Jack");
 			snd_soc_dapm_disable_pin(&codec->dapm, "Ext Spk");
+			snd_soc_dapm_sync(&codec->dapm);
+			mutex_unlock(&codec->mutex);
 		}
 	}
-	snd_soc_dapm_sync(&codec->dapm);
 
 	is_hdmi_in = on ? 0 : 1;
 }
@@ -1129,6 +1134,17 @@ int snd_soc_put_gpio_enum_double(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#define SOC_DOUBLE_R_STEP_TLV(xname, reg_left, reg_right, xshift, xmax, xinvert, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
+		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw_2r, \
+	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_step_volsw_2r, \
+	.private_value = (unsigned long)&(struct soc_mixer_control) \
+		{.reg = reg_left, .rreg = reg_right, .shift = xshift, \
+		.max = xmax, .platform_max = xmax, .invert = xinvert} }
+
 #define SOC_GPIO_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,\
 	.info = snd_soc_info_enum_double, \
@@ -1138,41 +1154,12 @@ int snd_soc_put_gpio_enum_double(struct snd_kcontrol *kcontrol,
 static const struct snd_kcontrol_new rk616_snd_controls[] = {
 
 	//add for incall volume setting
-	{
-	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = ("Speaker Playback Volume"),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (out_vol_tlv), \
-	.info = snd_soc_info_volsw_2r, \
-	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_step_volsw_2r, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = RK616_SPKL_CTL, .rreg = RK616_SPKR_CTL, .shift = RK616_VOL_SFT, \
-		.max = SPKOUT_VOLUME, .platform_max = SPKOUT_VOLUME, .invert = 0}
-	},
-
-	{
-	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = ("Headphone Playback Volume"),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (out_vol_tlv), \
-	.info = snd_soc_info_volsw_2r, \
-	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_step_volsw_2r, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = RK616_HPL_CTL, .rreg = RK616_HPR_CTL, .shift = RK616_VOL_SFT, \
-		.max = HPOUT_VOLUME, .platform_max = HPOUT_VOLUME, .invert = 0}
-	},
-
-	{
-	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = ("Earpiece Playback Volume"),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (out_vol_tlv), \
-	.info = snd_soc_info_volsw_2r, \
-	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_step_volsw_2r, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = RK616_SPKL_CTL, .rreg = RK616_SPKR_CTL, .shift = RK616_VOL_SFT, \
-		.max = SPKOUT_VOLUME, .platform_max = SPKOUT_VOLUME, .invert = 0}
-	},
+	SOC_DOUBLE_R_STEP_TLV("Speaker Playback Volume", RK616_SPKL_CTL,
+			RK616_SPKR_CTL, RK616_VOL_SFT, SPKOUT_VOLUME, 0, out_vol_tlv),
+	SOC_DOUBLE_R_STEP_TLV("Headphone Playback Volume", RK616_HPL_CTL,
+			RK616_HPR_CTL, RK616_VOL_SFT, HPOUT_VOLUME, 0, out_vol_tlv),
+	SOC_DOUBLE_R_STEP_TLV("Earpiece Playback Volume", RK616_SPKL_CTL,
+			RK616_SPKR_CTL, RK616_VOL_SFT, SPKOUT_VOLUME, 0, out_vol_tlv),
 
 	SOC_DOUBLE_R("Speaker Playback Switch", RK616_SPKL_CTL,
 		RK616_SPKR_CTL, RK616_MUTE_SFT, 1, 1),
@@ -1874,29 +1861,13 @@ static const struct snd_kcontrol_new rk616_snd_path_controls[] = {
 		rk616_voip_path_get, rk616_voip_path_put),
 
 	//add for incall volume setting
-	{
-	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = ("Speaker Playback Volume"),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (out_vol_tlv), \
-	.info = snd_soc_info_volsw_2r, \
-	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_step_volsw_2r, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = RK616_SPKL_CTL, .rreg = RK616_SPKR_CTL, .shift = RK616_VOL_SFT, \
-		.max = SPKOUT_VOLUME, .platform_max = SPKOUT_VOLUME, .invert = 0}
-	},
-
-	{
-	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = ("Headphone Playback Volume"),\
-	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
-		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
-	.tlv.p = (out_vol_tlv), \
-	.info = snd_soc_info_volsw_2r, \
-	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_step_volsw_2r, \
-	.private_value = (unsigned long)&(struct soc_mixer_control) \
-		{.reg = RK616_SPKL_CTL, .rreg = RK616_SPKR_CTL, .shift = RK616_VOL_SFT, \
-		.max = SPKOUT_VOLUME, .platform_max = SPKOUT_VOLUME, .invert = 0}
-	},
+	SOC_DOUBLE_R_STEP_TLV("Speaker Playback Volume", RK616_SPKL_CTL,
+			RK616_SPKR_CTL, RK616_VOL_SFT, SPKOUT_VOLUME, 0, out_vol_tlv),
+	SOC_DOUBLE_R_STEP_TLV("Headphone Playback Volume", RK616_SPKL_CTL,
+			RK616_SPKR_CTL, RK616_VOL_SFT, HPOUT_VOLUME, 0, out_vol_tlv),
+	//Earpiece incall volume is setting by modem
+	//SOC_DOUBLE_R_STEP_TLV("Earpiece Playback Volume", RK616_SPKL_CTL,
+			//RK616_SPKR_CTL, RK616_VOL_SFT, SPKOUT_VOLUME, 0, out_vol_tlv),
 
 	/*
 	* When modem connecting, it will make some pop noise.

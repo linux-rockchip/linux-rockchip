@@ -283,7 +283,11 @@ static struct snd_soc_dai_link rk29_dai[] = {
 };
 
 static struct snd_soc_card snd_soc_card_rk29 = {
+#ifdef CONFIG_SND_SOC_RT3224
+	.name = "RK29_RT3224",
+#else
 	.name = "RK29_RT3261",
+#endif
 	.dai_link = rk29_dai,
 	.num_links = 2,
 };
