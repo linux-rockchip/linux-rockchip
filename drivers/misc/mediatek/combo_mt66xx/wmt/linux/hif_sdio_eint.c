@@ -5,6 +5,7 @@
 #include <linux/mmc/core.h>
 #include <linux/combo_mt66xx.h>
 #include <linux/gpio.h>
+#include <linux/platform_device.h>
 
 #include "hif_sdio.h"
 #include "hif_sdio_eint.h"
