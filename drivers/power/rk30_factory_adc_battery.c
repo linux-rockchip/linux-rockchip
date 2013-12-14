@@ -83,7 +83,6 @@ module_param_named(dbg_level, rk30_battery_dbg_level, int, 0644);
 #endif
 
 
-#define BATT_FILENAME "/data/bat_last_capacity.dat"
 
 
 #define BATTERY_APK 
@@ -218,6 +217,7 @@ struct rk30_adc_battery_data {
 
 	int 			    lower_power_flag;
 	int			    time_to_full;
+	int			    is_data_dir;
 
 };
 static struct rk30_adc_battery_data *gBatteryData;
@@ -366,8 +366,16 @@ static int rk30_adc_battery_load_capacity(void)
 {
 	char value[4];
 	int* p = (int *)value;
-	long fd = sys_open(BATT_FILENAME,O_RDONLY,0);
-
+	long fd, fdir;
+	
+	fdir = sys_open("/metadata", O_RDONLY | O_DIRECTORY,0 );
+	if (fdir <0){
+		fd = sys_open("/data/bat_last_capacity.dat",O_RDONLY,0);
+		gBatteryData ->is_data_dir =1;
+	}else{
+		fd = sys_open("/metadata/bat_last_capacity.dat",O_RDONLY,0);
+		gBatteryData ->is_data_dir = 0;
+	}
 	if(fd < 0){
 		DBG("rk30_adc_battery_load_capacity: open file /data/bat_last_capacity.dat failed\n");
 		return -1;
@@ -383,7 +391,11 @@ static void rk30_adc_battery_put_capacity(int loadcapacity)
 {
 	char value[4];
 	int* p = (int *)value;
-	long fd = sys_open(BATT_FILENAME,O_CREAT | O_RDWR,0);
+	long fd;
+	if ( gBatteryData ->is_data_dir == 1)
+		fd = sys_open("/data/bat_last_capacity.dat",O_CREAT | O_RDWR,0);
+	else
+		fd = sys_open("/metadata/bat_last_capacity.dat",O_CREAT | O_RDWR,0);
 
 	if(fd < 0){
 		DBG("rk30_adc_battery_put_capacity: open file /data/bat_last_capacity.dat failed\n");
