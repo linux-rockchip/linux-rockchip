@@ -1782,7 +1782,8 @@ static void dwc_otg_pcd_check_vbus_timer( unsigned long data )
         { 
             pldata->clock_enable( pldata, 1);		
             pldata->phy_suspend(pldata, USB_PHY_ENABLED);
-        } 
+        }
+        dwc_otg_enable_global_interrupts(otg_dev->core_if);
     }
 	else if(pldata->get_status(USB_STATUS_BVABLID))
 	{  // bvalid
