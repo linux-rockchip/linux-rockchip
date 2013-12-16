@@ -5,13 +5,9 @@
 #include "../transmitter/rk610_lcd.h"
 #endif
 
-#if  defined(CONFIG_RK610_LVDS) || defined(CONFIG_RK616_LVDS) || defined(CONFIG_RK3026_LVDS)
-#define SCREEN_TYPE	    	SCREEN_LVDS
-#else
-#define SCREEN_TYPE	    	SCREEN_RGB
-#endif
-#define LVDS_FORMAT      	LVDS_8BIT_2
-#define OUT_FACE	    	OUT_D888_P666
+#define SCREEN_TYPE	    	SCREEN_LVDS   //depend on your LCD type SCREEN_RGB/SCREEN_LVDS/SCREEN_MIPI or others
+#define LVDS_FORMAT      	LVDS_8BIT_2   //depend on LVDS screen type,you can get it from the lcd SPEC
+#define OUT_FACE	    	OUT_D888_P666 //depend on hardware connection
 
 
 #define DCLK	          	71000000
