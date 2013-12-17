@@ -29,6 +29,7 @@ config WLAN_80211
 config AIDC
     bool "Enable WIFI AIDS(Automatic Identification USB Wifi Type)"
 	depends on RTL8188EU || RTL8192CU || RTL8723AU || RT5370
+	depends on !RK_CHECK_UACCESS
 	default n
 	---help---
 
