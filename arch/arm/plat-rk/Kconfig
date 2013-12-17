@@ -229,4 +229,7 @@ config RK_CHECK_UACCESS
 
 config TRACK_LOCALHOST
 	bool "Enable xt_qtaguid track traffic stat for loopback"
+
+config ANDROID_KITKAT
+    bool "Enable for Android 4.4 KitKat"
 endif
