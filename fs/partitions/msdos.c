@@ -440,6 +440,11 @@ int msdos_partition(struct parsed_partitions *state)
 	struct partition *p;
 	struct fat_boot_sector *fb;
 	int slot;
+#if defined(CONFIG_EMMC_RK)||defined(CONFIG_SDMMC2_RK29)
+	//if card is emmc(flag:2 is set in 'drivers/mmc/card/block.c'), return false
+	if(state->bdev->bd_disk->flags & 2)
+		return 0;
+#endif
 
 	data = read_part_sector(state, 0, &sect);
 	if (!data)

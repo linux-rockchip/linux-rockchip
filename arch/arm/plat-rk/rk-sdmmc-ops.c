@@ -29,6 +29,19 @@
 #endif
 
 #if SDMMC_SET_IO_VOLTAGE
+//GRF_IO_CON0                        0x0F4
+//eMMC data[3:0],cmd,clk
+#define SDMMC2_DRIVER_STRENGTH_2MA            (0x00 << 2)
+#define SDMMC2_DRIVER_STRENGTH_4MA            (0x01 << 2)
+#define SDMMC2_DRIVER_STRENGTH_8MA            (0x02 << 2)
+#define SDMMC2_DRIVER_STRENGTH_12MA           (0x03 << 2)
+#define SDMMC2_DRIVER_STRENGTH_MASK           (0x03 << 18)
+//eMMC data4--data7
+#define SDMMC2_D47_DRIVER_STRENGTH_2MA        (0x00 << 4)
+#define SDMMC2_D47_DRIVER_STRENGTH_4MA        (0x01 << 4)
+#define SDMMC2_D47_DRIVER_STRENGTH_8MA        (0x02 << 4)
+#define SDMMC2_D47_DRIVER_STRENGTH_12MA       (0x03 << 4)
+#define SDMMC2_D47_DRIVER_STRENGTH_MASK       (0x03 << 20)
 //GRF_IO_CON2                        0x0FC
 #define SDMMC0_DRIVER_STRENGTH_2MA            (0x00 << 6)
 #define SDMMC0_DRIVER_STRENGTH_4MA            (0x01 << 6)
@@ -44,13 +57,18 @@
 #define SDMMC1_DRIVER_STRENGTH_MASK           (0x03 << 18)
 
 //GRF_IO_CON4       0x104
+//vccio0
 #define SDMMC0_IO_VOLTAGE_33            (0x00 << 12)
 #define SDMMC0_IO_VOLTAGE_18            (0x01 << 12)
 #define SDMMC0_IO_VOLTAGE_MASK          (0x01 << 28)
-
+//ap0
 #define SDMMC1_IO_VOLTAGE_33            (0x00 << 8)
 #define SDMMC1_IO_VOLTAGE_18            (0x01 << 8)
 #define SDMMC1_IO_VOLTAGE_MASK          (0x01 << 24)
+//flash_vc
+#define SDMMC2_IO_VOLTAGE_33            (0x00 << 11)
+#define SDMMC2_IO_VOLTAGE_18            (0x01 << 11)
+#define SDMMC2_IO_VOLTAGE_MASK          (0x01 << 17)
 
 #define SDMMC_write_grf_reg(addr, val)  __raw_writel(val, addr+RK30_GRF_BASE)
 #define SDMMC_read_grf_reg(addr) __raw_readl(addr+RK30_GRF_BASE)
@@ -256,7 +274,132 @@ static struct rksdmmc_gpio_board rksdmmc1_gpio_init = {
         },
     }, 
 };
-// ---end -#if defined(CONFIG_ARCH_RK3066B)
+
+#if defined(CONFIG_SDMMC2_RK29)
+//emmc flash select used for iomux, IO_FLASH_DATA[7:0],IO_FLASH_WP are selected for emmc insted of flash.
+#define RK_EMMC_FLAHS_SEL	(1<<11)  
+
+/*
+* define the gpio for sdmmc2, mainly used to support eMMC.
+*/
+static struct rksdmmc_gpio_board rksdmmc2_gpio_init = {
+
+     .clk_gpio       = {
+        .io             = RK30_PIN0_PD0,//RK30_PIN2_PA7,
+        .enable         = GPIO_HIGH,
+     .iomux          = {
+            .name       = "mmc2_clkout",
+            .fgpio      = GPIO0_D0,//GPIO2_A7,
+            .fmux       = EMMC_CLKOUT,
+        },
+    },   
+
+    .cmd_gpio           = {
+        .io             = RK30_PIN0_PD2,//RK30_PIN1_PC6,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_cmd",
+            .fgpio      = GPIO0_D2,//GPIO1_C6,
+            .fmux       = EMMC_CMD,
+        },
+    },      
+#if 0//def CONFIG_ARCH_RK3026
+   .data0_gpio       = {
+        .io             = RK30_PIN1_PD0,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d0",
+            .fgpio      = GPIO1_D0,
+            .fmux       = EMMC_D0,
+        },
+    },      
+
+    .data1_gpio       = {
+        .io             = RK30_PIN1_PD1,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d1",
+            .fgpio      = GPIO1_D1,
+            .fmux       = EMMC_D1,
+        },
+    },      
+
+    .data2_gpio       = {
+        .io             = RK30_PIN1_PD2,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d2",
+            .fgpio      = GPIO1_D2,
+            .fmux       = EMMC_D2,
+        },
+    }, 
+
+    .data3_gpio       = {
+        .io             = RK30_PIN1_PD3,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d3",
+            .fgpio      = GPIO1_D3,
+            .fmux       = EMMC_D3,
+        },
+    }, 
+
+    .data4_gpio       = {
+        .io             = RK30_PIN1_PD4,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d4",
+            .fgpio      = GPIO1_D4,
+            .fmux       = EMMC_D4,
+        },
+    },     
+
+    .data5_gpio       = {
+        .io             = RK30_PIN1_PD5,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d5",
+            .fgpio      = GPIO1_D5,
+            .fmux       = EMMC_D5,
+        },
+    },     
+
+    .data6_gpio       = {
+        .io             = RK30_PIN1_PD6,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d6",
+            .fgpio      = GPIO1_D6,
+            .fmux       = EMMC_D6,
+        },
+    }, 
+
+    .data7_gpio       = {
+        .io             = RK30_PIN1_PD7,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d7",
+            .fgpio      = GPIO1_D7,
+            .fmux       = EMMC_D7,
+        },
+    }, 
+
+#endif
+
+    .rstnout_gpio       = {
+        .io             = RK30_PIN0_PD3,//RK30_PIN1_PC7,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_rstn",
+            .fgpio      = GPIO0_D3,//GPIO1_C7,
+            .fmux       = EMMC_RSTNOUT,
+        },
+    },
+   
+};
+#endif
+
+// ---end -#if defined(CONFIG_ARCH_RK3066B)|| defined(CONFIG_ARCH_RK3188)
 
 #elif defined(CONFIG_ARCH_RK2928)
 /*
@@ -639,6 +782,127 @@ static struct rksdmmc_gpio_board rksdmmc1_gpio_init = {
 
 
 };
+
+/*
+* define the gpio for sdmmc2
+*/
+
+static struct rksdmmc_gpio_board rksdmmc2_gpio_init = {
+
+     .clk_gpio       = {
+        .io             = RK30_PIN0_PD0,//RK30_PIN2_PA7,
+        .enable         = GPIO_HIGH,
+     .iomux          = {
+            .name       = "mmc2_clkout",
+            .fgpio      = GPIO0_D0,//GPIO2_A7,
+            .fmux       = EMMC_CLKOUT,
+        },
+    },   
+
+    .cmd_gpio           = {
+        .io             = RK30_PIN0_PD2,//RK30_PIN1_PC6,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_cmd",
+            .fgpio      = GPIO0_D2,//GPIO1_C6,
+            .fmux       = EMMC_CMD,
+        },
+    },      
+#ifdef CONFIG_ARCH_RK3026
+   .data0_gpio       = {
+        .io             = RK30_PIN1_PD0,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d0",
+            .fgpio      = GPIO1_D0,
+            .fmux       = EMMC_D0,
+        },
+    },      
+
+    .data1_gpio       = {
+        .io             = RK30_PIN1_PD1,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d1",
+            .fgpio      = GPIO1_D1,
+            .fmux       = EMMC_D1,
+        },
+    },      
+
+    .data2_gpio       = {
+        .io             = RK30_PIN1_PD2,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d2",
+            .fgpio      = GPIO1_D2,
+            .fmux       = EMMC_D2,
+        },
+    }, 
+
+    .data3_gpio       = {
+        .io             = RK30_PIN1_PD3,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d3",
+            .fgpio      = GPIO1_D3,
+            .fmux       = EMMC_D3,
+        },
+    }, 
+#ifdef USE_SDMMC_DATA4_DATA7
+    .data4_gpio       = {
+        .io             = RK30_PIN1_PD4,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d4",
+            .fgpio      = GPIO1_D4,
+            .fmux       = EMMC_D4,
+        },
+    },     
+
+    .data5_gpio       = {
+        .io             = RK30_PIN1_PD5,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d5",
+            .fgpio      = GPIO1_D5,
+            .fmux       = EMMC_D5,
+        },
+    },     
+
+    .data6_gpio       = {
+        .io             = RK30_PIN1_PD6,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d6",
+            .fgpio      = GPIO1_D6,
+            .fmux       = EMMC_D6,
+        },
+    }, 
+
+    .data7_gpio       = {
+        .io             = RK30_PIN1_PD7,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_d7",
+            .fgpio      = GPIO1_D7,
+            .fmux       = EMMC_D7,
+        },
+    }, 
+ #endif //---#ifdef USE_SDMMC_DATA4_DATA7
+#endif
+
+    .rstnout_gpio       = {
+        .io             = RK30_PIN0_PD3,//RK30_PIN1_PC7,
+        .enable         = GPIO_HIGH,
+        .iomux          = {
+            .name       = "mmc2_rstn",
+            .fgpio      = GPIO0_D3,//GPIO1_C7,
+            .fmux       = EMMC_RSTNOUT,
+        },
+    },
+   
+};
+
 // ---end -#if defined(CONFIG_ARCH_RK3026)
 
 #else //default for RK30,RK3066 SDK
@@ -1048,7 +1312,7 @@ static void rk29_sdmmc_set_iomux_mmc0(unsigned int bus_width)
             #endif
     
             //sdmmc drive strength control
-            SDMMC_write_grf_reg(GRF_IO_CON2, (SDMMC0_DRIVER_STRENGTH_MASK |SDMMC0_DRIVER_STRENGTH_8MA));
+            SDMMC_write_grf_reg(GRF_IO_CON2, (SDMMC0_DRIVER_STRENGTH_MASK |SDMMC0_DRIVER_STRENGTH_12MA));
             
             #if !(!!SDMMC_USE_NEW_IOMUX_API)
             rk30_mux_api_set(rksdmmc0_gpio_init.data1_gpio.iomux.name, rksdmmc0_gpio_init.data1_gpio.iomux.fgpio);
@@ -1103,7 +1367,52 @@ static void rk29_sdmmc_set_iomux_mmc1(unsigned int bus_width)
 
 static void rk29_sdmmc_set_iomux_mmc2(unsigned int bus_width)
 {
+#if 0
+#if defined(CONFIG_SDMMC2_RK29)
+   #if 0
+    iomux_set(rksdmmc2_gpio_init.cmd_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.clk_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.rstnout_gpio.iomux.fmux);
+  #else
+  	iomux_set(EMMC_CLKOUT);
+	iomux_set(EMMC_CMD);
+	iomux_set(EMMC_RSTNOUT);
+  #endif
+    printk("%d..%s: =====test =========\n", __LINE__, __FUNCTION__);
+    #ifdef CONFIG_ARCH_RK3026
+    printk("%d..%s: =====test =========\n", __LINE__, __FUNCTION__);
+    iomux_set(rksdmmc2_gpio_init.data0_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.data1_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.data2_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.data3_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.data4_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.data6_gpio.iomux.fmux);
+    iomux_set(rksdmmc2_gpio_init.data7_gpio.iomux.fmux);
+   #endif
+#if 0///
+    SDMMC_write_grf_reg(GRF_IO_CON4, (SDMMC2_IO_VOLTAGE_MASK|SDMMC2_IO_VOLTAGE_18));
+    SDMMC_write_grf_reg(GRF_IO_CON0, (SDMMC2_DRIVER_STRENGTH_MASK|SDMMC2_DRIVER_STRENGTH_2MA));
+    SDMMC_write_grf_reg(GRF_IO_CON0, (SDMMC2_D47_DRIVER_STRENGTH_MASK|SDMMC2_D47_DRIVER_STRENGTH_2MA));
+   #endif 
+#else
     ;//
+#endif    
+#endif
+	iomux_set(EMMC_CLKOUT);
+	iomux_set(EMMC_CMD);
+	iomux_set(EMMC_RSTNOUT);
+#ifdef CONFIG_ARCH_RK3026
+	iomux_set(EMMC_PWREN);
+	iomux_set(EMMC_D0);
+	iomux_set(EMMC_D1);
+	iomux_set(EMMC_D2);
+	iomux_set(EMMC_D3);
+	iomux_set(EMMC_D4);
+	iomux_set(EMMC_D5);
+	iomux_set(EMMC_D6);
+	iomux_set(EMMC_D7);
+#endif
+
 }
 
 static void rk29_sdmmc_set_iomux(int device_id, unsigned int bus_width)
@@ -1121,13 +1430,48 @@ static void rk29_sdmmc_set_iomux(int device_id, unsigned int bus_width)
             #endif
             break;
         case 2:
+            #ifdef CONFIG_SDMMC2_RK29
             rk29_sdmmc_set_iomux_mmc2(bus_width);
+            #endif
             break;
         default:
             break;
     }    
 }
 
+static int sdmmc_is_selected_emmc(int device_id)
+{ 
+   int ret = 0;
+   switch(device_id)
+   {
+        case 0:
+            break;
+        case 1:
+            break;
+        case 2:
+        {
+  #if defined(CONFIG_SDMMC2_RK29)      
+        #ifdef CONFIG_ARCH_RK3026
+        	if((iomux_is_set(rksdmmc2_gpio_init.clk_gpio.iomux.fmux) == 1) &&
+        	   (iomux_is_set(rksdmmc2_gpio_init.cmd_gpio.iomux.fmux) == 1) &&
+        	   (iomux_is_set(rksdmmc2_gpio_init.data0_gpio.iomux.fmux) == 1))
+        		ret=1;
+        #else
+        	if(SDMMC_read_grf_reg(GRF_SOC_CON0)& RK_EMMC_FLAHS_SEL)
+        		ret=1;
+        #endif
+  #endif      
+            break;
+        }
+        default:
+            break;
+    }
+    if(1==ret)
+        printk("%d..%s: RK SDMMC is setted to support eMMC.\n", __LINE__, __FUNCTION__);
+    else
+        printk("%d..%s: RK SDMMC is not setted to support eMMC.\n", __LINE__, __FUNCTION__);
+    return ret;
+}
 #endif
 
 

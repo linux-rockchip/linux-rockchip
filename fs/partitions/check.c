@@ -113,7 +113,7 @@ static int (*check_part[])(struct parsed_partitions *) = {
 #ifdef CONFIG_SYSV68_PARTITION
 	sysv68_partition,
 #endif
-#ifdef CONFIG_EMMC_RK
+#if defined(CONFIG_EMMC_RK)|| defined(CONFIG_SDMMC2_RK29)
        mtdpart_partition,
 #endif
 

@@ -8,6 +8,8 @@ else
 obj-$(CONFIG_SDMMC_RK29)	+= rk29_sdmmc.o
 endif
 
+obj-$(CONFIG_SDMMC2_RK29)        += rkemmc_ops.o
+
 obj-$(CONFIG_EMMC_RK)           += rkemmc.o rkemmc_ops.o
 obj-$(CONFIG_MMC_ARMMMCI)	+= mmci.o
 obj-$(CONFIG_MMC_PXA)		+= pxamci.o

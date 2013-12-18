@@ -925,7 +925,9 @@ struct rk29_sdmmc_platform_data default_sdmmc0_data = {
 #if !defined(CONFIG_SDMMC_RK29_OLD)
 	.set_iomux = rk29_sdmmc_set_iomux,
 #endif
-
+#ifdef USE_SDMMC_DATA4_DATA7	
+    .emmc_is_selected = NULL,
+#endif
 	.dma_name = "sd_mmc",
 #ifdef CONFIG_SDMMC0_USE_DMA
 	.use_dma = 1,
@@ -1020,7 +1022,9 @@ struct rk29_sdmmc_platform_data default_sdmmc1_data = {
 #if !defined(CONFIG_SDMMC_RK29_OLD)
 	.set_iomux = rk29_sdmmc_set_iomux,
 #endif
-
+#ifdef USE_SDMMC_DATA4_DATA7	
+	.emmc_is_selected = NULL,
+#endif
 	.dma_name = "sdio",
 #ifdef CONFIG_SDMMC1_USE_DMA
 	.use_dma = 1,
@@ -1073,6 +1077,37 @@ struct rk29_sdmmc_platform_data default_sdmmc1_data = {
 	.enable_sd_wakeup = 0,
 };
 #endif //endif--#ifdef CONFIG_SDMMC1_RK29
+
+#ifdef CONFIG_SDMMC2_RK29
+static int rk29_sdmmc2_cfg_gpio(void)
+{
+    ;
+}
+
+struct rk29_sdmmc_platform_data default_sdmmc2_data = {
+	.host_ocr_avail =
+	    (MMC_VDD_165_195|MMC_VDD_25_26 | MMC_VDD_26_27 | MMC_VDD_27_28 | MMC_VDD_28_29 |
+	     MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32 | MMC_VDD_32_33 | MMC_VDD_33_34),
+
+	.host_caps = (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA| MMC_CAP_NONREMOVABLE  |
+	        MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED |
+		    MMC_CAP_1_8V_DDR | MMC_CAP_1_2V_DDR |MMC_CAP_UHS_SDR12 |MMC_CAP_UHS_SDR25 |MMC_CAP_UHS_SDR50|
+		    /*MMC_CAP_UHS_SDR104|MMC_CAP_UHS_DDR50|*/
+		    MMC_CAP_BUS_WIDTH_TEST | MMC_CAP_ERASE | MMC_CAP_CMD23),
+
+
+	.io_init = rk29_sdmmc2_cfg_gpio,
+	.set_iomux = rk29_sdmmc_set_iomux,
+	.emmc_is_selected = sdmmc_is_selected_emmc,
+
+	//.power_en = INVALID_GPIO,
+   // .power_en_level = GPIO_LOW,
+
+	.dma_name = "emmc",
+	.use_dma = 1,
+
+};
+#endif//endif--#ifdef CONFIG_SDMMC2_RK29
 
 /**************************************************************************************************
  * the end of setting for SDMMC devices

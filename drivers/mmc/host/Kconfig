@@ -6,8 +6,8 @@ comment "MMC/SD/SDIO Host Controller Drivers"
 
 config EMMC_RK
 	tristate "RK emmc controller suppport"
-	depends on ARCH_RK3188 || ARCH_RK3066B || ARCH_RK3026
-	default y if ARCH_RK3026
+	depends on ARCH_RK3188 || ARCH_RK3066B || ARCH_RK3026 || ARCH_RK319X
+	default y
 	help
 		This selects the RK EMMC controller
 if EMMC_RK
@@ -54,13 +54,13 @@ if SDMMC_RK29
 
 			   If you say No, then detect the card by register interrupt.
 
-#	config USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD
-#	    depends on SDMMC0_RK29
-#		bool "Switch the driver SDMMC0 for the debug of wifi_develop_board."
-#		default n
-#		help
-#			In order to debug the Wifi development board using SD interface,
-#			we can switch the driver SDMMC0.
+	config USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD
+	    depends on SDMMC0_RK29
+		bool "Switch the driver SDMMC0 for the debug of wifi_develop_board."
+		default n
+		help
+			In order to debug the Wifi development board using SD interface,
+			we can switch the driver SDMMC0.
 
 
 	config SDMMC1_RK29
@@ -93,6 +93,14 @@ if SDMMC_RK29
 #		help
 #			In order to debug the Wifi development board using SD interface,
 #			we can switch the driver SDMMC1.
+
+
+        config SDMMC2_RK29
+                tristate "RK29 SDMMC2 controller support(eMMC)"
+                default n
+                help
+                        This supports the use of the SDMMC2 controller on Rk processors.
+
 
 endif
 

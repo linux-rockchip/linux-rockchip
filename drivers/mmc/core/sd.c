@@ -23,6 +23,7 @@
 #include "mmc_ops.h"
 #include "sd.h"
 #include "sd_ops.h"
+#include "host.h"
 
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
@@ -214,7 +215,7 @@ static int mmc_decode_scr(struct mmc_card *card)
 static int mmc_read_ssr(struct mmc_card *card)
 {
 	unsigned int au, es, et, eo;
-	int err, i;
+	int err, i, max_au;
 	u32 *ssr;
 
 	if (!(card->csd.cmdclass & CCC_APP_SPEC)) {
@@ -238,12 +239,14 @@ static int mmc_read_ssr(struct mmc_card *card)
 	for (i = 0; i < 16; i++)
 		ssr[i] = be32_to_cpu(ssr[i]);
 
+	max_au = card->scr.sda_spec3 ? 0xF : 0x9;
 	/*
 	 * UNSTUFF_BITS only works with four u32s so we have to offset the
 	 * bitfield positions accordingly.
 	 */
 	au = UNSTUFF_BITS(ssr, 428 - 384, 4);
-	if (au > 0 || au <= 9) {
+    //if (au > 0 || au <= 9) {  //Modifyed by xbw at 2013-02-28
+	if (au > 0 && au <= max_au) {
 		card->ssr.au = 1 << (au + 4);
 		es = UNSTUFF_BITS(ssr, 408 - 384, 16);
 		et = UNSTUFF_BITS(ssr, 402 - 384, 6);
@@ -290,7 +293,8 @@ static int mmc_read_switch(struct mmc_card *card)
 	}
 
 	/* Find out the supported Bus Speed Modes. */
-	err = mmc_sd_switch(card, 0, 0, 1, status);
+    //err = mmc_sd_switch(card, 0, 0, 1, status);
+    err = mmc_sd_switch(card, 0, 0, 0, status);  //Modifyed by xbw at 2013-02-28
 	if (err) {
 		/*
 		 * If the host or the card can't do the switch,
@@ -626,8 +630,12 @@ static int mmc_sd_init_uhs_card(struct mmc_card *card)
 		goto out;
 
 	/* SPI mode doesn't define CMD19 */
-	if (!mmc_host_is_spi(card->host) && card->host->ops->execute_tuning)
-		err = card->host->ops->execute_tuning(card->host);
+	if (!mmc_host_is_spi(card->host) && card->host->ops->execute_tuning &&
+	    (card->sd_bus_speed == UHS_SDR50_BUS_SPEED ||
+	     card->sd_bus_speed == UHS_SDR104_BUS_SPEED))
+
+	    mmc_host_clk_hold(card->host);
+		err = card->host->ops->execute_tuning(card->host,MMC_SEND_TUNING_BLOCK);
 
 out:
 	kfree(status);
@@ -705,6 +713,7 @@ int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
 	if (!err)
 		ocr |= SD_OCR_CCS;
 
+#if 0// mask support sd3.0  
 	/*
 	 * If the host supports one of UHS-I modes, request the card
 	 * to switch to 1.8V signaling level.
@@ -717,6 +726,8 @@ int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
 	if (host->caps & (MMC_CAP_SET_XPC_330 | MMC_CAP_SET_XPC_300 |
 	    MMC_CAP_SET_XPC_180))
 		ocr |= SD_OCR_XPC;
+
+#endif
 
 try_again:
 	err = mmc_send_app_op_cond(host, ocr, rocr);

@@ -1756,8 +1756,9 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 	md->disk->driverfs_dev = parent;
 	set_disk_ro(md->disk, md->read_only || default_ro);
 	md->disk->flags = GENHD_FL_EXT_DEVT;
-#ifdef CONFIG_EMMC_RK
-	if(HOST_IS_EMMC(card->host))
+	
+#if defined(CONFIG_EMMC_RK)||defined(CONFIG_SDMMC2_RK29)
+	if(HOST_IS_EMMC(card->host) || SDMMC_SUPPORT_EMMC(card->host))
 		md->disk->flags |= 2;  /* 2 is unused flags in 'include/linux/genhd.h' */
 #endif
 
@@ -1967,7 +1968,7 @@ static const struct mmc_fixup blk_fixups[] =
 	END_FIXUP
 };
 
-#ifdef CONFIG_EMMC_RK
+#if defined(CONFIG_EMMC_RK)||defined(CONFIG_SDMMC2_RK29)
 extern struct mmc_card *this_card;
 #endif
 static int mmc_blk_probe(struct mmc_card *card)
@@ -2012,8 +2013,8 @@ static int mmc_blk_probe(struct mmc_card *card)
 		if (mmc_add_disk(part_md))
 			goto out;
 	}
-#ifdef CONFIG_EMMC_RK
-	if(HOST_IS_EMMC(card->host))
+#if defined(CONFIG_EMMC_RK)||defined(CONFIG_SDMMC2_RK29)
+	if(HOST_IS_EMMC(card->host) || SDMMC_SUPPORT_EMMC(card->host))
 		this_card = card;
 #endif
 	return 0;
@@ -2028,8 +2029,8 @@ static void mmc_blk_remove(struct mmc_card *card)
 {
 	struct mmc_blk_data *md = mmc_get_drvdata(card);
 
-#ifdef CONFIG_EMMC_RK
-	if(HOST_IS_EMMC(card->host))
+#if defined(CONFIG_EMMC_RK)||defined(CONFIG_SDMMC2_RK29)
+	if(HOST_IS_EMMC(card->host) || SDMMC_SUPPORT_EMMC(card->host))
 		this_card = NULL;
 #endif
 	mmc_blk_remove_parts(card, md);

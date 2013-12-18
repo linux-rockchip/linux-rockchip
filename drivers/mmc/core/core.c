@@ -325,7 +325,8 @@ static void sdmmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 	mmc_start_request(host, mrq);
 
 #if defined(CONFIG_SDMMC_RK29) && !defined(CONFIG_SDMMC_RK29_OLD)
-    if( strncmp( mmc_hostname(host) ,"mmc0" , strlen("mmc0")) ) 
+    //if( strncmp( mmc_hostname(host) ,"mmc0" , strlen("mmc0")) ) 
+    if(host->host_dev_id == 1)
     {
         multi = (mrq->cmd->retries>0)?mrq->cmd->retries:1;
         waittime = wait_for_completion_timeout(&mrq->completion ,HZ*7*multi); //sdio; for cmd dead. Modifyed by xbw at 2011-06-02
@@ -1850,7 +1851,8 @@ static int sdmmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 /* Order's important: probe SDIO, then SD, then MMC */
 
 #if !defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
-    if( strncmp( mmc_hostname(host) ,"mmc0" , strlen("mmc0")) )
+    //if( strncmp( mmc_hostname(host) ,"mmc0" , strlen("mmc0")) )
+    if(host->host_dev_id == 1)
     {
 	    //sdio_reset(host);//make no sense; noteed by xbw at 2011-12-14
     	mmc_go_idle(host);
@@ -1898,6 +1900,9 @@ static int sdmmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 	}
 #endif // #end--#if !defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
 
+
+if(1!=host->rk_sdmmc_emmc_used)
+{
     if (!(init_ret=mmc_attach_sd(host)))
     {
         printk(KERN_INFO "%s..%d..  ===== Initialize SD-card successfully. [%s]\n",\
@@ -1915,7 +1920,7 @@ static int sdmmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 		     goto freq_out;   
 	    }
 	}
-
+}
 
 	if (!(init_ret=mmc_attach_mmc(host)))
 	{
@@ -2286,6 +2291,70 @@ int mmc_card_can_sleep(struct mmc_host *host)
 	return 0;
 }
 EXPORT_SYMBOL(mmc_card_can_sleep);
+
+/*
+ * Flush the cache to the non-volatile storage.
+ */
+int mmc_flush_cache(struct mmc_card *card)
+{
+	struct mmc_host *host = card->host;
+	int err = 0;
+
+	if (!(host->caps2 & MMC_CAP2_CACHE_CTRL))
+		return err;
+
+	if (mmc_card_mmc(card) &&
+			(card->ext_csd.cache_size > 0) &&
+			(card->ext_csd.cache_ctrl & 1)) {
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				EXT_CSD_FLUSH_CACHE, 1, 0);
+		if (err)
+			pr_err("%s: cache flush error %d\n",
+					mmc_hostname(card->host), err);
+	}
+
+	return err;
+}
+EXPORT_SYMBOL(mmc_flush_cache);
+
+/*
+ * Turn the cache ON/OFF.
+ * Turning the cache OFF shall trigger flushing of the data
+ * to the non-volatile storage.
+ * This function should be called with host claimed
+ */
+int mmc_cache_ctrl(struct mmc_host *host, u8 enable)
+{
+	struct mmc_card *card = host->card;
+	unsigned int timeout;
+	int err = 0;
+
+	if (!(host->caps2 & MMC_CAP2_CACHE_CTRL) ||
+			mmc_card_is_removable(host))
+		return err;
+
+	if (card && mmc_card_mmc(card) &&
+			(card->ext_csd.cache_size > 0)) {
+		enable = !!enable;
+
+		if (card->ext_csd.cache_ctrl ^ enable) {
+			timeout = enable ? card->ext_csd.generic_cmd6_time : 0;
+			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+					EXT_CSD_CACHE_CTRL, enable, timeout);
+			if (err)
+				pr_err("%s: cache %s error %d\n",
+						mmc_hostname(card->host),
+						enable ? "on" : "off",
+						err);
+			else
+				card->ext_csd.cache_ctrl = enable;
+		}
+	}
+
+	return err;
+}
+EXPORT_SYMBOL(mmc_cache_ctrl);
+
 
 #ifdef CONFIG_PM
 

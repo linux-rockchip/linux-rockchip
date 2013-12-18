@@ -132,6 +132,12 @@ struct rksdmmc_gpio_board {
     struct rksdmmc_gpio   data1_gpio;    
     struct rksdmmc_gpio   data2_gpio;
     struct rksdmmc_gpio   data3_gpio;
+#define USE_SDMMC_DATA4_DATA7  /*In order to be compatible with old project, which have not define the member used for eMMC */    
+    struct rksdmmc_gpio   data4_gpio;
+    struct rksdmmc_gpio   data5_gpio;    
+    struct rksdmmc_gpio   data6_gpio;
+    struct rksdmmc_gpio   data7_gpio;
+    struct rksdmmc_gpio   rstnout_gpio;
    
     struct rksdmmc_gpio   detect_irq;    
     struct rksdmmc_gpio   power_en_gpio;   
@@ -160,7 +166,8 @@ struct rk29_sdmmc_platform_data {
 	char dma_name[8];
 	int (*io_init)(void);
 	int (*io_deinit)(void);
-	void (*set_iomux)(int device_id, unsigned int bus_width);//added by xbw at 2011-10-13
+	void (*set_iomux)(int device_id, unsigned int bus_width);//added by xbw at 2011-10-13	
+	int (*emmc_is_selected)(int device_id);
 	int (*status)(struct device *);
 	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id), void *dev_id);
 	int detect_irq;

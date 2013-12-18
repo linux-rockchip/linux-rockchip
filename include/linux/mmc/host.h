@@ -56,6 +56,7 @@ struct mmc_ios {
 #define MMC_TIMING_UHS_SDR50	3
 #define MMC_TIMING_UHS_SDR104	4
 #define MMC_TIMING_UHS_DDR50	5
+#define MMC_TIMING_MMC_HS200	8
 
 	unsigned char	ddr;			/* dual data rate used */
 
@@ -145,9 +146,14 @@ struct mmc_host_ops {
 
 	/* optional callback for HC quirks */
 	void	(*init_card)(struct mmc_host *host, struct mmc_card *card);
+	/* Check if the card is pulling dat[0:3] low */
+	int	(*card_busy)(struct mmc_host *host);
 
+    int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
+    
 	int	(*start_signal_voltage_switch)(struct mmc_host *host, struct mmc_ios *ios);
-	int	(*execute_tuning)(struct mmc_host *host);
+	/* The tuning command opcode value is different for SD and eMMC cards */
+	int	(*execute_tuning)(struct mmc_host *host,u32 opcode);
 	void	(*enable_preset_value)(struct mmc_host *host, bool enable);
 };
 
@@ -165,6 +171,8 @@ struct mmc_async_req {
 };
 
 #define HOST_IS_EMMC(host)	(host->unused)
+#define SDMMC_SUPPORT_EMMC(host)	(host->rk_sdmmc_emmc_used)
+
 
 struct mmc_host {
 	struct device		*parent;
@@ -233,6 +241,28 @@ struct mmc_host {
 #define MMC_CAP_MAX_CURRENT_600	(1 << 28)	/* Host max current limit is 600mA */
 #define MMC_CAP_MAX_CURRENT_800	(1 << 29)	/* Host max current limit is 800mA */
 #define MMC_CAP_CMD23		(1 << 30)	/* CMD23 supported. */
+#define MMC_CAP_HW_RESET	(1 << 31)	/* Hardware reset */
+    
+        u32         caps2;      /* More host capabilities */
+#define MMC_CAP2_BOOTPART_NOACC	(1 << 0)	/* Boot partition no access */
+#define MMC_CAP2_CACHE_CTRL	(1 << 1)	/* Allow cache control */
+#define MMC_CAP2_POWEROFF_NOTIFY (1 << 2)	/* Notify poweroff supported */
+#define MMC_CAP2_NO_MULTI_READ	(1 << 3)	/* Multiblock reads don't work */
+#define MMC_CAP2_NO_SLEEP_CMD	(1 << 4)	/* Don't allow sleep command */
+#define MMC_CAP2_HS200_1_8V_SDR	(1 << 5)        /* can support */
+#define MMC_CAP2_HS200_1_2V_SDR	(1 << 6)        /* can support */
+#define MMC_CAP2_HS200		(MMC_CAP2_HS200_1_8V_SDR | \
+                     MMC_CAP2_HS200_1_2V_SDR)
+#define MMC_CAP2_BROKEN_VOLTAGE	(1 << 7)	/* Use the broken voltage */
+#define MMC_CAP2_DETECT_ON_ERR	(1 << 8)	/* On I/O err check card removal */
+#define MMC_CAP2_HC_ERASE_SZ	(1 << 9)	/* High-capacity erase size */
+#define MMC_CAP2_CD_ACTIVE_HIGH	(1 << 10)	/* Card-detect signal active high */
+#define MMC_CAP2_RO_ACTIVE_HIGH	(1 << 11)	/* Write-protect signal active high */
+#define MMC_CAP2_PACKED_RD	(1 << 12)	/* Allow packed read */
+#define MMC_CAP2_PACKED_WR	(1 << 13)	/* Allow packed write */
+#define MMC_CAP2_PACKED_CMD	(MMC_CAP2_PACKED_RD | \
+                     MMC_CAP2_PACKED_WR)
+#define MMC_CAP2_NO_PRESCAN_POWERUP (1 << 14)	/* Don't power up before scan */
 
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
@@ -254,6 +284,8 @@ struct mmc_host {
 	unsigned int		max_blk_size;	/* maximum size of one mmc block */
 	unsigned int		max_blk_count;	/* maximum number of blocks in one req */
 	unsigned int		max_discard_to;	/* max. discard timeout in ms */
+    unsigned short      rk_sdmmc_emmc_used; //rk29_sdmmc driver support emmc
+    int                 host_dev_id;
 
 	/* private data */
 	spinlock_t		lock;		/* lock for claim and bus ops */
@@ -439,5 +471,14 @@ static inline int mmc_host_cmd23(struct mmc_host *host)
 {
 	return host->caps & MMC_CAP_CMD23;
 }
+
+static inline int mmc_host_uhs(struct mmc_host *host)
+{
+	return host->caps &
+		(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+		 MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 |
+		 MMC_CAP_UHS_DDR50);
+}
+
 #endif
 
