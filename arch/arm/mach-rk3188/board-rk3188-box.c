@@ -1326,7 +1326,19 @@ static struct rkdisplay_platform_data tv_data = {
 	.io_switch_pin	= RK30_PIN2_PD7,
 };
 #endif
-
+#if defined (CONFIG_RK_VGA)
+static struct rkdisplay_platform_data vga_data = {
+	#ifdef CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL
+	.property 		= DISPLAY_AUX,
+	#else
+	.property 		= DISPLAY_MAIN,
+	#endif
+	.video_source 	= DISPLAY_SOURCE_LCDC0,
+	.io_pwr_pin 	= INVALID_GPIO,
+	.io_reset_pin 	= INVALID_GPIO,
+	.io_switch_pin	= RK30_PIN0_PC7,
+};
+#endif
 
 // i2c
 #ifdef CONFIG_I2C0_RK30
@@ -1854,6 +1866,14 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 
 #ifdef CONFIG_I2C3_RK30
 static struct i2c_board_info __initdata i2c3_info[] = {
+	#if defined (CONFIG_RK_VGA)
+	{
+		.type           = "vga_i2c",
+		.addr           = 0x50,
+		.flags          = 0,
+		.platform_data = &vga_data,
+	},
+#endif
 };
 #endif
 
