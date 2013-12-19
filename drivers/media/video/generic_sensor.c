@@ -32,9 +32,12 @@
 *v.0.1.c:
 *        1. modify generic_sensor_s_fmt, flash will work everytime when capture
 *v.0.1.d:
-		 1. add some callbacks for icatch
+*		 1. add some callbacks for icatch
+*v0.1.f:
+*        1. add new_usr_sensor_sequence interface;
+*        2. The resoultion which the ration is same is first choice;
 */
-static int version = KERNEL_VERSION(0,1,0xd);
+static int version = KERNEL_VERSION(0,1,0xf);
 module_param(version, int, S_IRUGO);
 
 
@@ -472,6 +475,7 @@ static int sensor_try_fmt(struct i2c_client *client,unsigned int *set_w,unsigned
 	struct rk_sensor_sequence* res_array = sensor->info_priv.sensor_series;
 	int num = sensor->info_priv.num_series;
 	int tmp_w = 10000,tmp_h = 10000,tmp_index = -1;
+	int same_ratio_w = 0, same_ratio_h = 0, same_ratio_index = -1,w_diff,w_diff_min=10000;
 	int resolution_diff_min=10000*10000,resolution_diff;
 
 	while(array_index < num) {        
@@ -492,13 +496,36 @@ static int sensor_try_fmt(struct i2c_client *client,unsigned int *set_w,unsigned
 
                 resolution_diff_min = resolution_diff;
             }
+            /* ddl@rock-chips.com : v0.1.f */
+            if (res_array->gSeq_info.w*(*set_h) == res_array->gSeq_info.h*(*set_w)) {
+                w_diff = abs(res_array->gSeq_info.w - *set_w);
+                if (w_diff<w_diff_min) {
+                    same_ratio_w = res_array->gSeq_info.w;
+                    same_ratio_h = res_array->gSeq_info.h;
+                    same_ratio_index = array_index;
+                    w_diff_min = w_diff;
+                }
+            }
             
 		}
         array_index++;
 	    res_array++;
 	}
-	*set_w = tmp_w;
-	*set_h =  tmp_h;
+    //printk("User try: %dx%d  %dx%d  %dx%d\n",*set_w,*set_h, tmp_w,tmp_h,same_ratio_w,same_ratio_h);
+	if (same_ratio_w == 0) {
+	    *set_w = tmp_w;
+	    *set_h =  tmp_h;
+	} else {
+        if (same_ratio_w >= sensor->info_priv.max_real_res.w) {
+            *set_w = tmp_w;
+	        *set_h =  tmp_h;
+        } else {
+            *set_w = same_ratio_w;
+	        *set_h =  same_ratio_h;
+	        tmp_index = same_ratio_index;
+        }
+	}
+	 
 	//only has the init array
 	if((tmp_w == 10000) && (tmp_index != -1)){        
 		SENSOR_TR("have not other series meet the requirement except init_serie,array_index = %d",tmp_index);
@@ -565,13 +592,13 @@ int generic_sensor_try_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf
    	}
     if (mf->height > sensor->info_priv.max_res.h)
         mf->height = sensor->info_priv.max_res.h;
-    else if (mf->height < sensor->info_priv.min_res.h)
-        mf->height = sensor->info_priv.min_res.h;
+    //else if (mf->height < sensor->info_priv.min_res.h)
+        //mf->height = sensor->info_priv.min_res.h;
 
     if (mf->width > sensor->info_priv.max_res.w)
         mf->width = sensor->info_priv.max_res.w;
-    else if (mf->width < sensor->info_priv.min_res.w)
-        mf->width = sensor->info_priv.min_res.w;
+    //else if (mf->width < sensor->info_priv.min_res.w)
+        //mf->width = sensor->info_priv.min_res.w;
     set_w = mf->width;
     set_h = mf->height;    
     ret = sensor_try_fmt(client,&set_w,&set_h);
@@ -897,21 +924,22 @@ int generic_sensor_s_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
     winseqe_set_addr = sensor->info_priv.sensor_series+ret;
 
     ret = 0;    
-    if (sensor->sensor_cb.sensor_s_fmt_cb_th)
-        ret |= sensor->sensor_cb.sensor_s_fmt_cb_th(client, mf, is_capture);
+    if(sensor->info_priv.winseqe_cur_addr->data != winseqe_set_addr->data){
+
+        if (sensor->sensor_cb.sensor_s_fmt_cb_th)
+            ret |= sensor->sensor_cb.sensor_s_fmt_cb_th(client, mf, is_capture);
         
-    v4l2ctrl_info = sensor_find_ctrl(sensor->ctrls,V4L2_CID_FLASH); /* ddl@rock-chips.com: v0.1.3 */        
-    if (v4l2ctrl_info!=NULL) {   
-        if (is_capture) { 
-            if ((v4l2ctrl_info->cur_value == 2) || (v4l2ctrl_info->cur_value == 1)) {
-                generic_sensor_ioctrl(icd, Sensor_Flash, 1);                    
+        v4l2ctrl_info = sensor_find_ctrl(sensor->ctrls,V4L2_CID_FLASH); /* ddl@rock-chips.com: v0.1.3 */        
+        if (v4l2ctrl_info!=NULL) {   
+            if (is_capture) { 
+                if ((v4l2ctrl_info->cur_value == 2) || (v4l2ctrl_info->cur_value == 1)) {
+                    generic_sensor_ioctrl(icd, Sensor_Flash, 1);                    
+                }
+            } else {
+                generic_sensor_ioctrl(icd, Sensor_Flash, 0); 
             }
-        } else {
-            generic_sensor_ioctrl(icd, Sensor_Flash, 0); 
         }
-    }
-    
-    if(sensor->info_priv.winseqe_cur_addr->data != winseqe_set_addr->data){       
+        
         ret |= generic_sensor_write_array(client, winseqe_set_addr->data);
         if (ret != 0) {
             SENSOR_TR("set format capability failed");
@@ -1184,7 +1212,7 @@ long generic_sensor_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
         }
         default:
         {
-            SENSOR_TR("%s cmd(0x%x) is unknown !\n",__FUNCTION__,cmd);
+            //SENSOR_TR("%s cmd(0x%x) is unknown !\n",__FUNCTION__,cmd);
             break;
         }
     }

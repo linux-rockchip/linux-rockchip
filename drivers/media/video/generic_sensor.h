@@ -1,4 +1,5 @@
 #ifndef __ASM_ARCH_GENERIC_SENSOR_RK_H_
+#define __ASM_ARCH_GENERIC_SENSOR_RK_H_
 #include <linux/videodev2.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
@@ -457,6 +458,35 @@ static inline void v4l2_querymenu_init (struct v4l2_querymenu *ptr,
     return;
 }
 
+static inline int new_user_sensor_sequence (struct generic_sensor *sensor, struct rk_sensor_sequence *seqence, int add_series_num)
+{
+    struct rk_sensor_sequence *series;
+    int num,i,ret = 0;
+    
+    if (sensor->info_priv.sensor_series) {
+        num = sensor->info_priv.num_series + add_series_num;
+        series = (struct rk_sensor_sequence*)kzalloc(sizeof(struct rk_sensor_sequence)*num,GFP_KERNEL);
+        if (series == NULL) {
+            printk(KERN_ERR "%s(%d): malloc sensor_series failed! \n",__FUNCTION__,__LINE__); 
+            ret = -1;
+            goto end;
+        } else {            
+            memcpy((unsigned char*)series, (unsigned char*)sensor->info_priv.sensor_series,sizeof(struct rk_sensor_sequence)*sensor->info_priv.num_series);
+            kfree((void*)sensor->info_priv.sensor_series);
+
+            sensor->info_priv.sensor_series = series;
+            series += sensor->info_priv.num_series;
+            for (i=0; i<add_series_num; i++) {
+                *series++ = *seqence++;
+            }
+            sensor->info_priv.num_series = num;
+        }
+    }
+    
+end:
+    return ret;
+}
+
 static inline int sensor_v4l2ctrl_replace_cb(struct generic_sensor *sensor, int id, void *cb)
 {
     int i,num;
@@ -537,6 +567,7 @@ static inline int sensor_focus_default_cb(struct soc_camera_device *icd, struct 
 	struct i2c_client *client = to_i2c_client(to_soc_camera_control(icd));	  
 	int value = ext_ctrl->value;
 	int ret = 0;
+	bool update_zone;
 	struct generic_sensor* sensor = to_generic_sensor(client);
     
 	if ((value < ctrl_info->qctrl->minimum) || (value > ctrl_info->qctrl->maximum)) {
@@ -620,10 +651,19 @@ static inline int sensor_focus_default_cb(struct soc_camera_device *icd, struct 
 			{
                 mutex_lock(&sensor->sensor_focus.focus_lock);
                 //get focuszone
-                sensor->sensor_focus.focus_zone.lx = ext_ctrl->rect[0];
-                sensor->sensor_focus.focus_zone.ty = ext_ctrl->rect[1];
-                sensor->sensor_focus.focus_zone.rx = ext_ctrl->rect[2];
-                sensor->sensor_focus.focus_zone.dy = ext_ctrl->rect[3];
+                if ((sensor->sensor_focus.focus_zone.lx != ext_ctrl->rect[0]) ||
+                    (sensor->sensor_focus.focus_zone.ty != ext_ctrl->rect[1]) ||
+                    (sensor->sensor_focus.focus_zone.rx != ext_ctrl->rect[2]) ||
+                    (sensor->sensor_focus.focus_zone.dy != ext_ctrl->rect[3])) {
+
+                    sensor->sensor_focus.focus_zone.lx = ext_ctrl->rect[0];
+                    sensor->sensor_focus.focus_zone.ty = ext_ctrl->rect[1];
+                    sensor->sensor_focus.focus_zone.rx = ext_ctrl->rect[2];
+                    sensor->sensor_focus.focus_zone.dy = ext_ctrl->rect[3];
+                    update_zone = true;
+                } else {
+                    update_zone = false;
+                }
                 mutex_unlock(&sensor->sensor_focus.focus_lock);
               
 				if(sensor->sensor_focus.focus_mode ==V4L2_CID_FOCUS_CONTINUOUS){
@@ -631,7 +671,8 @@ static inline int sensor_focus_default_cb(struct soc_camera_device *icd, struct 
 					//generic_sensor_af_workqueue_set(icd, WqCmd_af_close, value, true);
 				}
 				if((value==1) || (sensor->sensor_focus.focus_mode==V4L2_CID_FOCUS_AUTO)){
-					ret = generic_sensor_af_workqueue_set(icd, WqCmd_af_update_zone, value, true);
+				    if (update_zone == true) 
+					    ret = generic_sensor_af_workqueue_set(icd, WqCmd_af_update_zone, value, true);
 					ret = generic_sensor_af_workqueue_set(icd, WqCmd_af_single, value, true);
                     sensor->sensor_focus.focus_mode = V4L2_CID_FOCUS_AUTO;
 				}else if(value == 0){
