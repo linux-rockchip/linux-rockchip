@@ -121,7 +121,9 @@ static struct sdmmc_reg rk_sdmmc_regs[] =
   { 0, 0 }
 };
 
+#ifndef BIT
 #define BIT(n)				(1<<(n))
+#endif
 #define RK_CLEAR_BIT(n)		        (0<<(n))
 
 

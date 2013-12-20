@@ -64,7 +64,7 @@ int debug_level = 5;
 #define xbwprintk(n, arg...)
 #endif
 
-#define RK29_SDMMC_VERSION "Ver.6.06 The last modify date is 2013-12-08"
+#define RK29_SDMMC_VERSION "Ver.6.07 The last modify date is 2013-12-20"
 
 #define RK29_SDMMC_DEFAULT_SDIO_FREQ   0 // 1--run in default frequency(50Mhz); 0---run in 25Mhz, 
 #if defined(CONFIG_MT6620)|| defined(CONFIG_ESP8089)
@@ -82,6 +82,8 @@ int debug_level = 5;
 
 #define SWITCH_VOLTAGE_18_33            0 //RK30_PIN2_PD7 //Temporary experiment
 #define SWITCH_VOLTAGE_ENABLE_VALUE_33  GPIO_LOW
+
+#define SDMMC_SUPPORT_DDR_MODE  1
 
 static void rk29_sdmmc_start_error(struct rk29_sdmmc *host);
 static int rk29_sdmmc_clear_fifo(struct rk29_sdmmc *host);
@@ -1519,6 +1521,11 @@ int rk29_sdmmc_reset_controller(struct rk29_sdmmc *host)
 		    }
 		}		
     }
+    
+#if SDMMC_SUPPORT_DDR_MODE
+ 
+    rk29_sdmmc_write(host->regs, SDMMC_UHS_REG, SDMMC_UHS_DDR_MODE);
+#endif 
 
     /*
     **  Some machines may crash because of sdio-interrupt to open too early.
@@ -1641,7 +1648,7 @@ int rk29_sdmmc_change_clk_div(struct rk29_sdmmc *host, u32 freqHz)
 
      
     host->bus_hz = clk_get_rate(host->clk);
-    if((host->bus_hz > 52000000) || (host->bus_hz <= 0))
+    if(host->bus_hz <= 0)
     {
         printk(KERN_WARNING "%s..%s..%d..****Error!!!!!!  Bus clock %d hz is beyond the prescribed limits [%s]\n",\
             __FILE__, __FUNCTION__,__LINE__,host->bus_hz, host->dma_name);
@@ -2282,6 +2289,25 @@ static void rk29_sdmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
     if((!(test_bit(RK29_SDMMC_CARD_PRESENT, &host->flags))|| !rk29_sdmmc_get_cd(host->mmc))
         &&(RK29_CTRL_SDIO1_ID != host->host_dev_id))
         goto out; //exit the set_ios directly if the SDIO is not present. 
+
+#if SDMMC_SUPPORT_DDR_MODE
+    value = rk29_sdmmc_read(host->regs, SDMMC_UHS_REG);
+
+    /* DDR mode set */
+    if(ios->timing == MMC_TIMING_UHS_DDR50)
+    {
+        if(SDMMC_UHS_DDR_MODE != (value&SDMMC_UHS_DDR_MODE)){
+            xbwprintk(7, "%d..%s: set DDR mode. value=0x%x.[%s]\n", \
+                __LINE__, __FUNCTION__, value, host->dma_name);
+                
+            value |= SDMMC_UHS_DDR_MODE;
+        }
+    }
+    else
+        value &= (~SDMMC_UHS_DDR_MODE);
+        
+    rk29_sdmmc_write(host->regs, SDMMC_UHS_REG, value);
+#endif
         
 	if(host->ctype != ios->bus_width)
 	{
@@ -2638,6 +2664,9 @@ static void rk29_sdmmc_request_end(struct rk29_sdmmc *host, struct mmc_command *
 
     if(cmd->error)
     {
+        
+	    xbwprintk(7, "%s..%d...  cmd=%d, host->state=0x%x,pendingEvent=0x%lu, completeEvents=0x%lu [%s]\n",\
+            __FUNCTION__, __LINE__,cmd->opcode,host->state, host->pending_events,host->completed_events,host->dma_name);
         goto exit;//It need not to wait-for-busy if the CMD-ERROR happen.
     }
     host->errorstep = 0xf7;
@@ -2795,6 +2824,8 @@ static int rk29_sdmmc_command_complete(struct rk29_sdmmc *host,
 
     if(status & SDMMC_INT_RTO)
 	{
+	    xbwprintk(7, "%s..%d.  cmd=%d, host->state=0x%x, cmdINT=0x%x\n,pendingEvent=0x%lu,completeEvents=0x%lu. [%s]\n",\
+            __FUNCTION__, __LINE__,cmd->opcode,host->state,status, host->pending_events,host->completed_events,host->dma_name);
 	    cmd->error = -ENOMEM;
 	    host->mrq->cmd->error = cmd->error;
         output = SDM_BUSY_TIMEOUT;
@@ -2928,8 +2959,8 @@ static void rk29_sdmmc_tasklet_func(unsigned long priv)
 
             case STATE_SENDING_CMD:
             {
-                xbwprintk(7, "%s..%d..   prev_state=  STATE_SENDING_CMD, pendingEvernt=0x%lu  [%s]\n",\
-                    __FUNCTION__, __LINE__,host->completed_events, host->dma_name);
+                xbwprintk(7, "%s..%d..   prev_state=  STATE_SENDING_CMD, cmderr=%d , pendingEvernt=0x%lu  [%s]\n",\
+                    __FUNCTION__, __LINE__, host->cmd->error,host->completed_events, host->dma_name);
                 if(host->cmd->error)
                 {
                     del_timer_sync(&host->request_timer);
@@ -3188,6 +3219,7 @@ static irqreturn_t rk29_sdmmc_interrupt(int irq, void *dev_id)
     {
         //disable_irq_nosync(host->irq);
         rk29_sdmmc_write(host->regs, SDMMC_RINTSTS, SDMMC_INT_CD); // clear sd detect int
+        smp_wmb();
     	present = rk29_sdmmc_get_cd(host->mmc);
     	present_old = test_bit(RK29_SDMMC_CARD_PRESENT, &host->flags);
   	
@@ -3239,6 +3271,7 @@ static irqreturn_t rk29_sdmmc_interrupt(int irq, void *dev_id)
 
         rk29_sdmmc_write(host->regs, SDMMC_RINTSTS,SDMMC_INT_CMD_DONE);  //  clear interrupt
         rk29_sdmmc_cmd_interrupt(host, status);
+        smp_wmb();
 
         goto Exit_INT;
     }
@@ -3250,6 +3283,7 @@ static irqreturn_t rk29_sdmmc_interrupt(int irq, void *dev_id)
 				__FUNCTION__, __LINE__, pending, host->dma_name);
 
         rk29_sdmmc_write(host->regs, SDMMC_RINTSTS,SDMMC_INT_SDIO);
+        smp_wmb();
         sdio_irq = 1;
 
         goto Exit_INT;
@@ -3335,16 +3369,18 @@ static irqreturn_t rk29_sdmmc_interrupt(int irq, void *dev_id)
 #if SDMMC_USE_INT_UNBUSY
         if(pending & SDMMC_INT_UNBUSY) 
         {
-            xbwprintk(1, "%d..%s: INT=0x%x ,RINTSTS=0x%x, CMD%d(arg=0x%x, retries=%d),host->state=0x%x. [%s]\n", \
+            xbwprintk(6, "%d..%s: INT=0x%x ,RINTSTS=0x%x, CMD%d(arg=0x%x, retries=%d),host->state=0x%x. [%s]\n", \
                     __LINE__,__FUNCTION__, pending,status, host->cmd->opcode, host->cmd->arg, host->cmd->retries, \
                     host->state,host->dma_name);
     
             rk29_sdmmc_write(host->regs, SDMMC_RINTSTS,SDMMC_INT_UNBUSY); 
-            
+         if (!rk29_sdmmc_test_pending(host, EVENT_DATA_UNBUSY))   
+         {
             host->data_status = status;
             smp_wmb();
             rk29_sdmmc_set_pending(host, EVENT_DATA_UNBUSY);
             tasklet_schedule(&host->tasklet);  
+          }  
             
             goto Exit_INT;
         }
@@ -3591,7 +3627,7 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
     {
     //get clk for eMMC controller.
     host->clk = clk_get(&pdev->dev, "emmc");
-    clk_set_rate(host->clk,MMCHS_52_FPP_FREQ);
+    clk_set_rate(host->clk,MMCHS_52_FPP_FREQ*2);
     clk_enable(host->clk);
 	clk_enable(clk_get(&pdev->dev, "hclk_emmc"));
 }
@@ -3662,10 +3698,15 @@ else
 	mmc->caps = pdata->host_caps;
 #if 1	
     mmc->caps = mmc->caps | MMC_CAP_1_8V_DDR |MMC_CAP_1_2V_DDR /*|MMC_CAP_DRIVER_TYPE_A |MMC_CAP_DRIVER_TYPE_C |MMC_CAP_DRIVER_TYPE_D*/
-                |MMC_CAP_UHS_SDR12 |MMC_CAP_UHS_SDR25 |MMC_CAP_UHS_SDR50 /*|MMC_CAP_UHS_SDR104 |MMC_CAP_UHS_DDR50*/
+                |MMC_CAP_UHS_SDR12 |MMC_CAP_UHS_SDR25 |MMC_CAP_UHS_SDR50
                /* |MMC_CAP_MAX_CURRENT_200 |MMC_CAP_MAX_CURRENT_400 |MMC_CAP_MAX_CURRENT_600 |MMC_CAP_MAX_CURRENT_800
                 |MMC_CAP_SET_XPC_330*/;
 #endif
+#if SDMMC_SUPPORT_DDR_MODE
+    mmc->caps = mmc->caps |MMC_CAP_UHS_DDR50 |MMC_CAP_UHS_SDR104;
+#endif
+    mmc->caps = mmc->caps |MMC_CAP_BUS_WIDTH_TEST| MMC_CAP_ERASE | MMC_CAP_CMD23;
+    
 	mmc->re_initialized_flags = 1;
 	mmc->doneflag = 1;
 	mmc->sdmmc_host_hw_init = rk29_sdmmc_hw_init;
@@ -3683,7 +3724,7 @@ else
 	/*
 	 * Block size can be up to 2048 bytes, but must be a power of two.
 	*/
-	mmc->max_blk_size = 4095;
+	mmc->max_blk_size = 65536;//4095;
 
 	/*
 	 * No limit on the number of blocks transferred.
