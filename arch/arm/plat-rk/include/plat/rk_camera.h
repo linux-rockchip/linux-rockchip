@@ -41,6 +41,7 @@
 #define RK29_CAM_RESETACTIVE_BITPOS	0x01
 #define RK29_CAM_POWERDNACTIVE_BITPOS 0x02
 #define RK29_CAM_FLASHACTIVE_BITPOS	0x03
+#define RK29_CAM_AFACTIVE_BITPOS	0x04
 
 #define RK_CAM_NUM 6
 #define RK29_CAM_SUPPORT_NUMS  RK_CAM_NUM
@@ -94,6 +95,7 @@
                 .gpio_power = pwr_io,\
                 .gpio_reset = rst_io,\
                 .gpio_powerdown = pwdn_io,\
+                .gpio_af = INVALID_GPIO,\
                 .gpio_flash = INVALID_GPIO,\
                 .gpio_flag = ((pwr_active&0x01)<<RK29_CAM_POWERACTIVE_BITPOS)|((rst_active&0x01)<<RK29_CAM_RESETACTIVE_BITPOS)|((pwdn_active&0x01)<<RK29_CAM_POWERDNACTIVE_BITPOS),\
             },\
@@ -168,6 +170,7 @@
                 .gpio_power = pwr_io,\
                 .gpio_reset = rst_io,\
                 .gpio_powerdown = pwdn_io,\
+                .gpio_af = INVALID_GPIO,\
                 .gpio_flash = INVALID_GPIO,\
                 .gpio_flag = ((pwr_active&0x01)<<RK29_CAM_POWERACTIVE_BITPOS)|((rst_active&0x01)<<RK29_CAM_RESETACTIVE_BITPOS)|((pwdn_active&0x01)<<RK29_CAM_POWERDNACTIVE_BITPOS),\
             },\
@@ -209,6 +212,10 @@
     .fov_h = a,\
     .fov_v = b,
                                 
+#define new_camera_device_af(af_io)\
+    .io = {\
+        .gpio_af = af_io\
+    },
 
 #define new_camera_device_end new_camera_device_ex(end,end,\
                                     INVALID_VALUE,INVALID_VALUE,INVALID_VALUE,INVALID_VALUE,\
@@ -596,6 +603,13 @@
 #define RK29_CAM_FLASHACTIVE_L  (0x00<<RK29_CAM_FLASHACTIVE_BITPOS)
 
 
+//#define RK29_CAM_AFACTIVE_BITPOS	0x04
+#define RK29_CAM_AFACTIVE_MASK	(1<<RK29_CAM_AFACTIVE_BITPOS)
+#define RK29_CAM_AFACTIVE_H	(0x01<<RK29_CAM_AFACTIVE_BITPOS)
+#define RK29_CAM_AFACTIVE_L  (0x00<<RK29_CAM_AFACTIVE_BITPOS)
+
+
+
 #define RK_CAM_SCALE_CROP_ARM      0
 #define RK_CAM_SCALE_CROP_IPP      1
 #define RK_CAM_SCALE_CROP_RGA      2
@@ -632,7 +646,8 @@ enum rk29camera_ioctrl_cmd
 	Cam_Reset,
 	Cam_PowerDown,
 	Cam_Flash,
-	Cam_Mclk
+	Cam_Mclk,
+	Cam_Af
 };
 
 enum rk29sensor_power_cmd
@@ -640,7 +655,8 @@ enum rk29sensor_power_cmd
     Sensor_Power,
 	Sensor_Reset,
 	Sensor_PowerDown,
-	Sensor_Flash
+	Sensor_Flash,
+	Sensor_Af
 };
 
 enum rk29camera_flash_cmd
@@ -655,6 +671,7 @@ struct rk29camera_gpio_res {
     unsigned int gpio_power;
 	unsigned int gpio_powerdown;
 	unsigned int gpio_flash;
+	unsigned int gpio_af;
 	unsigned int gpio_flag;
 	unsigned int gpio_init;
 	const char *dev_name;
@@ -753,6 +770,7 @@ struct rk29camera_platform_ioctl_cb {
     int (*sensor_reset_cb)(struct rk29camera_gpio_res *res, int on);
     int (*sensor_powerdown_cb)(struct rk29camera_gpio_res *res, int on);
     int (*sensor_flash_cb)(struct rk29camera_gpio_res *res, int on);
+    int (*sensor_af_cb)(struct rk29camera_gpio_res *res, int on);	
 };
 
 typedef struct rk29_camera_sensor_cb {

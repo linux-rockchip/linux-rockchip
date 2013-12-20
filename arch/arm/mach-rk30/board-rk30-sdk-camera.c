@@ -129,6 +129,7 @@ static struct rkcamera_platform_data new_camera[] = {
 #define CONFIG_SENSOR_RESET_IOCTL_USR	   0
 #define CONFIG_SENSOR_POWERDOWN_IOCTL_USR	   0
 #define CONFIG_SENSOR_FLASH_IOCTL_USR	   0
+#define CONFIG_SENSOR_AF_IOCTL_USR	   0
 
 #if CONFIG_SENSOR_POWER_IOCTL_USR
 static int sensor_power_usr_cb (struct rk29camera_gpio_res *res,int on)
@@ -188,6 +189,14 @@ static int sensor_flash_usr_cb (struct rk29camera_gpio_res *res,int on)
 }
 #endif
 
+#if CONFIG_SENSOR_AF_IOCTL_USR
+static int sensor_af_usr_cb (struct rk29camera_gpio_res *res,int on)
+{
+	#error "CONFIG_SENSOR_AF_IOCTL_USR is 1, sensor_af_usr_cb function must be writed!!";
+}
+
+#endif
+
 static struct rk29camera_platform_ioctl_cb	sensor_ioctl_cb = {
 	#if CONFIG_SENSOR_POWER_IOCTL_USR
 	.sensor_power_cb = sensor_power_usr_cb,
@@ -211,6 +220,12 @@ static struct rk29camera_platform_ioctl_cb	sensor_ioctl_cb = {
 	.sensor_flash_cb = sensor_flash_usr_cb,
 	#else
 	.sensor_flash_cb = NULL,
+	#endif
+
+	#if CONFIG_SENSOR_AF_IOCTL_USR
+	.sensor_af_cb = sensor_af_usr_cb,	
+	#else
+	.sensor_af_cb = NULL,
 	#endif
 };
 

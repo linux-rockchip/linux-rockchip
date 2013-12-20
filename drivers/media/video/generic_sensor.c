@@ -36,8 +36,10 @@
 *v0.1.f:
 *        1. add new_usr_sensor_sequence interface;
 *        2. The resoultion which the ration is same is first choice;
+*v0.1.0x11:
+*        1. add support sensor af power;
 */
-static int version = KERNEL_VERSION(0,1,0xf);
+static int version = KERNEL_VERSION(0,1,0x11);
 module_param(version, int, S_IRUGO);
 
 
@@ -781,6 +783,14 @@ int generic_sensor_ioctrl(struct soc_camera_device *icd,enum rk29sensor_power_cm
 			}
 			break;
 		}
+		case Sensor_Af:     /* zyl@rock-chips.com : v0.1.0x11 */
+		{
+			if (pdata && pdata->sensor_ioctrl) {
+				pdata->sensor_ioctrl(icd->pdev,Cam_Af, on);
+			}
+
+			break;
+		}
 		default:
 		{
 			SENSOR_TR("%s cmd(%d) is unknown!",__FUNCTION__,cmd);
@@ -1237,6 +1247,7 @@ int generic_sensor_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 	struct rk_sensor_focus_work *sensor_work = container_of(work, struct rk_sensor_focus_work, dwork.work);
 	struct i2c_client *client = sensor_work->client;
 	struct generic_sensor*sensor = to_generic_sensor(client);
+    struct soc_camera_device *icd = client->dev.platform_data;
 	//struct rk_sensor_focus_cmd_info cmdinfo;
 	int zone_tm_pos[4];
 	int ret = 0;
@@ -1254,6 +1265,7 @@ int generic_sensor_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
     			if (ret < 0) {
     				SENSOR_TR("WqCmd_af_init is failed in sensor_af_workqueue!");
     			} else {
+    				generic_sensor_ioctrl(icd, Sensor_Af, 1);     /* zyl@rock-chips.com : v0.1.0x11 */
     				if(sensor->sensor_focus.focus_delay != WqCmd_af_invalid) {
     					generic_sensor_af_workqueue_set(client->dev.platform_data,sensor->sensor_focus.focus_delay,0,false);
     					sensor->sensor_focus.focus_delay = WqCmd_af_invalid;

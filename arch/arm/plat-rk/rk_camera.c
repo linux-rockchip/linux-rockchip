@@ -273,8 +273,10 @@
 *        1. if sensor power callback failed, power down sensor;
 *v0.1.6:
 		 1. when power down,HWRST just need to set to powerdown mode.
+*v0.1.7:
+*        1. add support af power control;
 */
-static int camio_version = KERNEL_VERSION(0,1,6);
+static int camio_version = KERNEL_VERSION(0,1,7);
 module_param(camio_version, int, S_IRUGO);
 
 
@@ -851,6 +853,18 @@ static int sensor_flash_default_cb (struct rk29camera_gpio_res *res, int on)
     }
     return ret;
 }
+
+static int sensor_afpower_default_cb (struct rk29camera_gpio_res *res, int on)
+{
+	int ret = 0;   
+	int camera_af = res->gpio_af;
+	if (camera_af != INVALID_GPIO) {
+		gpio_set_value(camera_af, on);
+	}
+
+	return ret;
+}
+
 static void rk29_sensor_fps_get(int idx, unsigned int *val, int w, int h)
 {
     switch (idx)
@@ -1015,7 +1029,7 @@ static int _rk_sensor_io_init_(struct rk29camera_gpio_res *gpio_res)
     int ret = 0, i;
     unsigned int camera_reset = INVALID_GPIO, camera_power = INVALID_GPIO;
 	unsigned int camera_powerdown = INVALID_GPIO, camera_flash = INVALID_GPIO;
-	unsigned int camera_ioflag;
+	unsigned int camera_af = INVALID_GPIO,camera_ioflag;
     struct rk29camera_gpio_res *io_res;
     bool io_requested_in_camera;
 
@@ -1023,6 +1037,7 @@ static int _rk_sensor_io_init_(struct rk29camera_gpio_res *gpio_res)
 	camera_power = gpio_res->gpio_power;
 	camera_powerdown = gpio_res->gpio_powerdown;
 	camera_flash = gpio_res->gpio_flash;
+	camera_af = gpio_res->gpio_af;	
 	camera_ioflag = gpio_res->gpio_flag;
 	gpio_res->gpio_init = 0;
 
@@ -1206,6 +1221,56 @@ static int _rk_sensor_io_init_(struct rk29camera_gpio_res *gpio_res)
 		dprintk("%s flash pin(%d) init success(0x%x)",gpio_res->dev_name, camera_flash,((camera_ioflag&RK29_CAM_FLASHACTIVE_MASK)>>RK29_CAM_FLASHACTIVE_BITPOS));
 
     }  
+
+
+	if (camera_af != INVALID_GPIO) {
+		ret = gpio_request(camera_af, "camera af");
+		if (ret) {
+			io_requested_in_camera = false;
+			for (i=0; i<RK_CAM_NUM; i++) {
+				io_res = &rk_camera_platform_data.gpio_res[i];
+				if (io_res->gpio_init & RK29_CAM_AFACTIVE_MASK) {
+					if (io_res->gpio_af == camera_af)
+						io_requested_in_camera = true;	  
+				}
+			}
+
+			if (io_requested_in_camera==false) {
+				i=0;
+				while (strstr(new_camera[i].dev_name,"end")==NULL) {
+					io_res = &new_camera[i].io;
+					if (io_res->gpio_init & RK29_CAM_AFACTIVE_MASK) {
+						if (io_res->gpio_af == camera_af)
+							io_requested_in_camera = true;	  
+					}
+					i++;
+				}
+			}
+			
+			if (io_requested_in_camera==false) {
+				eprintk("%s af pin(%d) init failed",gpio_res->dev_name,camera_af);
+				goto _rk_sensor_io_init_end_;
+			} else {
+                ret =0;
+            }
+			
+		}
+
+		if (rk_camera_platform_data.iomux(camera_af) < 0) {
+			 ret = -1;
+			eprintk("%s af pin(%d) iomux init failed\n",gpio_res->dev_name,camera_af); 	
+            goto _rk_sensor_io_init_end_;			
+		}
+		
+		gpio_res->gpio_init |= RK29_CAM_AFACTIVE_MASK;
+		gpio_set_value(camera_af, GPIO_HIGH);	
+		gpio_direction_output(camera_af, ((~camera_ioflag&RK29_CAM_AFACTIVE_MASK)>>RK29_CAM_AFACTIVE_BITPOS));
+		dprintk("%s af pin(%d) init success(0x%x)",gpio_res->dev_name, camera_af,((camera_ioflag&RK29_CAM_AFACTIVE_MASK)>>RK29_CAM_AFACTIVE_BITPOS));
+
+	}
+
+
+	
 _rk_sensor_io_init_end_:
     return ret;
 
@@ -1214,12 +1279,13 @@ _rk_sensor_io_init_end_:
 static int _rk_sensor_io_deinit_(struct rk29camera_gpio_res *gpio_res)
 {
     unsigned int camera_reset = INVALID_GPIO, camera_power = INVALID_GPIO;
-	unsigned int camera_powerdown = INVALID_GPIO, camera_flash = INVALID_GPIO;
+	unsigned int camera_powerdown = INVALID_GPIO, camera_flash = INVALID_GPIO,camera_af = INVALID_GPIO;
     
     camera_reset = gpio_res->gpio_reset;
     camera_power = gpio_res->gpio_power;
 	camera_powerdown = gpio_res->gpio_powerdown;
     camera_flash = gpio_res->gpio_flash;
+    camera_af = gpio_res->gpio_af;
 
 	if (gpio_res->gpio_init & RK29_CAM_POWERACTIVE_MASK) {
 	    if (camera_power != INVALID_GPIO) {
@@ -1248,6 +1314,12 @@ static int _rk_sensor_io_deinit_(struct rk29camera_gpio_res *gpio_res)
 	        gpio_free(camera_flash);
 	    }
 	}
+	if (gpio_res->gpio_init & RK29_CAM_AFACTIVE_MASK) {
+	    if (camera_af != INVALID_GPIO)  {
+	       // gpio_direction_input(camera_af);
+	        gpio_free(camera_af);
+	    }
+	}	
 	gpio_res->gpio_init = 0;
 	
     return 0;
@@ -1273,6 +1345,8 @@ static int rk_sensor_io_init(void)
         sensor_ioctl_cb.sensor_powerdown_cb = sensor_powerdown_default_cb;
     if (sensor_ioctl_cb.sensor_flash_cb == NULL)
         sensor_ioctl_cb.sensor_flash_cb = sensor_flash_default_cb;
+    if (sensor_ioctl_cb.sensor_af_cb == NULL)
+        sensor_ioctl_cb.sensor_af_cb = sensor_afpower_default_cb;	
     
 	for(i = 0;i < RK_CAM_NUM; i++) {
         if (plat_data->gpio_res[i].dev_name == NULL)
@@ -1436,6 +1510,17 @@ static int rk_sensor_ioctrl(struct device *dev,enum rk29camera_ioctrl_cmd cmd, i
                 ret = sensor_ioctl_cb.sensor_flash_cb(res, on);
 			} else {
                 eprintk( "sensor_ioctl_cb.sensor_flash_cb is NULL!");
+                WARN_ON(1);
+			}
+			break;
+		}
+		
+		case Cam_Af:
+		{
+			if (sensor_ioctl_cb.sensor_af_cb) {
+                ret = sensor_ioctl_cb.sensor_af_cb(res, on);
+			} else {
+                eprintk( "sensor_ioctl_cb.sensor_af_cb is NULL!");
                 WARN_ON(1);
 			}
 			break;
