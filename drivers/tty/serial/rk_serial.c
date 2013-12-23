@@ -68,8 +68,10 @@
 *		1.fix bug dma buffer free error
 *v1.5 : 2013-10-17
 *		1.in some case, set uart rx as gpio interrupt to wake up arm, when arm suspends 
+*v1.6 : 2013-12-23
+*		1.clear receive time out interrupt request in irq handler
 */
-#define VERSION_AND_TIME  "rk_serial.c v1.5 2013-10-17"
+#define VERSION_AND_TIME  "rk_serial.c v1.6 2013-12-23"
 
 #define PORT_RK		90
 #define UART_USR	0x1F	/* UART Status Register */
@@ -1056,7 +1058,9 @@ static void serial_rk_handle_port(struct uart_rk_port *up)
 		if(!(up->dma->use_dma & RX_DMA)) {
 			if (status & (UART_LSR_DR | UART_LSR_BI)) {
 				receive_chars(up, &status);
-			}
+			} else if ((up->iir & 0x0f) == 0x0c) {
+            	serial_in(up, UART_RX);
+        	}
 		}
 
 		if ((up->iir & 0x0f) == 0x02) {
@@ -1084,7 +1088,9 @@ static void serial_rk_handle_port(struct uart_rk_port *up)
 
 		if (status & (UART_LSR_DR | UART_LSR_BI)) {
 			receive_chars(up, &status);
-		}
+		} else if ((up->iir & 0x0f) == 0x0c) {
+            serial_in(up, UART_RX);
+        }
 		check_modem_status(up);
 		//hhb@rock-chips.com when FIFO and THRE mode both are enabled,and FIFO TX empty trigger is set to larger than 1,
 		//,we need to add ((up->iir & 0x0f) == 0x02) to transmit_chars,because when entering interrupt,the FIFO and THR
