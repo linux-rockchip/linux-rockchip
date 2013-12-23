@@ -472,7 +472,11 @@ static struct sensor_platform_data mxc6225_info = {
         .irq_enable = 0,
         .poll_delay_ms = 30,
         .init_platform_hw = mxc6225_init_platform_hw,
+#if defined(CONFIG_ANDROID_KITKAT)
+        .orientation = { 0, -1, 0, -1, 0, 0, 0, 0, 1},//mxc6225 only report x and y
+#else
         .orientation = { -1, 0, 0, 0, -1, 0, 0, 0, 1},//mxc6225 only report x and y
+#endif		
 };
 #endif
 
