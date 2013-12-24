@@ -334,9 +334,11 @@ module_param(debug, int, S_IRUGO|S_IWUSR);
 *v0.3.0x13:
 *         1. enable cif in rk_videobuf_queue after videbuffer is empty, which is turn off in rk_videobuf_capture;
 *         2. Reset cif and Reinit sensor when cif havn't receive data first;
+*v0.3.0x15:
+*         1. fix access cif register in rk_camera_remove_device, it may be happen before clock turn on;
 */
 
-#define RK_CAM_VERSION_CODE KERNEL_VERSION(0, 3, 0x13)
+#define RK_CAM_VERSION_CODE KERNEL_VERSION(0, 3, 0x15)
 static int version = RK_CAM_VERSION_CODE;
 module_param(version, int, S_IRUGO);
 
@@ -1755,19 +1757,19 @@ static void rk_camera_remove_device(struct soc_camera_device *icd)
 #if CAMERA_VIDEOBUF_ARM_ACCESS    
     struct rk29_camera_vbinfo *vb_info;
     unsigned int i;
-#endif    
+#endif 
 
 	mutex_lock(&camera_lock);
     BUG_ON(icd != pcdev->icd);
 
     RKCAMERA_DG1("%s driver detached from %s\n",RK29_CAM_DRV_NAME,dev_name(icd->pdev));
-
-	/* ddl@rock-chips.com: Application will call VIDIOC_STREAMOFF before close device, but
-	   stream may be turn on again before close device, if suspend and resume happened. */
-	if (read_cif_reg(pcdev->base,CIF_CIF_CTRL) & ENABLE_CAPTURE) {
-		rk_camera_s_stream(icd,0);
-	}    
     
+    /* ddl@rock-chips.com: Application will call VIDIOC_STREAMOFF before close device, but
+	   stream may be turn on again before close device, if suspend and resume happened. */
+	//if (read_cif_reg(pcdev->base,CIF_CIF_CTRL) & ENABLE_CAPTURE) {
+	if ((atomic_read(&pcdev->stop_cif) == false) && pcdev->fps_timer.istarted) {       /* ddl@rock-chips.com: v0.3.0x15*/
+		rk_camera_s_stream(icd,0);
+	} 
     v4l2_subdev_call(sd, core, ioctl, RK29_CAM_SUBDEV_DEACTIVATE,NULL);
     //if stream off is not been executed,timer is running.
     if(pcdev->fps_timer.istarted){
