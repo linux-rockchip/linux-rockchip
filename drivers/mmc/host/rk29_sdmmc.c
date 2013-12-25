@@ -3972,7 +3972,15 @@ else
 #ifdef RK29_SDMMC_NOTIFY_REMOVE_INSERTION
     
     globalSDhost[host->host_dev_id] = (struct rk29_sdmmc	*)host;
+ #if defined(CONFIG_SDMMC0_RK29)   
     if(0== host->host_dev_id)
+ #elif defined(CONFIG_SDMMC1_RK29)   
+    if(1== host->host_dev_id) 
+ #elif defined(CONFIG_SDMMC2_RK29)   
+    if(2== host->host_dev_id)
+ #else 
+    if(0== host->host_dev_id)
+ #endif   
     {
         rk29_sdmmc_progress_add_attr(pdev);
     }
