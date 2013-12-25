@@ -11,6 +11,7 @@
 #include <linux/io.h>
 #include <linux/spinlock.h>
 #include <plat/efuse.h>
+#include <linux/string.h>
 
 #if defined(CONFIG_ARCH_RK3188) || defined(CONFIG_SOC_RK3028) || defined(CONFIG_ARCH_RK3066B)
 #define efuse_readl(offset)		readl_relaxed(RK30_EFUSE_BASE + offset)
@@ -23,6 +24,7 @@
 #endif
 
 u8 efuse_buf[32 + 1] = {0, 0};
+static char efuse_val[65];
 
 static int efuse_readregs(u32 addr, u32 length, u8 *buf)
 {
@@ -64,9 +66,11 @@ static int efuse_readregs(u32 addr, u32 length, u8 *buf)
 
 void rk_efuse_init(void)
 {
+	int i=0;
+	char temp[3];
 #if defined(CONFIG_ARCH_RK3026)
 	u8 tmp_buf[32];
-	int i, j, err = 0;
+	int j, err = 0;
 
 	efuse_readregs(0x0, 32, efuse_buf);
 
@@ -96,6 +100,11 @@ void rk_efuse_init(void)
 #else
 	efuse_readregs(0x0, 32, efuse_buf);
 #endif
+	for(i=0;i<32;i++){
+		sprintf(temp,"%02x",efuse_buf[i]);
+		strcat(efuse_val,temp);
+	}
+
 }
 
 int rk_pll_flag(void)
@@ -181,4 +190,9 @@ int rk3026_version_val(void)
 	} else {
 		return efuse_buf[5];
 	}
+}
+
+char *rk_efuse_value(void)
+{
+	return efuse_val;
 }

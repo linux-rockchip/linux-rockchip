@@ -27,5 +27,6 @@ int rk_tflag(void);
 int rk_leakage_val(void);
 int rk3028_version_val(void);
 int rk3026_version_val(void);
+char *rk_efuse_value(void);
 
 #endif
