@@ -73,8 +73,15 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
     #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN0_PD3           
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_LOW//GPIO_HIGH        
     
-#elif defined(CONFIG_BCM4329) || defined(CONFIG_BCM4319) || defined(CONFIG_RKWIFI) || defined(CONFIG_RTL8189ES)
-    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD3                 
+#elif defined(CONFIG_BCM4329) || defined(CONFIG_BCM4319) || defined(CONFIG_RKWIFI) || defined(CONFIG_RTL8189ES) \
+	|| defined(CONFIG_RTL8723BS)
+
+#if  defined(CONFIG_PWM_CONTROL_LOGIC)
+    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN1_PA1 
+#else
+    #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN0_PD3
+#endif                 
+
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_HIGH
 
     #define RK30SDK_WIFI_GPIO_RESET_N             RK30_PIN0_PC2 // RK30_PIN2_PA7
@@ -152,7 +159,7 @@ int rk31sdk_get_sdio_wifi_voltage(void)
     voltage = 1800 ; //power 1800V
 #elif defined(CONFIG_MT6620) 
     voltage = 1800 ; //power 2800V
-#elif defined(CONFIG_RDA5990)||defined(CONFIG_RTL8723AS)  
+#elif defined(CONFIG_RDA5990)||defined(CONFIG_RTL8723AS) || defined(CONFIG_RTL8723BS)
     voltage = 3300 ; //power 3300V
 #else
     //default, sdio use 3.0V
