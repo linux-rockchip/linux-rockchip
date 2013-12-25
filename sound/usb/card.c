@@ -421,7 +421,6 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 	}
 
 	snd_usb_audio_create_proc(chip);
-	switch_set_state(usbaudiosdev,1);
 	*rchip = chip;
 	return 0;
 }
@@ -583,7 +582,7 @@ static void snd_usb_audio_disconnect(struct usb_device *dev, void *ptr)
 	} else {
 		mutex_unlock(&register_mutex);
 	}
-	switch_set_state(usbaudiosdev,0);
+	switch_set_state(usbaudiosdev, 0);
 }
 
 /*
@@ -596,6 +595,7 @@ static int usb_audio_probe(struct usb_interface *intf,
 	chip = snd_usb_audio_probe(interface_to_usbdev(intf), intf, id);
 	if (chip) {
 		usb_set_intfdata(intf, chip);
+		switch_set_state(usbaudiosdev, 1);
 		return 0;
 	} else
 		return -EIO;
