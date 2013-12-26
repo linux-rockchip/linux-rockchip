@@ -554,24 +554,45 @@ EXPORT_SYMBOL(rk29sdk_wifi_set_carddetect);
 #include <linux/etherdevice.h>
 u8 wifi_custom_mac_addr[6] = {0,0,0,0,0,0};
 extern char GetSNSectorInfo(char * pbuf);
-static int rk29sdk_wifi_mac_addr(unsigned char *buf)
+int rk29sdk_wifi_mac_addr(unsigned char *buf)
 {
+       char mac_buf[20] = {0};
     printk("rk29sdk_wifi_mac_addr.\n");
-    
-	// from vflash
+
+    // from vflash
     if(is_zero_ether_addr(wifi_custom_mac_addr)) {
-    	int i;
-    	char *tempBuf = kmalloc(512, GFP_KERNEL);
-    	if(tempBuf) {
-    		GetSNSectorInfo(tempBuf);
-			for (i = 506; i <= 511; i++)
-				wifi_custom_mac_addr[i-506] = tempBuf[i];
-			kfree(tempBuf);
-    	}
+       int i;
+       char *tempBuf = kmalloc(512, GFP_KERNEL);
+       if(tempBuf) {
+           GetSNSectorInfo(tempBuf);
+           for (i = 506; i <= 511; i++)
+               wifi_custom_mac_addr[i-506] = tempBuf[i];
+           kfree(tempBuf);
+       } else {
+           return -1;
+       }
+    }
+
+	sprintf(mac_buf,"%02x:%02x:%02x:%02x:%02x:%02x",wifi_custom_mac_addr[0],wifi_custom_mac_addr[1],
+	wifi_custom_mac_addr[2],wifi_custom_mac_addr[3],wifi_custom_mac_addr[4],wifi_custom_mac_addr[5]);
+	printk("falsh wifi_custom_mac_addr=[%s]\n", mac_buf);
+
+	if (is_valid_ether_addr(wifi_custom_mac_addr)) {
+		if (2 == (wifi_custom_mac_addr[0] & 0x0F)) {
+			printk("This mac address come into conflict with the address of direct, ignored...\n");
+			return -1;
+		}
+	} else {
+		printk("This mac address is not valid, ignored...\n");
+		return -1;
 	}
-	
+
+#if defined(CONFIG_RKWIFI)
 	memcpy(buf, wifi_custom_mac_addr, 6);
-	return 0;
+#else 
+	memcpy(buf, mac_buf, strlen(mac_buf));//realtek's wifi use this branch
+#endif
+    return 0;
 }
 EXPORT_SYMBOL(rk29sdk_wifi_mac_addr);
 
@@ -928,7 +949,7 @@ static struct wifi_platform_data rk29sdk_wifi_control = {
         .set_reset = rk29sdk_wifi_reset,
         .set_carddetect = rk29sdk_wifi_set_carddetect,
         .mem_prealloc   = rk29sdk_mem_prealloc,
-//        .get_mac_addr   = rk29sdk_wifi_mac_addr,
+        .get_mac_addr   = rk29sdk_wifi_mac_addr,
 };
 
 static struct platform_device rk29sdk_wifi_device = {
