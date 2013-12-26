@@ -287,14 +287,6 @@ int GetIdBlockSysData(char * buf, int Sector)
     return 0;
 }
 
-char GetSNSectorInfo(char * pbuf)
-{
-    if(gpNandInfo->GetSNSectorInfo)
-	   return( gpNandInfo->GetSNSectorInfo( pbuf));
-    return 0;
-}
-
-
 char GetSNSectorInfoBeforeNandInit(char * pbuf)
 {
     char * sn_addr = ioremap(0x10501600,0x200);
@@ -303,6 +295,14 @@ char GetSNSectorInfoBeforeNandInit(char * pbuf)
 	//print_hex_dump(KERN_WARNING, "sn:", DUMP_PREFIX_NONE, 16,1, sn_addr, 16, 0);
     return 0;
 } 
+
+char GetSNSectorInfo(char * pbuf)
+{
+    if(gpNandInfo->GetSNSectorInfo)
+	   return( gpNandInfo->GetSNSectorInfo( pbuf));
+    else
+       return GetSNSectorInfoBeforeNandInit(pbuf);
+}
 
 char GetVendor0InfoBeforeNandInit(char * pbuf)
 {
