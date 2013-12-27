@@ -2241,7 +2241,8 @@ static void __init rk30_i2c_register_board_info(void)
 //end of i2c
 #define USB_INSERT_FAKE_SHUTDOWN
 #if defined(USB_INSERT_FAKE_SHUTDOWN)
-extern int rk30_pm_enter(suspend_state_t state);
+int rk30_pm_enter(suspend_state_t state)
+{}
 int __sramdata charge_power_off = 0;
 
 static void rk30_charge_deal(void)
@@ -2325,7 +2326,7 @@ static void __init machine_rk30_board_init(void)
 	gpio_request(POWER_ON_PIN, "poweronpin");
 	gpio_direction_output(POWER_ON_PIN, GPIO_HIGH);
 	
-	//pm_power_off = rk30_pm_power_off;
+	pm_power_off = rk30_pm_power_off;
 	
         gpio_direction_output(POWER_ON_PIN, GPIO_HIGH);
 
