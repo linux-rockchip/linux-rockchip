@@ -6,6 +6,7 @@ obj-$(CONFIG_BCM4329)   += bcm4329/
 obj-$(CONFIG_MV8686)   += mv8686/
 obj-$(CONFIG_BCM4319)   += bcm4319/
 obj-$(CONFIG_RTL8192CU) += rkusbwifi/
+obj-$(CONFIG_RTL8192DU) += rkusbwifi/
 obj-$(CONFIG_RTL8188EU)	+= rkusbwifi/
 obj-$(CONFIG_RTL8723AU)	+= rkusbwifi/
 obj-$(CONFIG_RT5370)	+= rkusbwifi/

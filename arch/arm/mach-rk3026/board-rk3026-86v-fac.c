@@ -864,7 +864,7 @@ static struct sensor_platform_data cm3217_info = {
 /***********************************************************
 *	usb wifi
 ************************************************************/
-#if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) 
+#if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) || defined(CONFIG_RTL8192DU)
 
 static void rkusb_wifi_power(int on) {
 	int ret=0;

@@ -68,7 +68,8 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
 * Otherwise, you do not define this macro, eliminate it.
 *
 */          
-#if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) || defined(CONFIG_RTL8723AU) || defined(CONFIG_MT7601)
+#if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) || defined(CONFIG_RTL8723AU) || defined(CONFIG_MT7601) \
+	|| defined(CONFIG_RTL8192DU)
     #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD3           
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_LOW//GPIO_HIGH        
     
