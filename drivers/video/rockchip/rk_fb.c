@@ -32,6 +32,7 @@
 #include <linux/rk_fb.h>
 #include <plat/ipp.h>
 #include "hdmi/rk_hdmi.h"
+#include "rga/rga.h"
 #include <linux/linux_logo.h>
 
 #include <mach/clock.h>
@@ -99,6 +100,125 @@ char * get_format_string(enum data_format format,char *fmt)
 	
 }
 
+static int get_rga_format(int fmt)
+{
+	int rga_fmt = RK_FORMAT_RGBA_8888;
+        switch (fmt)
+        {
+        case HAL_PIXEL_FORMAT_RGBX_8888:
+		rga_fmt = RK_FORMAT_RGBX_8888;
+		break;
+        case HAL_PIXEL_FORMAT_RGBA_8888:
+		rga_fmt = RK_FORMAT_RGBA_8888;
+		break;
+        case HAL_PIXEL_FORMAT_BGRA_8888:
+		rga_fmt = RK_FORMAT_BGRA_8888;
+		break;
+        case HAL_PIXEL_FORMAT_RGB_888 :
+                rga_fmt = RK_FORMAT_RGB_888;
+                break;
+        case HAL_PIXEL_FORMAT_RGB_565:          //RGB565
+                rga_fmt = RK_FORMAT_RGB_565;
+                break;
+        //case HAL_PIXEL_FORMAT_YCbCr_422_SP :    // yuv422
+        //        rga_fmt = RK_FORMAT_YCbCr_422_SP;
+        //        break;
+        //case HAL_PIXEL_FORMAT_YCrCb_NV12:       // YUV420---uvuvuv
+        //        rga_fmt = RK_FORMAT_YCbCr_420_SP;
+        //        break;
+        default:
+                rga_fmt = RK_FORMAT_RGBA_8888;
+                break;
+        }
+
+        return rga_fmt;
+
+}
+
+/***********************************************************************************/
+//This function is for copying fb by RGA
+//RGA support copy RGB to RGB
+//but unsupport copy YUV to YUV if rotate
+/***********************************************************************************/
+static void fb_copy_by_rga(struct fb_info *dst_info, struct fb_info *src_info, int offset)
+{
+	int ret = 0;
+	struct rga_req  Rga_Request;
+
+	memset(&Rga_Request,0x0,sizeof(Rga_Request));
+
+#if defined(CONFIG_FB_ROTATE)
+ 	int orientation = orientation = 270 - CONFIG_ROTATE_ORIENTATION;
+        switch(orientation)
+        {
+                case 90:
+			Rga_Request.rotate_mode = 1;
+			Rga_Request.sina = 65536;
+			Rga_Request.cosa = 0;
+			
+			Rga_Request.dst.act_w = dst_info->var.yres;
+			Rga_Request.dst.act_h = dst_info->var.xres;
+			Rga_Request.dst.x_offset = dst_info->var.xres - 1;
+ 			Rga_Request.dst.y_offset = 0;
+			break;
+                case 180:
+			Rga_Request.rotate_mode = 1;
+                     	Rga_Request.sina = 0;
+                        Rga_Request.cosa = -65536;
+			Rga_Request.dst.act_w = dst_info->var.xres;
+ 			Rga_Request.dst.act_h = dst_info->var.yres;
+			Rga_Request.dst.x_offset = dst_info->var.xres - 1;
+ 			Rga_Request.dst.y_offset = dst_info->var.yres - 1;
+                        break;
+                case 270:
+			Rga_Request.rotate_mode = 1;
+                        Rga_Request.sina = -65536;
+                        Rga_Request.cosa = 0;
+
+			Rga_Request.dst.act_w = dst_info->var.yres;
+ 			Rga_Request.dst.act_h = dst_info->var.xres;
+			Rga_Request.dst.x_offset = dst_info->var.xres - 1;
+ 			Rga_Request.dst.y_offset = dst_info->var.yres - 1;
+                        break;
+                default:
+			Rga_Request.rotate_mode = 0;
+			Rga_Request.dst.act_w = dst_info->var.xres;
+ 			Rga_Request.dst.act_h = dst_info->var.yres;
+			Rga_Request.dst.x_offset = dst_info->var.xres - 1;
+ 			Rga_Request.dst.y_offset = dst_info->var.yres - 1;
+                        break;
+
+        }
+#endif	
+	Rga_Request.src.yrgb_addr =  src_info->fix.smem_start + offset;
+	Rga_Request.src.uv_addr   =  0; 
+	Rga_Request.src.v_addr    =  0;
+	Rga_Request.src.vir_w = src_info->var.xres_virtual;  
+	Rga_Request.src.vir_h =	src_info->var.yres_virtual; 
+	Rga_Request.src.format = get_rga_format((src_info->var.nonstd)&0xff);
+	Rga_Request.src.act_w = src_info->var.xres;  
+	Rga_Request.src.act_h = src_info->var.yres; 
+	Rga_Request.src.x_offset = 0;
+	Rga_Request.src.y_offset = 0;//par->y_offset;
+
+	Rga_Request.dst.yrgb_addr = dst_info->fix.smem_start + offset;
+	Rga_Request.dst.uv_addr  = 0;
+	Rga_Request.dst.v_addr   = 0;
+	Rga_Request.dst.vir_w = dst_info->var.xres_virtual; 
+	Rga_Request.dst.vir_h = dst_info->var.yres_virtual; 
+	Rga_Request.dst.format = get_rga_format((dst_info->var.nonstd)&0xff);  
+	Rga_Request.clip.xmin = 0;
+	Rga_Request.clip.xmax = dst_info->var.xres - 1;
+	Rga_Request.clip.ymin = 0;
+	Rga_Request.clip.ymax = dst_info->var.yres - 1;
+
+	Rga_Request.scale_mode = 0;
+
+	//Rga_Request.mmu_info.mmu_en    = 1;
+	//Rga_Request.mmu_info.mmu_flag  = ((2 & 0x3) << 4) | 1;
+
+	ret = rga_ioctl_kernel(&Rga_Request);	
+}
 
 
 /**********************************************************************
@@ -431,7 +551,13 @@ static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 					//memcpy(info2->screen_base+par2->y_offset,info->screen_base+par->y_offset,
 					//	var->xres*var->yres*var->bits_per_pixel>>3);
 					#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
-					fb_copy_by_ipp(info2,info,par->y_offset);
+						#ifdef CONFIG_ARCH_RK3026
+						//RGA support copying RGB to RGB,but not support YUV to YUV if rotate
+						fb_copy_by_rga(info2,info,par->y_offset);
+						#else
+						fb_copy_by_ipp(info2,info,par->y_offset,par->c_offset);
+						par2->cbr_start = info2->fix.mmio_start;
+						#endif
 					#endif
 					dev_drv1->pan_display(dev_drv1,layer_id);
 					//queue_delayed_work(inf->workqueue, &inf->delay_work,0);
