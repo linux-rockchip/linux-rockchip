@@ -11,13 +11,15 @@
 #include <mach/board.h>
 
 #ifdef CONFIG_MFD_RICOH619
-
+extern int board_boot_mode(void);
 static struct ricoh619 *Ricoh619;
 static int ricoh619_pre_init(struct ricoh619 *ricoh619){
 
 	Ricoh619 = 	ricoh619;
 	printk("%s,line=%d\n", __func__,__LINE__);	
 	int ret;
+
+	printk("%s,line=%d board_boot_mode() = %d \n", __func__,__LINE__,board_boot_mode() );	
 
 	ret = ricoh619_clr_bits(ricoh619->dev,RICOH619_PWR_REP_CNT,(1 << 0));  //set restart when power off
 
@@ -28,6 +30,15 @@ static int ricoh619_pre_init(struct ricoh619 *ricoh619){
       /****************set Re-charging voltage*****************/
 	ret = ricoh619_set_bits(ricoh619->dev,BATSET2_REG,(3 << 0)); 
 	ret = ricoh619_clr_bits(ricoh619->dev,BATSET2_REG,(1 << 2)); //set vrchg 4v
+	/*****************************************************/
+
+	 /****************set off_press_time*****************/
+	/*
+	ret = ricoh619_set_bits(ricoh619->dev,RICOH619_PWR_ON_TIMSET,(1 << 7)); 
+	ret = ricoh619_clr_bits(ricoh619->dev,RICOH619_PWR_ON_TIMSET,(7 << 4)); 
+	ret = ricoh619_set_bits(ricoh619->dev,RICOH619_PWR_ON_TIMSET,(7 << 4));  //set off_press_time 8s
+	ret = ricoh619_clr_bits(ricoh619->dev,RICOH619_PWR_ON_TIMSET,(1 << 7)); 
+	*/
 	/*****************************************************/
 	
 	/****************set dcdc & ldo on or off when in sleep******/
@@ -446,28 +457,70 @@ static struct ricoh619_battery_platform_data ricoh619_power_battery = {
 	.multiple = 100,
 	.monitor_time = 60,
 	
-	//4200mv type battery
-	
-	.ch_vfchg		= 0xFF,	/* VFCHG		= 0x0-0x4 (4.05v 4.10v 4.15v 4.20v 4.35v) 0xFF is OTP setting*/
-	.ch_vrchg		= 0xFF,	/* VRCHG		= 0x0-0x4 (3.85v 3.90v 3.95v 4.00v 4.10v) 0xFF is OTP setting*/
-	.ch_vbatovset	= 0xFF,	/* VBATOVSET	= 0 or 1 (0 : 4.38V(up)/3.95V(down) 1: 4.53V(up)/4.10V(down)) 
-							   0xFF is OTP setting*/
-	.ch_ichg		= 0xFF,	/* ICHG			= 0x0-0x1D (100mA - 3000mA)  0xFF is OTP setting*/
-	.ch_icchg		= 0x03,	/* ICCHG		= 0x0-3 (50mA 100mA 150mA 200mA)  0xFF is OTP setting*/
-	.ch_ilim_adp	= 0xFF,	/* ILIM_ADP		= 0x0-0x1D (100mA - 3000mA) */
-	.ch_ilim_usb	= 0xFF,	/* ILIM_USB		= 0x0-0x1D (100mA - 3000mA) */
-	.fg_target_vsys	= 3200, /* This value is the target one to DSOC=0% */
-	.fg_target_ibat	= 2000, /* This value is the target one to DSOC=0% */
-	.jt_en			= 0,	/* JEITA Switch	= 1:enable, 0:disable */
-	.jt_hw_sw		= 1,	/* JEITA is controlled by 1:HW, 0:SW */
-	.jt_temp_h		= 50,	/* degree C */ 
-	.jt_temp_l		= 12,	/* degree C */
-	.jt_vfchg_h		= 0x03,	/* VFCHG High  	= 0 - 0x04 (4.05, 4.10, 4.15, 4.20, 4.35V) */
-	.jt_vfchg_l		= 0,	/* VFCHG Low  	= 0 - 0x04 (4.05, 4.10, 4.15, 4.20, 4.35V) */
-	.jt_ichg_h		= 0x0D,	/* ICHG High   	= 0 - 0x1D (100 - 3000mA) */
-	.jt_ichg_l		= 0x09,	/* ICHG Low   	= 0 - 0x1D (100 - 3000mA) */
-};
+		/* some parameter is depend of battery type */
+	.type[0] = {
+		.ch_vfchg 	= 0xFF,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.ch_vrchg 	= 0xFF,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
+		.ch_vbatovset 	= 0xFF,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
+		.ch_ichg 	= 0xFF,	/* ICHG		= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_adp 	= 0xFF,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_usb 	= 0xFF,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_icchg 	= 0x03,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
+		.fg_target_vsys = 3200,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 2000, /* This value is the target one to DSOC=0% */
+		.fg_poff_vbat = 0, /* setting value of 0 per Vbat */
+		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
+		.jt_hw_sw 	= 1,	/* JEITA HW or SW = 0 or 1 (1:HardWare, 0:SoftWare) */
+		.jt_temp_h 	= 50,	/* degree C */
+		.jt_temp_l 	= 12,	/* degree C */
+		.jt_vfchg_h 	= 0x03,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_vfchg_l 	= 0,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_ichg_h 	= 0x0D,	/* VFCHG Low  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_ichg_l 	= 0x09,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */	//},
+	},
+	/*
+	.type[1] = {
+		.ch_vfchg = 0x0,
+		.ch_vrchg = 0x0,
+		.ch_vbatovset = 0x0,
+		.ch_ichg = 0x0,
+		.ch_ilim_adp = 0x0,
+		.ch_ilim_usb = 0x0,
+		.ch_icchg = 0x00,
+		.fg_target_vsys = 3300,//3000,
+		.fg_target_ibat = 1000,//1000,
+		.fg_poff_vbat = 0,
+		.jt_en = 0,
+		.jt_hw_sw = 1,
+		.jt_temp_h = 40,
+		.jt_temp_l = 10,
+		.jt_vfchg_h = 0x0,
+		.jt_vfchg_l = 0,
+		.jt_ichg_h = 0x01,
+		.jt_ichg_l = 0x01,
+	},
+	*/
 
+/*  JEITA Parameter
+*
+*          VCHG  
+*            |     
+* jt_vfchg_h~+~~~~~~~~~~~~~~~~~~~+
+*            |                   |
+* jt_vfchg_l-| - - - - - - - - - +~~~~~~~~~~+
+*            |    Charge area    +          |               
+*  -------0--+-------------------+----------+--- Temp
+*            !                   +
+*          ICHG     
+*            |                   +
+*  jt_ichg_h-+ - -+~~~~~~~~~~~~~~+~~~~~~~~~~+
+*            +    |              +          |
+*  jt_ichg_l-+~~~~+   Charge area           |
+*            |    +              +          |
+*         0--+----+--------------+----------+--- Temp
+*            0   jt_temp_l      jt_temp_h   55
+*/
+};
 static struct rtc_time rk_time = {	//	2012.1.1 12:00:00 Saturday
 			.tm_wday = 6,
 			.tm_year = 111,

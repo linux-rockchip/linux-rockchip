@@ -76,7 +76,7 @@ static int ricoh619_rtc_valid_tm(struct device *dev, struct rtc_time *tm)
 		|| tm->tm_mon > 11 || tm->tm_mon < 0
 		|| tm->tm_mday < 1
 		|| tm->tm_mday > rtc_month_days(tm->tm_mon, tm->tm_year + os_ref_year)
-		|| tm->tm_hour >= 24 || tm->tm_hour <0
+		|| tm->tm_hour >= 24 || tm->tm_hour < 0
 		|| tm->tm_min < 0 || tm->tm_min >= 60
 		|| tm->tm_sec < 0 || tm->tm_sec >= 60	
 		) 
@@ -144,14 +144,14 @@ static int ricoh619_rtc_periodic_disable(struct device *dev)
 	err = ricoh619_read_regs(dev, rtc_ctrl2, 1, &reg_data);
 	if(err < 0)
 	{
-		dev_err(dev->parent, "read rtc_ctrl1 error=0x%x\n", err);
+		dev_err(dev->parent, "read rtc_ctrl2 error=0x%x\n", err);
 		return err;
 	}
 	reg_data &= ~0x85;// 1000-0101
 	err = ricoh619_write_regs(dev, rtc_ctrl2, 1, &reg_data);
 	if(err < 0)
 	{
-		dev_err(dev->parent, "read rtc_ctrl1 error=0x%x\n", err);
+		dev_err(dev->parent, "read rtc_ctrl2 error=0x%x\n", err);
 		return err;
 	}
 
@@ -245,7 +245,6 @@ static int ricoh619_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	u8 buff[7];
 	int err;
 	int cent_flag;
-	int i;
 
 //	printk(KERN_INFO "PMU: %s\n", __func__);
 	err = ricoh619_read_regs(dev, rtc_seconds_reg, sizeof(buff), buff);

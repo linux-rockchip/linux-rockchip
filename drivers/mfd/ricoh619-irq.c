@@ -349,8 +349,8 @@ static irqreturn_t ricoh619_irq(int irq, void *data)
 		/* Even if INTC_INTMON register = 1, INT signal might not output
 	  	 because INTC_INTMON register indicates only interrupt facter level.
 	  	 So remove the following procedure */
-//		if (!(master_int & main_int_type[i]))
-//			continue;
+		if (!(master_int & main_int_type[i]))
+			continue;
 			
 		ret = ricoh619_read(ricoh619->dev,
 				irq_mon_add[i], &int_sts[i]);
@@ -361,7 +361,9 @@ static irqreturn_t ricoh619_irq(int irq, void *data)
 			int_sts[i] = 0;
 			continue;
 		}
-		
+		if (!int_sts[i])
+			continue;
+
 		if (main_int_type[i] & RTC_INT) {
 			// Changes status bit position from RTCCNT2 to RTCCNT1 
 			rtc_int_sts = 0;
@@ -370,21 +372,28 @@ static irqreturn_t ricoh619_irq(int irq, void *data)
 			if (int_sts[i] & 0x4)
 				rtc_int_sts |= BIT(0);
 		}
-		if (i != 2) {
+
+		if(irq_clr_add[i] == RICOH619_INT_IR_RTC)
+		{
+			int_sts[i] &= ~0x85;
 			ret = ricoh619_write(ricoh619->dev,
-				irq_clr_add[i], ~int_sts[i]);
-			if (ret < 0) {
+				irq_clr_add[i], int_sts[i]);
+			if (ret < 0)
 				dev_err(ricoh619->dev, "Error in writing reg 0x%02x "
 					"error: %d\n", irq_clr_add[i], ret);
-			}
 		}
-		
-		if (main_int_type[i] & RTC_INT)
-			int_sts[i] = rtc_int_sts;
+		else
+		{
+			ret = ricoh619_write(ricoh619->dev,
+				irq_clr_add[i], ~int_sts[i]);
+			if (ret < 0)
+				dev_err(ricoh619->dev, "Error in reading reg 0x%02x "
+				"error: %d\n", irq_clr_add[i], ret);
+		}
 		
 		/* Mask Charger Interrupt */
 		if (main_int_type[i] & CHG_INT) {
-			if (int_sts[i])
+			if (int_sts[i]) {
 				ret = ricoh619_write(ricoh619->dev,
 							irq_en_add[i], 0xff);
 				if (ret < 0) {
@@ -392,10 +401,11 @@ static irqreturn_t ricoh619_irq(int irq, void *data)
 						"Error in write reg 0x%02x error: %d\n",
 							irq_en_add[i], ret);
 				}
+			}
 		}
 		/* Mask ADC Interrupt */
 		if (main_int_type[i] & ADC_INT) {
-			if (int_sts[i])
+			if (int_sts[i]) {
 				ret = ricoh619_write(ricoh619->dev,
 							irq_en_add[i], 0);
 				if (ret < 0) {
@@ -403,8 +413,11 @@ static irqreturn_t ricoh619_irq(int irq, void *data)
 						"Error in write reg 0x%02x error: %d\n",
 							irq_en_add[i], ret);
 				}
+			}
 		}
-		
+
+		if (main_int_type[i] & RTC_INT)
+			int_sts[i] = rtc_int_sts;
 
 	}
 
