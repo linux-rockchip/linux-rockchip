@@ -1849,6 +1849,7 @@ static void dwc_otg_pcd_check_vbus_timer( unsigned long data )
     return;
 
 connect:
+    otg_dev->core_if->pcd_cb->stop(otg_dev->core_if->pcd_cb->p);
     if(_pcd->conn_status==0)
         dwc_otg_msc_lock(_pcd);
     if( pldata->phy_status)
