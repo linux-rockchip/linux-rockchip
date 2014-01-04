@@ -909,8 +909,10 @@ static int nl80211_send_wiphy(struct sk_buff *msg, u32 pid, u32 seq, int flags,
 			    dev->wiphy.max_remain_on_channel_duration);
 
 	/* for now at least assume all drivers have it */
+	#ifndef CONFIG_MTK_WIRELESS_SOLUTION
 	if (dev->ops->mgmt_tx)
 		NLA_PUT_FLAG(msg, NL80211_ATTR_OFFCHANNEL_TX_OK);
+	#endif
 
 	if (mgmt_stypes) {
 		u16 stypes;

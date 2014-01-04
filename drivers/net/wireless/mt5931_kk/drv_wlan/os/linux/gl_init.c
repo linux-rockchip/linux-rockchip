@@ -2252,7 +2252,7 @@ wlanNetCreate(
     init_completion(&prGlueInfo->rScanComp);
     init_completion(&prGlueInfo->rHaltComp);
     init_completion(&prGlueInfo->rPendComp);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0//LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 	init_completion(&prGlueInfo->rMgmtTxComp);
 	atomic_set(&prGlueInfo->rMgmtTxAto, 0);
 #endif

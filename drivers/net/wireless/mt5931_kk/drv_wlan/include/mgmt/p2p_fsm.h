@@ -595,7 +595,7 @@ typedef struct _P2P_CHNL_REQ_INFO_T {
     UINT_8 ucOriChnlNum;
     ENUM_BAND_T eOriBand;
     ENUM_CHNL_EXT_T eOriChnlSco;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0//LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 	P_MSG_P2P_MGMT_TX_REQUEST_T prMsgTxReq;
 	BOOLEAN fgNeedIndSupp;
 #endif
@@ -788,7 +788,7 @@ typedef struct _MSG_P2P_CHNL_REQUEST_T {
     UINT_32 u4Duration;
     ENUM_CHNL_EXT_T eChnlSco;
     RF_CHANNEL_INFO_T rChannelInfo;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0//LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 	BOOLEAN fgNeedIndSupp;
 #endif
 } MSG_P2P_CHNL_REQUEST_T, *P_MSG_P2P_CHNL_REQUEST_T;

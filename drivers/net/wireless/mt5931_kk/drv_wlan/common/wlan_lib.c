@@ -5419,7 +5419,8 @@ wlanGetTargetBssDescByNetwork (
         return prAdapter->rWifiVar.rAisFsmInfo.prTargetBssDesc;
 
     case NETWORK_TYPE_P2P_INDEX:
-        return NULL;
+		return (prAdapter->rWifiVar.prP2pFsmInfo)->prTargetBss;
+        //return NULL;  
 
     case NETWORK_TYPE_BOW_INDEX:
         return prAdapter->rWifiVar.rBowFsmInfo.prTargetBssDesc;

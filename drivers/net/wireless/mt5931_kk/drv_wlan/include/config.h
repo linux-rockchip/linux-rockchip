@@ -967,7 +967,7 @@
  */
 #define CFG_SLT_SUPPORT                             0
 
-#define CFG_DUAL_ANTENNA                            0
+//#define CFG_DUAL_ANTENNA                            0
 
 #define CFG_SUPPORT_RSSI_SMOOTH                     0
 

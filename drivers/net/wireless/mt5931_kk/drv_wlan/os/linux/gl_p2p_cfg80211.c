@@ -730,13 +730,13 @@ mtk_p2p_cfg80211_set_power_mgmt(
 		        TRUE,
 		        TRUE,
 		        &u4Leng);
-
+	
     if (rStatus != WLAN_STATUS_SUCCESS) {
     DBGLOG(REQ, WARN, ("p2p set_power_mgmt error:%lx\n", rStatus));
     return -EFAULT;
     }
 
-    return 0;
+		 return 0;
 }
 
 bool start_beacon;
@@ -1401,7 +1401,7 @@ mtk_p2p_cfg80211_disassoc (
 } /* mtk_p2p_cfg80211_disassoc */
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0//LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 int
 mtk_p2p_cfg80211_remain_on_channel2 (
     struct wiphy *wiphy,
@@ -1603,7 +1603,7 @@ mtk_p2p_cfg80211_cancel_remain_on_channel (
     return i4Rslt;
 } /* mtk_p2p_cfg80211_cancel_remain_on_channel */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0 //LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 int
 mtk_p2p_cfg80211_mgmt_tx (
     struct wiphy *wiphy, struct net_device *dev,
@@ -2217,7 +2217,7 @@ mtk_p2p_cfg80211_mgmt_frame_register (
     IN bool reg
     )
 {
-#if 0
+#if 1
     P_MSG_P2P_MGMT_FRAME_REGISTER_T prMgmtFrameRegister = (P_MSG_P2P_MGMT_FRAME_REGISTER_T)NULL;
 #endif
     P_GLUE_INFO_T prGlueInfo = (P_GLUE_INFO_T)NULL;
@@ -2228,11 +2228,21 @@ mtk_p2p_cfg80211_mgmt_frame_register (
             break;
         }
 
-        DBGLOG(P2P, TRACE, ("mtk_p2p_cfg80211_mgmt_frame_register\n"));
-
         prGlueInfo = *((P_GLUE_INFO_T *) wiphy_priv(wiphy));
 
+ 		prMgmtFrameRegister = kmalloc(sizeof(MSG_P2P_MGMT_FRAME_REGISTER_T),GFP_ATOMIC);
+/*  this function is used to set HW filter to RX package, but if we use oringnal method, we may face wrong 
+cmd sequence to firmware (supplicant request 1. set probe request fiter  2. remain on channel  but for driver 1. send channel request
+first 2. then set RX filter). This wrong schedule sequence will cause other device can not find this DUT
+Solution:
+1. use mail box to handle set RX filter request
+2. use kmalloc to avoid sleep in atomic contex, if alloc mem fail, use oringal method
+*/
 
+
+		if(prMgmtFrameRegister == NULL){
+
+			printk("p2p set fitler error,can not alloc mem from kernel, use tx thread to set rx filter\n");
         switch (frame_type) {
         case MAC_FRAME_PROBE_REQ:
             if (reg) {
@@ -2261,10 +2271,10 @@ mtk_p2p_cfg80211_mgmt_frame_register (
 
 
         
-
         if((prGlueInfo->prAdapter != NULL)  && (prGlueInfo->prAdapter->fgIsP2PRegistered == TRUE)){
 
-           prGlueInfo->u4Flag |= GLUE_FLAG_FRAME_FILTER;
+	           //prGlueInfo->u4Flag |= GLUE_FLAG_FRAME_FILTER;
+			   set_bit(GLUE_FLAG_FRAME_FILTER_BIT, &prGlueInfo->u4Flag);
 
         /* wake up main thread */
         wake_up_interruptible(&prGlueInfo->waitq);
@@ -2273,12 +2283,10 @@ mtk_p2p_cfg80211_mgmt_frame_register (
             DBGLOG(P2P, TRACE, ("It is in interrupt level\n"));
            }
         }
+		}else{
 
-
-
+#if 1
 #if 0
-
-
         prMgmtFrameRegister = (P_MSG_P2P_MGMT_FRAME_REGISTER_T)cnmMemAlloc(prGlueInfo->prAdapter, 
                                                                     RAM_TYPE_MSG, 
                                                                     sizeof(MSG_P2P_MGMT_FRAME_REGISTER_T));
@@ -2287,7 +2295,7 @@ mtk_p2p_cfg80211_mgmt_frame_register (
             ASSERT(FALSE);
             break;
         }
-
+	#endif
         prMgmtFrameRegister->rMsgHdr.eMsgId = MID_MNY_P2P_MGMT_FRAME_REGISTER;
 
         prMgmtFrameRegister->u2FrameType = frame_type;
@@ -2299,9 +2307,8 @@ mtk_p2p_cfg80211_mgmt_frame_register (
                                     MSG_SEND_METHOD_BUF);
 
 #endif
-
+				}
     } while (FALSE);
-
 
     return;
 } /* mtk_p2p_cfg80211_mgmt_frame_register */

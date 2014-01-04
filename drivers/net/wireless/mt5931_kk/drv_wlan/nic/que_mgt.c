@@ -4590,10 +4590,10 @@ qmHandleEventBssAbsencePresence(
 
     //DBGLOG(QM, TRACE, ("qmHandleEventBssAbsencePresence (ucNetTypeIdx=%d, fgIsAbsent=%d, FreeQuota=%d)\n",
     //    prEventBssStatus->ucNetTypeIdx, prBssInfo->fgIsNetAbsent, prBssInfo->ucBssFreeQuota));
-
+#if 0
     DBGLOG(QM, TRACE, ("NAF=%d,%d,%d\n",
         prEventBssStatus->ucNetTypeIdx, prBssInfo->fgIsNetAbsent, prBssInfo->ucBssFreeQuota));
-
+#endif
     if(!prBssInfo->fgIsNetAbsent) {
           QM_DBG_CNT_INC(&(prAdapter->rQM),QM_DBG_CNT_27);
     }

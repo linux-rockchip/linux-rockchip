@@ -57,7 +57,8 @@ static int flag = 0;
 volatile int retflag = 0;
 
 unsigned char g_bt_bd_addr[10]={0x01,0x1a,0xfc,0x06,0x00,0x55,0x66,0x77,0x88,0x00};
-unsigned char g_nvram_btdata[8];
+//Out of use 
+//unsigned char g_nvram_btdata[8];
 
 static int nvram_read(char *filename, char *buf, ssize_t len, int offset)
 {
@@ -398,6 +399,8 @@ static int BT_open(struct inode *inode, struct file *file)
         BT_INFO_FUNC("Now it's in MTK Bluetooth Mode\n");
         BT_INFO_FUNC("WMT turn on BT OK!\n");
         BT_INFO_FUNC("STP is ready!\n");
+        //Out of use 
+/*
         platform_load_nvram_data(BT_NVRAM_CUSTOM_NAME,
             (char *)&g_nvram_btdata, sizeof(g_nvram_btdata));
 
@@ -405,7 +408,7 @@ static int BT_open(struct inode *inode, struct file *file)
             g_nvram_btdata[0], g_nvram_btdata[1], g_nvram_btdata[2],
             g_nvram_btdata[3], g_nvram_btdata[4], g_nvram_btdata[5],
             g_nvram_btdata[6], g_nvram_btdata[7]);
-
+*/
         mtk_wcn_stp_register_event_cb(BT_TASK_INDX, BT_event_cb);
 		BT_INFO_FUNC("mtk_wcn_stp_register_event_cb finish\n");
     }

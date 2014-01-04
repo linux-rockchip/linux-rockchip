@@ -2481,7 +2481,7 @@ nicConfigPowerSaveProfile (
     prAdapter->rWlanInfo.arPowerSaveMode[eNetTypeIndex].ucNetTypeIndex = eNetTypeIndex;
     prAdapter->rWlanInfo.arPowerSaveMode[eNetTypeIndex].ucPsProfile = (UINT_8)ePwrMode;
 
-	printk("Sigma debug: nicConfigPowerSaveProfile ucNetTypeIndex:%d ucPsProfile:%d", 
+	printk("Sigma debug: nicConfigPowerSaveProfile ucNetTypeIndex:%d ucPsProfile:%d\n", 
 		prAdapter->rWlanInfo.arPowerSaveMode[eNetTypeIndex].ucNetTypeIndex, 
 		prAdapter->rWlanInfo.arPowerSaveMode[eNetTypeIndex].ucPsProfile
 		);

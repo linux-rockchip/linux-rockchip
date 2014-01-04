@@ -826,7 +826,7 @@ struct _GLUE_INFO_T {
     struct completion rHaltComp; /* indicate main thread halt complete */
     struct completion rPendComp; /* indicate main thread halt complete */
 	
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0// LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 		struct completion rMgmtTxComp; /* indicate supp mgmt TX done, supp can request channel again. */
 		atomic_t rMgmtTxAto;
 #endif

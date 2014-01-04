@@ -360,12 +360,12 @@ cnmChMngrRequestPrivilege (
         cnmMemFree(prAdapter, prMsgHdr);
         return;
     }
-
+#if 0   // p2p have timing issue, we must ensrure print less log
     DBGLOG(CNM, INFO, ("ChReq net=%d token=%d b=%d c=%d s=%d\n",
         prMsgChReq->ucNetTypeIndex, prMsgChReq->ucTokenID,
         prMsgChReq->eRfBand, prMsgChReq->ucPrimaryChannel,
         prMsgChReq->eRfSco));
-
+#endif
     prCmdBody->ucNetTypeIndex = prMsgChReq->ucNetTypeIndex;
     prCmdBody->ucTokenID = prMsgChReq->ucTokenID;
     prCmdBody->ucAction = CMD_CH_ACTION_REQ;    /* Request */
@@ -444,10 +444,10 @@ cnmChMngrAbortPrivilege (
         cnmMemFree(prAdapter, prMsgHdr);
         return;
     }
-
+#if 0
     DBGLOG(CNM, INFO, ("ChAbort net=%d token=%d\n",
         prMsgChAbort->ucNetTypeIndex, prMsgChAbort->ucTokenID));
-
+#endif
     prCmdBody->ucNetTypeIndex = prMsgChAbort->ucNetTypeIndex;
     prCmdBody->ucTokenID = prMsgChAbort->ucTokenID;
     prCmdBody->ucAction = CMD_CH_ACTION_ABORT;  /* Abort */
@@ -515,11 +515,9 @@ cnmChMngrHandleChEvent (
 
         return;
     }
-
     DBGLOG(CNM, INFO, ("ChGrant net=%d token=%d ch=%d sco=%d\n",
         prEventBody->ucNetTypeIndex, prEventBody->ucTokenID,
         prEventBody->ucPrimaryChannel, prEventBody->ucRfSco));
-
     ASSERT(prEventBody->ucNetTypeIndex < NETWORK_TYPE_INDEX_NUM);
     ASSERT(prEventBody->ucStatus == EVENT_CH_STATUS_GRANT);
 

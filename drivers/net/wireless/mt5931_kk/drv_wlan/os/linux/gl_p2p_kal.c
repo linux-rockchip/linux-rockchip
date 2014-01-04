@@ -1071,19 +1071,20 @@ kalP2PIndicateChannelReady (
     struct ieee80211_channel *prIEEE80211ChnlStruct = (struct ieee80211_channel *)NULL;
     RF_CHANNEL_INFO_T rChannelInfo;
     enum nl80211_channel_type eChnlType = NL80211_CHAN_NO_HT;
+	#if 0
     P_MSG_P2P_MGMT_TX_REQUEST_T prMsgTxReq = (P_MSG_P2P_MGMT_TX_REQUEST_T)NULL;
     INT_32 i4Rslt = -EINVAL;
 	P_P2P_FSM_INFO_T prP2pFsmInfo = (P_P2P_FSM_INFO_T)NULL;
     prP2pFsmInfo = prGlueInfo->prAdapter->rWifiVar.prP2pFsmInfo;
  	P_P2P_CHNL_REQ_INFO_T prChnlReqInfo = &(prP2pFsmInfo->rChnlReqInfo);
 	
-	 
+	 #endif
     do {
         if (prGlueInfo == NULL) {
             break;
         }
 
-	if (prChnlReqInfo->fgNeedIndSupp) {
+	//if (prChnlReqInfo->fgNeedIndSupp) {
         kalMemZero(&rChannelInfo, sizeof(RF_CHANNEL_INFO_T));
 
         rChannelInfo.ucChannelNum = u4ChannelNum;
@@ -1099,8 +1100,9 @@ kalP2PIndicateChannelReady (
                         eChnlType, //enum nl80211_channel_type channel_type,
                         u4Duration, //unsigned int duration,
                         GFP_KERNEL); //gfp_t gfp    /* allocation flags */
-	} 
-
+        } while (FALSE);
+	//} 
+#if 0
 	if (prChnlReqInfo->prMsgTxReq!=NULL) {
 		prMsgTxReq = prChnlReqInfo->prMsgTxReq;
 		mboxSendMsg(prGlueInfo->prAdapter,
@@ -1113,9 +1115,9 @@ kalP2PIndicateChannelReady (
 		complete(&prGlueInfo->rMgmtTxComp);
 		init_completion(&prGlueInfo->rMgmtTxComp);
 	}
-	} while (FALSE);
+	
 	return i4Rslt;
-
+#endif
 } /* kalP2PIndicateChannelReady */
 
 
@@ -1138,7 +1140,12 @@ kalP2PIndicateChannelExpired (
             ASSERT(FALSE);
             break;
         }
-
+		#if 0 //LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
+		if(prChnlReqInfo->fgNeedIndSupp==0){
+			printk("ch expired, no need ind os\n");
+			break;
+		}
+		#endif
         prGlueP2pInfo = prGlueInfo->prP2PInfo;
 
         if (prGlueP2pInfo == NULL) {
@@ -1369,6 +1376,11 @@ kalP2PGCIndicateConnectionStatus (
     )
 {
     P_GL_P2P_INFO_T prGlueP2pInfo = (P_GL_P2P_INFO_T)NULL;
+	UINT_8 ucChannelNum;
+	struct ieee80211_channel *prChannel = NULL;
+    struct cfg80211_bss *bss;
+
+	P_BSS_DESC_T prBssDesc = NULL;
 
     do {
         if (prGlueInfo == NULL) {
@@ -1380,6 +1392,40 @@ kalP2PGCIndicateConnectionStatus (
         prGlueP2pInfo = prGlueInfo->prP2PInfo;
 
         if (prP2pConnInfo) {
+					/* retrieve channel */
+			ucChannelNum = wlanGetChannelNumberByNetwork(prGlueInfo->prAdapter, NETWORK_TYPE_P2P_INDEX);
+			
+			if(ucChannelNum <= 14) {
+				prChannel = ieee80211_get_channel(prGlueInfo->prP2PInfo->wdev.wiphy, ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_2GHZ));
+			}
+			else {
+				prChannel = ieee80211_get_channel(prGlueInfo->prP2PInfo->wdev.wiphy, ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_5GHZ));
+			}
+			
+			/* ensure BSS exists */
+			bss = cfg80211_get_bss(prGlueInfo->prP2PInfo->wdev.wiphy, prChannel, prP2pConnInfo->aucBssid,
+					prP2pConnInfo->rSsidStruct.aucSsid, prP2pConnInfo->rSsidStruct.ucSsidLen, 
+					WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
+
+			if(bss == NULL) {
+				/* create BSS on-the-fly */
+				
+	            prBssDesc = wlanGetTargetBssDescByNetwork(prGlueInfo->prAdapter, NETWORK_TYPE_P2P_INDEX);
+
+	            if(prBssDesc != NULL) {
+	                bss = cfg80211_inform_bss(prGlueInfo->prP2PInfo->wdev.wiphy,
+	                    prChannel,
+	                    prP2pConnInfo->aucBssid,
+	                    0,                                      /* TSF */
+	                    WLAN_CAPABILITY_ESS,
+	                    prBssDesc->u2BeaconInterval,            /* beacon interval */
+	                    prBssDesc->aucIEBuf,                    /* IE */
+	                    prBssDesc->u2IELength,                  /* IE Length */
+	                    RCPI_TO_dBm(prBssDesc->ucRCPI) * 100,   /* MBM */
+	                    GFP_KERNEL);
+	            }
+	        
+			}
             cfg80211_connect_result(prGlueP2pInfo->prDevHandler, //struct net_device * dev,
                                     prP2pConnInfo->aucBssid,
                                     prP2pConnInfo->aucIEBuf,

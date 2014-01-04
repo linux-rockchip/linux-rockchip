@@ -1507,7 +1507,7 @@ p2pFsmRunEventChannelRequest (
 
             prChnlReqInfo->u8Cookie = prP2pChnlReqMsg->u8Cookie;
             prChnlReqInfo->u4MaxInterval = prP2pChnlReqMsg->u4Duration;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0//LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 			prChnlReqInfo->fgNeedIndSupp = prP2pChnlReqMsg->fgNeedIndSupp;
 #endif
             /* Re-enter the state. */
@@ -1524,7 +1524,7 @@ p2pFsmRunEventChannelRequest (
             prChnlReqInfo->eChnlSco = prP2pChnlReqMsg->eChnlSco;
             prChnlReqInfo->u4MaxInterval = prP2pChnlReqMsg->u4Duration;
             prChnlReqInfo->eChannelReqType = CHANNEL_REQ_TYPE_REMAIN_ON_CHANNEL;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+#if 0//LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0)
 			prChnlReqInfo->fgNeedIndSupp = prP2pChnlReqMsg->fgNeedIndSupp;
 #endif
             eNextState = P2P_STATE_REQING_CHANNEL;
@@ -2728,7 +2728,8 @@ p2pFsmRunEventMgmtFrameRegister (
     } while (FALSE);
 
     if (prMsgHdr) {
-        cnmMemFree(prAdapter, prMsgHdr);
+        //cnmMemFree(prAdapter, prMsgHdr);
+        kfree(prMsgHdr);
     }
 
     return;

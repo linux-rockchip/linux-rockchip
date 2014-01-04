@@ -1026,19 +1026,21 @@ kalP2PIndicateChannelReady (
     struct ieee80211_channel *prIEEE80211ChnlStruct = (struct ieee80211_channel *)NULL;
     RF_CHANNEL_INFO_T rChannelInfo;
     enum nl80211_channel_type eChnlType = NL80211_CHAN_NO_HT;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
     P_MSG_P2P_MGMT_TX_REQUEST_T prMsgTxReq = (P_MSG_P2P_MGMT_TX_REQUEST_T)NULL;
     INT_32 i4Rslt = -EINVAL;
 	P_P2P_FSM_INFO_T prP2pFsmInfo = (P_P2P_FSM_INFO_T)NULL;
     prP2pFsmInfo = prGlueInfo->prAdapter->rWifiVar.prP2pFsmInfo;
  	P_P2P_CHNL_REQ_INFO_T prChnlReqInfo = &(prP2pFsmInfo->rChnlReqInfo);
-	
-	 
+#endif	 
     do {
         if (prGlueInfo == NULL) {
             break;
         }
-
-	if (prChnlReqInfo->fgNeedIndSupp) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+	if (prChnlReqInfo->fgNeedIndSupp) 
+#endif
+{
         kalMemZero(&rChannelInfo, sizeof(RF_CHANNEL_INFO_T));
 
         rChannelInfo.ucChannelNum = u4ChannelNum;
@@ -1055,7 +1057,7 @@ kalP2PIndicateChannelReady (
                         u4Duration, //unsigned int duration,
                         GFP_KERNEL); //gfp_t gfp    /* allocation flags */
 	} 
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
 	if (prChnlReqInfo->prMsgTxReq!=NULL) {
 		prMsgTxReq = prChnlReqInfo->prMsgTxReq;
 		mboxSendMsg(prGlueInfo->prAdapter,
@@ -1068,8 +1070,8 @@ kalP2PIndicateChannelReady (
 		complete(&prGlueInfo->rMgmtTxComp);
 		init_completion(&prGlueInfo->rMgmtTxComp);
 	}
+#endif
 	} while (FALSE);
-	return i4Rslt;
 
 } /* kalP2PIndicateChannelReady */
 
