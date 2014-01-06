@@ -34,7 +34,7 @@
 #include <linux/usb/usbnet.h>
 #include <linux/slab.h>
 
-#define	ALIGN_4_BYTES
+#define	SR9800_AUTOMAC
 
 #define DRIVER_VERSION "11-Jul-2013"
 #define DRIVER_NAME "CoreChips"
@@ -165,10 +165,13 @@ struct {unsigned short size, byte_cnt,threshold;} SR9800_BULKIN_SIZE[] =
 	{32768, 0x8700, 0x8A3D},
 };
 
+#ifdef	SR9800_AUTOMAC
+#define	SR9800_MAC_FILE			"/data/SR9800_MAC_ADDR"
 /* Global variables for file-based MAC address Machenism */
 int mac_used[129] = {0};
 int dev_addr[129] = {0};
 DEFINE_SPINLOCK(sr9800_lock);
+#endif
 
 /* This structure cannot exceed sizeof(unsigned long [5]) AKA 20 bytes */
 struct sr_data {
@@ -324,20 +327,15 @@ static int sr_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 	skb_pull(skb, 4);
 
 	while (skb->len > 0) {
-		if ((header & 0x07ff) != ((~header >> 16) & 0x07ff)) {
-		//	netdev_err(dev->net, "sr_rx_fixup() Bad Header Length\n");
-		}
+		if ((header & 0x07ff) != ((~header >> 16) & 0x07ff))
+			netdev_err(dev->net, "sr_rx_fixup() Bad Header Length\n");
 
 		/* get the packet length */
 		size = (u16) (header & 0x000007ff);
 
 		if ((skb->len) - ((size + 1) & 0xfffe) == 0) {
 			u8 alignment = (unsigned long)skb->data & 0x3;
-#ifdef	ALIGN_4_BYTES
-			if (alignment) {
-#else
 			if (alignment != 0x2) {
-#endif
 				/*
 				 * not 16bit aligned so use the room provided by
 				 * the 32 bit header to align the data
@@ -348,11 +346,7 @@ static int sr_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 				 * using a cast to struct ip header wont cause
 				 * an unaligned accesses.
 				 */
-#ifdef	ALIGN_4_BYTES
-				u8 realignment = alignment;
-#else
 				u8 realignment = (alignment + 2) & 0x3;
-#endif
 				memmove(skb->data - realignment,
 					skb->data,
 					size);
@@ -363,8 +357,8 @@ static int sr_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 		}
 
 		if (size > dev->net->mtu + ETH_HLEN) {
-			//netdev_err(dev->net, "sr_rx_fixup() Bad RX Length %d\n",
-			//	   size);
+			netdev_err(dev->net, "sr_rx_fixup() Bad RX Length %d\n",
+				   size);
 			return 0;
 		}
 		sr_skb = skb_clone(skb, GFP_ATOMIC);
@@ -372,20 +366,12 @@ static int sr_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 			u8 alignment = (unsigned long)packet & 0x3;
 			sr_skb->len = size;
 
-#ifdef	ALIGN_4_BYTES
-			if (alignment) {
-#else
 			if (alignment != 0x2) {
-#endif
 				/*
 				 * not 16bit aligned use the room provided by
 				 * the 32 bit header to align the data
 				 */
-#ifdef	ALIGN_4_BYTES
-				u8 realignment = alignment;
-#else
 				u8 realignment = (alignment + 2) & 0x3;
-#endif
 				memmove(packet - realignment, packet, size);
 				packet -= realignment;
 			}
@@ -1012,13 +998,14 @@ static int sr9800_bind(struct usbnet *dev, struct usb_interface *intf)
 	struct sr_data *data = (struct sr_data *)&dev->data;
 	u8 buf[ETH_ALEN];
 	u32 phyid;
-
 	u16 rx_ctl;
+#ifdef	SR9800_AUTOMAC
 	int i;
 	u8 defaultAddress[] = {0x00,0x0e,0xc6,0x87,0x72,0x01};
 	struct file *fp;
    	mm_segment_t fs; 
-   	loff_t pos; 
+   	loff_t pos;
+#endif
 
 	data->eeprom_len = SR9800_EEPROM_LEN;
 
@@ -1036,11 +1023,16 @@ static int sr9800_bind(struct usbnet *dev, struct usb_interface *intf)
 	}
 
 	/* Get the MAC address */
-	ret = sr_read_cmd(dev, SR_CMD_READ_NODE_ID, 0, 0, ETH_ALEN, dev->net->dev_addr);
+	ret = sr_read_cmd(dev, SR_CMD_READ_NODE_ID, 0, 0, ETH_ALEN, buf);
 	if (ret < 0) {
 		dbg("Failed to read MAC address: %d", ret);
 		return ret;
 	}
+	memcpy(dev->net->dev_addr, buf, ETH_ALEN);
+    printk("MAC : %2x:%2x:%2x:%2x:%2x:%2x\n",
+					buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
+
+#ifdef	SR9800_AUTOMAC
 	/* Compare with the file-based MAC address
 	 * This is for dongle or product without EEPROM condition
 	 */
@@ -1051,12 +1043,12 @@ static int sr9800_bind(struct usbnet *dev, struct usb_interface *intf)
 		{
 			if(mac_used[i] == 0)
 			{
-				fp = filp_open("/lib/modules/sr9800_MAC_address", O_RDONLY, 0); 
+				fp = filp_open(SR9800_MAC_FILE, O_RDONLY, 0); 
 
 				if (IS_ERR(fp)) 
 				{ 
 					netdev_err(dev->net, "open file error");
-					fp = filp_open("/lib/modules/sr9800_MAC_address", O_RDWR | O_CREAT, 0644); 
+					fp = filp_open(SR9800_MAC_FILE, O_RDWR | O_CREAT, 0644); 
 					if (IS_ERR(fp)) 
 					{
 						netdev_err(dev->net, "creat file error");        			
@@ -1101,6 +1093,7 @@ static int sr9800_bind(struct usbnet *dev, struct usb_interface *intf)
 		}
 	}
 	netif_carrier_off(dev->net);
+#endif
 
 	/* Initialize MII structure */
 	dev->mii.dev = dev->net;
@@ -1198,6 +1191,7 @@ out :
 
 static void sr9800_unbind(struct usbnet *dev, struct usb_interface *intf)
 {
+#ifdef	SR9800_AUTOMAC
 	int ret = 0;
 	int i = 0;
 	
@@ -1223,7 +1217,7 @@ static void sr9800_unbind(struct usbnet *dev, struct usb_interface *intf)
 		}
 	}
     spin_unlock(&sr9800_lock);
-
+#endif
 	return;
 }
 
@@ -1242,10 +1236,6 @@ static const struct driver_info sr9800_info = {
 
 static const struct usb_device_id	products [] = {
 {
-	// ax88772a USB Ethernet Adapter
-//	USB_DEVICE(0x0b95, 0x772a),
-//	.driver_info = (unsigned long) &ax88772_info,
-//}, {
 	// SR9800
 	USB_DEVICE(0x0fe6, 0x9800),
 	.driver_info = (unsigned long) &sr9800_info,
