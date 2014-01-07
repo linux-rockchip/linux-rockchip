@@ -144,10 +144,11 @@ static struct rk_lcdc_device_driver * rk_get_prmry_lcdc_drv(void)
 //get one frame time
 int rk_fb_get_prmry_screen_ft(void)
 {
-        struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
-        
-        uint32_t pix_count,ft_us,dclk_mhz;
-
+	uint32_t pix_count,ft_us,dclk_mhz;
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+        if (dev_drv)
+		return 0;
+		
         if (0 == dev_drv->id)
                 dclk_mhz = clk_get_rate(clk_get(NULL, "dclk_lcdc0"))/(1000*1000);
         else 
@@ -158,10 +159,8 @@ int rk_fb_get_prmry_screen_ft(void)
         
         ft_us = pix_count / dclk_mhz;
 
-        if(likely(dev_drv))
-            return ft_us;
-        else
-            return 0;
+        
+        return ft_us;
 
 }
 
@@ -218,11 +217,26 @@ int rk_fb_poll_prmry_screen_vblank(void)
 bool rk_fb_poll_wait_frame_complete(void)
 {
 	uint32_t timeout = RK_LF_MAX_TIMEOUT;
-	if(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_NC)
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	
+	if (likely(dev_drv)) {
+		if (dev_drv->set_irq_to_cpu)
+			dev_drv->set_irq_to_cpu(dev_drv,0);
+	}
+
+	if (rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_NC) {
+		if(dev_drv->set_irq_to_cpu)
+                        dev_drv->set_irq_to_cpu(dev_drv,1);
 		return false;
+	}
 
 	while( !(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_FR)  &&  --timeout);
 	while( !(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_FC)  &&  --timeout);
+
+	if (likely(dev_drv)) {
+                if (dev_drv->set_irq_to_cpu)
+                        dev_drv->set_irq_to_cpu(dev_drv,1);
+        }
 
 	return true;
 }
@@ -1476,6 +1490,8 @@ static int init_lcdc_device_driver(struct rk_lcdc_device_driver *dev_drv,
 		dev_drv->lcdc_hdmi_process = def_drv->lcdc_hdmi_process;
 	if(def_drv->lcdc_reg_update)
 		dev_drv->lcdc_reg_update = def_drv->lcdc_reg_update;
+	if(def_drv->set_irq_to_cpu)
+		 dev_drv->set_irq_to_cpu = def_drv->set_irq_to_cpu;
 	if(def_drv->poll_vblank)
 		dev_drv->poll_vblank = def_drv->poll_vblank;
 	if(def_drv->dpi_open)
