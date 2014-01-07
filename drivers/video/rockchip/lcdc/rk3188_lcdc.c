@@ -1052,7 +1052,6 @@ static int rk3188_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 		dev_drv->screen_ctr_info->io_disable();
 
 	spin_lock(&lcdc_dev->reg_lock);
-	lcdc_dev->standby = 1;
 	if(likely(lcdc_dev->clk_on))
 	{
 		lcdc_msk_reg(lcdc_dev,INT_STATUS,m_FS_INT_CLEAR,v_FS_INT_CLEAR(1));
@@ -1124,7 +1123,7 @@ static int rk3188_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 		lcdc_msk_reg(lcdc_dev,DSP_CTRL1,m_DSP_OUT_ZERO ,v_DSP_OUT_ZERO(0));
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL,m_LCDC_STANDBY,v_LCDC_STANDBY(0));
 		lcdc_cfg_done(lcdc_dev);
-		lcdc_dev->standby = 0;
+		
 		spin_unlock(&lcdc_dev->reg_lock);
 	}
 
@@ -1162,7 +1161,6 @@ static int rk3188_lcdc_ovl_mgr(struct rk_lcdc_device_driver *dev_drv,int swap,bo
 	{
 		ovl = -EPERM;
 	}
-	
 	spin_unlock(&lcdc_dev->reg_lock);
 
 	return ovl;
@@ -1473,17 +1471,6 @@ static int rk3188_lcdc_dpi_status(struct rk_lcdc_device_driver *dev_drv)
 	return ovl;
 }
 
-static rk3188_lcdc_set_irq_to_cpu(struct rk_lcdc_device_driver * dev_drv,int enable)
-{
-	struct rk3188_lcdc_device *lcdc_dev =
-                                container_of(dev_drv,struct rk3188_lcdc_device,driver);
-	if (enable)
-		enable_irq(lcdc_dev->irq);
-	else
-		disable_irq(lcdc_dev->irq);
-	return 0;
-	
-}
 int rk3188_lcdc_poll_vblank(struct rk_lcdc_device_driver * dev_drv)
 {
 	struct rk3188_lcdc_device *lcdc_dev = 
@@ -1491,7 +1478,7 @@ int rk3188_lcdc_poll_vblank(struct rk_lcdc_device_driver * dev_drv)
         u32 int_reg ;
 	int ret;
 	//spin_lock(&lcdc_dev->reg_lock);
-	if(lcdc_dev->clk_on && (!lcdc_dev->standby))
+	if(lcdc_dev->clk_on)
 	{
 		int_reg = lcdc_readl(lcdc_dev,INT_STATUS);
 	        if(int_reg & m_LF_INT_STA)
@@ -1507,6 +1494,7 @@ int rk3188_lcdc_poll_vblank(struct rk_lcdc_device_driver * dev_drv)
 		ret = RK_LF_STATUS_NC;
 	}	
 	//spin_unlock(&lcdc_dev->reg_lock);
+
 	return ret;
 }
 
@@ -1545,7 +1533,6 @@ static struct rk_lcdc_device_driver lcdc_driver = {
 	.fb_layer_remap         = rk3188_fb_layer_remap,
 	.set_dsp_lut            = rk3188_set_dsp_lut,
 	.poll_vblank		= rk3188_lcdc_poll_vblank,
-	.set_irq_to_cpu		= rk3188_lcdc_set_irq_to_cpu,
 	.dpi_open               = rk3188_lcdc_dpi_open,
 	.dpi_layer_sel          = rk3188_lcdc_dpi_layer_sel,
 	.dpi_status          	= rk3188_lcdc_dpi_status,
