@@ -292,6 +292,7 @@ struct rk_lcdc_device_driver{
 	int (*set_dsp_lut)(struct rk_lcdc_device_driver *dev_drv,int *lut);
 	int (*read_dsp_lut)(struct rk_lcdc_device_driver *dev_drv,int *lut);
 	int (*lcdc_hdmi_process)(struct rk_lcdc_device_driver *dev_drv,int mode); //some lcdc need to some process in hdmi mode
+	int (*set_irq_to_cpu)(struct rk_lcdc_device_driver *dev_drv,int enable);
 	int (*poll_vblank)(struct rk_lcdc_device_driver *dev_drv);
 	int (*lcdc_rst)(struct rk_lcdc_device_driver *dev_drv);
 	int (*dpi_open)(struct rk_lcdc_device_driver *dev_drv,bool open);
