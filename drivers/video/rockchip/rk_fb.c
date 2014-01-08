@@ -146,7 +146,7 @@ int rk_fb_get_prmry_screen_ft(void)
 {
 	uint32_t pix_count,ft_us,dclk_mhz;
 	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
-        if (dev_drv)
+        if (!dev_drv)
 		return 0;
 		
         if (0 == dev_drv->id)
