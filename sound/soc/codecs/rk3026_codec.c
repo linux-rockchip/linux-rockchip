@@ -408,7 +408,7 @@ static int rk3026_reset(struct snd_soc_codec *codec)
 {
 	writel(0x00, rk3026_priv->regbase+RK3026_RESET);
 	mdelay(10);
-	writel(0x03, rk3026_priv->regbase+RK3026_RESET);
+	writel(0x43, rk3026_priv->regbase+RK3026_RESET);
 	mdelay(10);
 
 	memcpy(codec->reg_cache, rk3026_reg_defaults,
@@ -2187,9 +2187,9 @@ static int rk3026_remove(struct snd_soc_codec *codec)
 		}
 	}
 
-	snd_soc_write(codec, RK3026_RESET, 0xfc);
+	snd_soc_write(codec, RK3026_RESET, 0xbc);
 	mdelay(10);
-	snd_soc_write(codec, RK3026_RESET, 0x3);
+	snd_soc_write(codec, RK3026_RESET, 0x43);
 	mdelay(10);
 
 	if (rk3026_priv)
@@ -2252,9 +2252,9 @@ void rk3026_platform_shutdown(struct platform_device *pdev)
 		}
 	}
 
-	writel(0xfc, rk3026_priv->regbase+RK3026_RESET);
+	writel(0xbc, rk3026_priv->regbase+RK3026_RESET);
 	mdelay(10);
-	writel(0x03, rk3026_priv->regbase+RK3026_RESET);
+	writel(0x43, rk3026_priv->regbase+RK3026_RESET);
 
 	if (rk3026_priv)
 		kfree(rk3026_priv);
