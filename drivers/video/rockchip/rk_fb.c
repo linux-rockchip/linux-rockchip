@@ -43,6 +43,9 @@ bool rk29_get_backlight_status(void);
 
 #ifdef	CONFIG_FB_MIRRORING
 
+static int hdmi_switch_complete = 0;
+static int hdmi_xsize = 0;
+static int hdmi_ysize = 0;
 
 int (*video_data_to_mirroring)(struct fb_info *info,u32 yuv_phy[2]) = NULL;
 EXPORT_SYMBOL(video_data_to_mirroring);
@@ -1018,6 +1021,24 @@ static int rk_fb_set_par(struct fb_info *info)
 						info2->var.yres = var->yres;
 						info2->var.xres_virtual = var->xres_virtual;
 					}
+				#if !defined(CONFIG_FB_ROTATE) && defined(CONFIG_THREE_FB_BUFFER) 
+					par2->smem_start = par->smem_start;
+					par2->cbr_start = par->cbr_start;
+				#endif
+					//the display image of the primary screen is no full screen size when play video that is YUV type
+					if(par->xsize != screen->x_res || par->ysize != screen->y_res) {
+						par2->xsize = hdmi_xsize*par->xsize/screen->x_res;
+						par2->ysize = hdmi_ysize*par->ysize/screen->y_res;
+						par2->xpos = (hdmi_xsize - par2->xsize)>>1;
+						par2->ypos = (hdmi_ysize - par2->ysize)>>1;
+					}
+					else {	//the display image of the primary screen is full screen size
+						par2->xpos = 0;
+						par2->ypos = 0;
+						par2->xsize = hdmi_xsize;
+						par2->ysize = hdmi_ysize;
+					}
+
 					par2->format = par->format;
 					info2->var.nonstd &= 0xffffff00;
 					info2->var.nonstd |= data_format;
@@ -1465,6 +1486,8 @@ int rk_fb_disp_scale(u8 scale_x, u8 scale_y,u8 lcdc_id)
 		var->grayscale &= 0xff;
 		var->grayscale |= (xsize<<8) + (ysize<<20);	
 	}
+	hdmi_xsize = xsize;
+	hdmi_ysize = ysize;
 
 	info->fbops->fb_set_par(info);
 	info->fbops->fb_ioctl(info,RK_FBIOSET_CONFIG_DONE,0);
