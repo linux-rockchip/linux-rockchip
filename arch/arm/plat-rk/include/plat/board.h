@@ -559,6 +559,7 @@ void __init board_mem_reserved(void);
 
 extern struct rk29_sdmmc_platform_data default_sdmmc0_data;
 extern struct rk29_sdmmc_platform_data default_sdmmc1_data;
+extern struct rk29_sdmmc_platform_data default_sdmmc2_data;
 
 extern struct i2c_gpio_platform_data default_i2c_gpio_data;
 extern struct rk29_vmac_platform_data board_vmac_data;
