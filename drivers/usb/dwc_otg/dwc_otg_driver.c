@@ -521,7 +521,7 @@ static ssize_t force_usb_mode_store(struct device_driver *_drv, const char *_buf
 	}	
 	return _count;	
 }
-static DRIVER_ATTR(force_usb_mode, 0664/*S_IRUGO|S_IWUSR*/, force_usb_mode_show, force_usb_mode_store);
+static DRIVER_ATTR(force_usb_mode, 0666/*S_IRUGO|S_IWUSR*/, force_usb_mode_show, force_usb_mode_store);
 #endif
 static ssize_t dwc_otg_enable_show( struct device *_dev, 
 								struct device_attribute *attr, char *buf)
@@ -1158,13 +1158,6 @@ static __devinit int dwc_otg_driver_probe(struct platform_device *pdev)
 	int32_t snpsid;
 	int irq;
 	struct dwc_otg_platform_data *pldata = dev->platform_data;
-
-
-#ifdef CONFIG_ARCH_RK3188
-	unsigned int * USB_GRF_UOC0_CON0 = (unsigned int*)(RK30_GRF_BASE+0x10c);
-	/* usb phy enter usb mode  */
-	* USB_GRF_UOC0_CON0 = (0x0300 << 16);
-#endif
 
     // clock and hw init
     if(pldata->hw_init)

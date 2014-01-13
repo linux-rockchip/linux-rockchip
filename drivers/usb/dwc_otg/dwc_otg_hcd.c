@@ -636,76 +636,76 @@ static struct tasklet_struct reset_tasklet = {
 #ifndef CONFIG_ARCH_RK29
 static void dwc_otg_hcd_enable(struct work_struct *work)
 {
-    dwc_otg_hcd_t *dwc_otg_hcd;
-    dwc_otg_core_if_t *_core_if;
+	dwc_otg_hcd_t *dwc_otg_hcd;
+	dwc_otg_core_if_t *_core_if;
 	struct dwc_otg_platform_data *pldata;
 
-    dwc_otg_hcd = container_of(work, dwc_otg_hcd_t, host_enable_work.work);
-    _core_if = dwc_otg_hcd->core_if;
-    pldata = _core_if->otg_dev->pldata;
+	dwc_otg_hcd = container_of(work, dwc_otg_hcd_t, host_enable_work.work);
+	_core_if = dwc_otg_hcd->core_if;
+	pldata = _core_if->otg_dev->pldata;
     
 	if(dwc_otg_hcd->host_enabled == dwc_otg_hcd->host_setenable){
-//        DWC_PRINT("%s, enable flag %d\n", __func__, dwc_otg_hcd->host_setenable);
-	    goto out;
+//	DWC_PRINT("%s, enable flag %d\n", __func__, dwc_otg_hcd->host_setenable);
+		goto out;
 	}
 	    
-	if(dwc_otg_hcd->host_setenable == 2)    // enable -> disable
-	{
-	    if(pldata->get_status(USB_STATUS_DPDM)){// usb device connected
-	        dwc_otg_hcd->host_setenable = 1;
-	        goto out;
-	    }
-	    DWC_PRINT("%s, disable host controller\n", __func__);
-	    #if 1
-        if (_core_if->hcd_cb && _core_if->hcd_cb->disconnect) {
-                _core_if->hcd_cb->disconnect( _core_if->hcd_cb->p );
-        }
-        #endif
-        dwc_otg_disable_host_interrupts( _core_if );
-        //if (_core_if->hcd_cb && _core_if->hcd_cb->stop) {
-        //        _core_if->hcd_cb->stop( _core_if->hcd_cb->p );
-        //}
-        if(pldata->phy_suspend) 
-            pldata->phy_suspend( pldata, USB_PHY_SUSPEND);
-        udelay(3);
-        pldata->clock_enable( pldata, 0);
-	}
-	else if(dwc_otg_hcd->host_setenable == 1)
-	{
-	    DWC_PRINT("%s, enable host controller\n", __func__);
-        pldata->clock_enable( pldata, 1);
-        if(pldata->phy_suspend) 
-            pldata->phy_suspend( pldata, USB_PHY_ENABLED);
-        mdelay(5);
-        if (_core_if->hcd_cb && _core_if->hcd_cb->start) {
-                _core_if->hcd_cb->start( _core_if->hcd_cb->p );
-        }
+	if(dwc_otg_hcd->host_setenable == 2){// enable -> disable
+		if(pldata->get_status(USB_STATUS_DPDM)){// usb device connected
+			dwc_otg_hcd->host_setenable = 1;
+			goto out;
+		}
+		DWC_PRINT("%s, disable host controller\n", __func__);
+#if 0
+		if (_core_if->hcd_cb && _core_if->hcd_cb->disconnect) {
+		_core_if->hcd_cb->disconnect( _core_if->hcd_cb->p );
+		}
+#endif
+		pldata->soft_reset();
+		dwc_otg_disable_host_interrupts( _core_if );
+//		if (_core_if->hcd_cb && _core_if->hcd_cb->stop) {
+//			_core_if->hcd_cb->stop( _core_if->hcd_cb->p );
+//		}
+		if(pldata->phy_suspend) 
+			pldata->phy_suspend( pldata, USB_PHY_SUSPEND);
+		udelay(3);
+		pldata->clock_enable( pldata, 0);
+	}else if(dwc_otg_hcd->host_setenable == 1){
+		DWC_PRINT("%s, enable host controller\n", __func__);
+		pldata->clock_enable( pldata, 1);
+		if(pldata->phy_suspend) 
+			pldata->phy_suspend( pldata, USB_PHY_ENABLED);
+		mdelay(5);
+		dwc_otg_core_init(_core_if);
+		dwc_otg_enable_global_interrupts(_core_if);
+		if (_core_if->hcd_cb && _core_if->hcd_cb->start) {
+			_core_if->hcd_cb->start( _core_if->hcd_cb->p );
+		}
 	}
 	dwc_otg_hcd->host_enabled = dwc_otg_hcd->host_setenable;
 out:
-    return;
+	return;
 }
 static void dwc_otg_hcd_connect_detect(unsigned long pdata)
 {
-    dwc_otg_hcd_t *dwc_otg_hcd = (dwc_otg_hcd_t *)pdata;
-    dwc_otg_core_if_t *core_if = dwc_otg_hcd->core_if;
+	dwc_otg_hcd_t *dwc_otg_hcd = (dwc_otg_hcd_t *)pdata;
+	dwc_otg_core_if_t *core_if = dwc_otg_hcd->core_if;
 	unsigned long flags;
 	struct dwc_otg_platform_data *pldata;
-    pldata = core_if->otg_dev->pldata;
+	pldata = core_if->otg_dev->pldata;
 
 	local_irq_save(flags);
 
-//    DWC_PRINT("%s hprt %x, grfstatus 0x%x\n", __func__, dwc_read_reg32(core_if->host_if->hprt0), usbgrf_status& (7<<22));
-    if(pldata->get_status(USB_STATUS_DPDM)) // usb device connected    
-        dwc_otg_hcd->host_setenable = 1;
-    else{                                   // no device, suspend host    
-        if((dwc_read_reg32(core_if->host_if->hprt0) & 1) == 0)
-            dwc_otg_hcd->host_setenable = 2;
-    }
-    if((dwc_otg_hcd->host_enabled)&&(dwc_otg_hcd->host_setenable != dwc_otg_hcd->host_enabled)){
-        schedule_delayed_work(&dwc_otg_hcd->host_enable_work, 1);
-    }
-    mod_timer(&dwc_otg_hcd->connect_detect_timer,jiffies + (HZ<<1)); 
+//	DWC_PRINT("%s hprt %x, grfstatus 0x%x\n", __func__, dwc_read_reg32(core_if->host_if->hprt0), usbgrf_status& (7<<22));
+	if(pldata->get_status(USB_STATUS_DPDM)) // usb device connected    
+		dwc_otg_hcd->host_setenable = 1;
+	else{                                   // no device, suspend host    
+		if((dwc_read_reg32(core_if->host_if->hprt0) & 1) == 0)
+		dwc_otg_hcd->host_setenable = 2;
+	}
+	if((dwc_otg_hcd->host_enabled)&&(dwc_otg_hcd->host_setenable != dwc_otg_hcd->host_enabled)){
+		schedule_delayed_work(&dwc_otg_hcd->host_enable_work, 1);
+	}
+	mod_timer(&dwc_otg_hcd->connect_detect_timer,jiffies + (HZ<<1)); 
 	local_irq_restore(flags);
 	return;
 }
@@ -721,7 +721,7 @@ int __devinit dwc_otg_hcd_init(struct device *dev)
 {
 	struct usb_hcd *hcd = NULL;
 	dwc_otg_hcd_t *dwc_otg_hcd = NULL;
-    dwc_otg_device_t *otg_dev = (dwc_otg_device_t *)(*((uint32_t *)dev->platform_data));
+	dwc_otg_device_t *otg_dev = (dwc_otg_device_t *)(*((uint32_t *)dev->platform_data));
 
 	int 		num_channels;
 	int 		i;
@@ -1597,11 +1597,9 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	dwc_otg_hcd_t * dwc_otg_hcd;
 	dwc_otg_qtd_t * urb_qtd;
 	dwc_otg_qh_t * qh;
-	int ret = 0;
 	struct usb_host_endpoint *_ep;
-	
-	dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
 
+	dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
 	spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
 
 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
@@ -1609,12 +1607,11 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	if(((uint32_t)_urb&0xf0000000)==0)
 		DWC_PRINT("%s urb is %p\n", __func__, _urb);
 		
-    _ep = dwc_urb_to_endpoint(_urb);
+	_ep = dwc_urb_to_endpoint(_urb);
 	if(_ep==NULL)
 	{
 		DWC_PRINT("%s=====================================================\n",__func__);
 		DWC_PRINT("urb->ep is null\n");
-		ret = -1;
 		goto out;
 	}
 		
@@ -1622,17 +1619,17 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	if(((uint32_t)urb_qtd&0xf0000000) == 0)
 	{
 		DWC_PRINT("%s,urb_qtd is %p urb %p, count %d\n",__func__, urb_qtd, _urb, atomic_read(&_urb->use_count));
-        if((atomic_read(&_urb->use_count)) == 1)
-            goto out;
-        else
-		    ret = -1;
-
-		spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
-		return 0;
+		if((atomic_read(&_urb->use_count)) == 1)
+			goto out;
+		else{
+			spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
+			return 0;
+		}
 	}
 	qh = (dwc_otg_qh_t *) _ep->hcpriv;
+
 #ifdef DEBUG
-    if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
+	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
 		dump_urb_info(_urb, "dwc_otg_hcd_urb_dequeue");
 		if (urb_qtd == qh->qtd_in_process) {
 			dump_channel_info(dwc_otg_hcd, qh);
@@ -1641,26 +1638,26 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 
 #endif	/*  */
 
-    if (urb_qtd == qh->qtd_in_process) {
-	    /* The QTD is in process (it has been assigned to a channel). */
-	    if (dwc_otg_hcd->flags.b.port_connect_status) {
-		    /*
-		     * If still connected (i.e. in host mode), halt the
-		     * channel so it can be used for other transfers. If
-		     * no longer connected, the host registers can't be
-		     * written to halt the channel since the core is in
-		     * device mode.
-		     */
-		    dwc_otg_hc_halt(dwc_otg_hcd->core_if, qh->channel,
+	if (urb_qtd == qh->qtd_in_process) {
+		/* The QTD is in process (it has been assigned to a channel). */
+		if (dwc_otg_hcd->flags.b.port_connect_status) {
+			/*
+			* If still connected (i.e. in host mode), halt the
+			* channel so it can be used for other transfers. If
+			* no longer connected, the host registers can't be
+			* written to halt the channel since the core is in
+			* device mode.
+			*/
+			dwc_otg_hc_halt(dwc_otg_hcd->core_if, qh->channel,
 					    DWC_OTG_HC_XFER_URB_DEQUEUE);
 		}
 	}
 
-    /*
-     * Free the QTD and clean up the associated QH. Leave the QH in the
-     * schedule if it has any remaining QTDs.
-     */
-    dwc_otg_hcd_qtd_remove_and_free(urb_qtd);
+	/*
+ 	* Free the QTD and clean up the associated QH. Leave the QH in the
+ 	* schedule if it has any remaining QTDs.
+ 	*/
+	dwc_otg_hcd_qtd_remove_and_free(urb_qtd);
 	if (urb_qtd == qh->qtd_in_process) {
 		dwc_otg_hcd_qh_deactivate(dwc_otg_hcd, qh, 0);
 		qh->channel = NULL;
@@ -1668,10 +1665,10 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb, int _status)
 	} else if (list_empty(&qh->qtd_list)) {
 		dwc_otg_hcd_qh_remove(dwc_otg_hcd, qh);
 	}
-out:
+out:	
 	_urb->hcpriv = NULL;
 	spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
-    /* Higher layer software sets URB status. */
+	/* Higher layer software sets URB status. */
 	usb_hcd_giveback_urb(_hcd, _urb, _status);
 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
 		DWC_PRINT("Called usb_hcd_giveback_urb()\n");
@@ -1731,6 +1728,7 @@ irqreturn_t dwc_otg_hcd_irq(struct usb_hcd *_hcd)
 	spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
 
 	result = IRQ_RETVAL(dwc_otg_hcd_handle_intr(dwc_otg_hcd));
+
 	spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
 
 	return result;
@@ -2330,16 +2328,18 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 			dwc_write_reg32(core_if->host_if->hprt0, hprt0.d32);
 			break;
 		case USB_PORT_FEAT_SUSPEND:
+		#ifdef CONFIG_USB_SUSPEND
 			break;
+		#endif
 			DWC_DEBUGPL (DBG_HCD, "DWC OTG HCD HUB CONTROL - "
 				     "ClearPortFeature USB_PORT_FEAT_SUSPEND\n");
 			hprt0.d32 = dwc_otg_read_hprt0 (core_if);
 			hprt0.b.prtres = 1;
 			dwc_write_reg32(core_if->host_if->hprt0, hprt0.d32);
 			/* Clear Resume bit */
-            spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
+			spin_unlock_irqrestore(&dwc_otg_hcd->global_lock, flags);
 			mdelay (100);
-            spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
+			spin_lock_irqsave(&dwc_otg_hcd->global_lock, flags);
 			hprt0.b.prtres = 0;
 			dwc_write_reg32(core_if->host_if->hprt0, hprt0.d32);
 			break;
@@ -2514,7 +2514,9 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 
 		switch (_wValue) {
 		case USB_PORT_FEAT_SUSPEND:
+		#ifdef CONFIG_USB_SUSPEND
 			break;
+		#endif
 			DWC_DEBUGPL (DBG_HCD, "DWC OTG HCD HUB CONTROL - "
 				     "SetPortFeature - USB_PORT_FEAT_SUSPEND\n");
                         if (_hcd->self.otg_port == _wIndex &&
@@ -2716,11 +2718,12 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
  * @param _qh Transactions from the first QTD for this QH are selected and
  * assigned to a free host channel.
  */
-static void assign_and_init_hc(dwc_otg_hcd_t *_hcd, dwc_otg_qh_t *_qh)
+static int assign_and_init_hc(dwc_otg_hcd_t *_hcd, dwc_otg_qh_t *_qh)
 {
 	dwc_hc_t	*hc;
 	dwc_otg_qtd_t	*qtd;
 	struct urb	*urb;
+	int  retval = 0;
 
 	DWC_DEBUGPL(DBG_HCDV, "%s(%p,%p)\n", __func__, _hcd, _qh);
 	hc = list_entry(_hcd->free_hc_list.next, dwc_hc_t, hc_list_entry);
@@ -2730,8 +2733,13 @@ static void assign_and_init_hc(dwc_otg_hcd_t *_hcd, dwc_otg_qh_t *_qh)
 
 	qtd = list_entry(_qh->qtd_list.next, dwc_otg_qtd_t, qtd_list_entry);
 	urb = qtd->urb;
-	_qh->channel = hc;
-	_qh->qtd_in_process = qtd;
+	if (urb == NULL){
+		printk("%s : urb is NULL\n", __func__);
+		retval = -EINVAL;
+		return retval;
+	}else{
+		_qh->channel = hc;
+		_qh->qtd_in_process = qtd;
 
 	/*
 	 * Use usb_pipedevice to determine device address. This address is
@@ -2884,6 +2892,8 @@ static void assign_and_init_hc(dwc_otg_hcd_t *_hcd, dwc_otg_qh_t *_qh)
 
 	dwc_otg_hc_init(_hcd->core_if, hc);
 	hc->qh = _qh;
+	return retval;
+	}
 }
 
 /**
@@ -2901,6 +2911,7 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t *_hcd)
 	dwc_otg_qh_t 			*qh;
 	int				num_channels;
 	dwc_otg_transaction_type_e	ret_val = DWC_OTG_TRANSACTION_NONE;
+	int err;
 
 #ifdef DEBUG_SOF
 	DWC_DEBUGPL(DBG_HCD, "  Select Transactions\n");
@@ -2944,13 +2955,15 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t *_hcd)
 	       !list_empty(&_hcd->free_hc_list)) {
 
 		qh = list_entry(qh_ptr, dwc_otg_qh_t, qh_list_entry);
-		assign_and_init_hc(_hcd, qh);
+		err = assign_and_init_hc(_hcd, qh);
 
 		/*
 		 * Move the QH from the non-periodic inactive schedule to the
 		 * non-periodic active schedule.
 		 */
 		qh_ptr = qh_ptr->next;
+		if (err != 0)
+			continue;
 		list_move_tail(&qh->qh_list_entry, &_hcd->non_periodic_sched_active);
 
 		if (ret_val == DWC_OTG_TRANSACTION_NONE) {
