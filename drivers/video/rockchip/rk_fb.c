@@ -1170,12 +1170,12 @@ static int rk_fb_set_par(struct fb_info *info)
 					if(par->xsize != screen->x_res || par->ysize != screen->y_res) {
 						par2->xsize = hdmi_xsize*par->xsize/screen->x_res;
 						par2->ysize = hdmi_ysize*par->ysize/screen->y_res;
-						par2->xpos = (hdmi_xsize - par2->xsize)>>1;
-						par2->ypos = (hdmi_ysize - par2->ysize)>>1;
+						par2->xpos = (dev_drv1->cur_screen->x_res - par2->xsize)>>1;
+						par2->ypos = (dev_drv1->cur_screen->y_res - par2->ysize)>>1;
 					}
 					else {	//the display image of the primary screen is full screen size
-						par2->xpos = 0;
-						par2->ypos = 0;
+						par2->xpos = (dev_drv1->cur_screen->x_res - hdmi_xsize)>>1;
+						par2->ypos = (dev_drv1->cur_screen->y_res - hdmi_ysize)>>1;
 						par2->xsize = hdmi_xsize;
 						par2->ysize = hdmi_ysize;
 					}
