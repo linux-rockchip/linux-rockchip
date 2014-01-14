@@ -60,8 +60,6 @@ module_param(debug, int, S_IRUGO|S_IWUSR);
 */
 #define CAP_VOL	   17//0-31
 
-//with capacity or  not
-#define WITH_CAP
 #ifdef CONFIG_MACH_RK_FAC 
 	rk3026_hdmi_ctrl=0;
 #endif
@@ -1622,43 +1620,51 @@ static int rk3026_digital_mute(struct snd_soc_dai *dai, int mute)
 }
 
 static struct rk3026_reg_val_typ playback_power_up_list[] = {
+#ifdef CONFIG_SND_CAP
 	{0x18,0x32},
 	{0xa0,0x40},
 	{0xa0,0x62},
+#endif
 	{0xa4,0x88},
 	{0xa4,0xcc},
 	{0xa4,0xee},
 	{0xa8,0x44},
+#ifdef CONFIG_SND_CAP
 	{0xb0,0x92},
 	{0xb0,0xdb},
+#endif
 	{0xac,0x11},//DAC
 	{0xa8,0x55},
 	{0xa8,0x77},
 	{0xa4,0xff},
+#ifdef CONFIG_SND_CAP
 	{0xb0,0xff},
 	{0xa0,0x73},
 	{0xb4,OUT_VOLUME},
 	{0xb8,OUT_VOLUME},
+#endif
 };
 #define RK3026_CODEC_PLAYBACK_POWER_UP_LIST_LEN ARRAY_SIZE(playback_power_up_list)
 
 static struct rk3026_reg_val_typ playback_power_down_list[] = {
+#ifdef CONFIG_SND_CAP
 	{0xb0,0xdb},
+#endif
 	{0xa8,0x44},
 	{0xac,0x00},
+#ifdef CONFIG_SND_CAP
 	{0xb0,0x92},
 	{0xa0,0x22},
 	{0xb0,0x00},
+#endif
 	{0xa8,0x00},
 	{0xa4,0x00},
+#ifdef CONFIG_SND_CAP
 	{0xa0,0x00},
+	{0xb4,0x00},
+	{0xb8,0x00},
 	{0x18,0x22},
-#ifdef WITH_CAP
-	//{0xbc,0x08},
 #endif
-	{0xb4,0x0},
-	{0xb8,0x0},
-	{0x18,0x22},
 };
 #define RK3026_CODEC_PLAYBACK_POWER_DOWN_LIST_LEN ARRAY_SIZE(playback_power_down_list)
 
@@ -1711,11 +1717,26 @@ static int rk3026_codec_power_up(int type)
 		type == RK3026_CODEC_PLAYBACK ? "playback" : "",
 		type == RK3026_CODEC_CAPTURE ? "capture" : "");
 
+#ifdef CONFIG_SND_CAPLESS
+		snd_soc_write(codec, 0xa0,0x62);
+#endif
+
 	if (type == RK3026_CODEC_PLAYBACK) {
 		for (i = 0; i < RK3026_CODEC_PLAYBACK_POWER_UP_LIST_LEN; i++) {
 			snd_soc_write(codec, playback_power_up_list[i].reg,
 				playback_power_up_list[i].value);
 		}
+
+#ifdef CONFIG_SND_CAPLESS
+		for ( i = 1; i <= OUT_VOLUME; i++)
+		{
+			snd_soc_write(codec, 0xb4,i);
+			snd_soc_write(codec, 0xb8,i);
+			mdelay(5);
+		}
+		snd_soc_write(codec, 0xa0,0x73);
+#endif
+
 		//codec_set_spk(!get_hdmi_state());
 	} else if (type == RK3026_CODEC_CAPTURE) {
 		for (i = 0; i < RK3026_CODEC_CAPTURE_POWER_UP_LIST_LEN; i++) {
@@ -1753,20 +1774,26 @@ static int rk3026_codec_power_down(int type)
 				capture_power_down_list[i].value);
 		}
 	} else if (type == RK3026_CODEC_PLAYBACK) {
-#if 0
+
+#ifdef CONFIG_SND_CAPLESS
 		snd_soc_write(codec, 0xa0,0x62);
+
 		for ( i = OUT_VOLUME; i >= 0; i--)
 		{
 			snd_soc_write(codec, 0xb4,i);
 			snd_soc_write(codec, 0xb8,i);
+			mdelay(2);
 		}
-		msleep(20);
 #endif
 		for (i = 0; i < RK3026_CODEC_PLAYBACK_POWER_DOWN_LIST_LEN; i++) {
 			snd_soc_write(codec, playback_power_down_list[i].reg,
 				playback_power_down_list[i].value);
 
 		}
+
+#ifdef CONFIG_SND_CAPLESS
+		snd_soc_write(codec, 0xa0,0x73);
+#endif
 
 	} else if (type == RK3026_CODEC_ALL) {
 		rk3026_reset(codec);
@@ -1986,8 +2013,15 @@ static int rk3026_suspend(struct snd_soc_codec *codec, pm_message_t state)
 		if (rk3026_codec_work_capture_type != RK3026_CODEC_WORK_NULL) {
 			rk3026_codec_work_capture_type = RK3026_CODEC_WORK_NULL;
 		}
+
+#ifdef CONFIG_SND_CAP
 		rk3026_codec_power_down(RK3026_CODEC_PLAYBACK);
 		rk3026_codec_power_down(RK3026_CODEC_ALL);
+
+		snd_soc_write(codec, RK3026_SELECT_CURRENT,0x1e);
+		snd_soc_write(codec, RK3026_SELECT_CURRENT,0x3e);
+#endif
+
 	}
 	else
 		rk3026_set_bias_level(codec, SND_SOC_BIAS_OFF);
@@ -2118,11 +2152,14 @@ static int rk3026_probe(struct snd_soc_codec *codec)
 		rk3026_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	}
 
-#ifdef   WITH_CAP
+#ifdef   CONFIG_SND_CAP
 	//set for capacity output,clear up noise
 	snd_soc_write(codec, RK3026_SELECT_CURRENT,0x1e);
 	snd_soc_write(codec, RK3026_SELECT_CURRENT,0x3e);
 	//snd_soc_write(codec, 0xbc,0x28);
+#else
+	snd_soc_write(codec, 0xa0,0x73);
+	snd_soc_write(codec, 0xb0,0xff);
 #endif
 	// select  i2s sdi from  acodec  soc_con[0] bit 10
 	val = readl(RK2928_GRF_BASE+GRF_SOC_CON0);
