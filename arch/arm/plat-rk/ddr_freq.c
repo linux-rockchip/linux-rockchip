@@ -474,6 +474,13 @@ static int ddrfreq_scanfreq_datatraing_3168(void)
 
         ddr_get_datatraing_value_3168(false,dqstr_value,min_freq);
     }
+    if (clk_set_rate(ddr.clk, max_freq*MHZ) != 0)
+    {
+        pr_err("failed to clk_set_rate ddr.clk %dhz\n",dqstr_freq*MHZ);
+    }
+    dqstr_value++;
+    ddr_get_datatraing_value_3168(false,dqstr_value,min_freq);
+
     ddr_get_datatraing_value_3168(true,0,min_freq);
     dprintk(DEBUG_DDR,"get datatraing from %dMhz to %dMhz\n",min_freq,max_freq);
     return 0;
@@ -637,7 +644,7 @@ static int ddrfreq_late_init(void)
 
 	register_reboot_notifier(&ddrfreq_reboot_notifier);
 
-	pr_info("verion 3.2 20130917\n");
+	pr_info("verion 3.2 20131126\n");
 	pr_info("fix cpu pause bug\n");
 	dprintk(DEBUG_DDR, "normal %luMHz video %luMHz video_low %luMHz dualview %luMHz idle %luMHz suspend %luMHz reboot %luMHz\n",
 		ddr.normal_rate / MHZ, ddr.video_rate / MHZ, ddr.video_low_rate / MHZ, ddr.dualview_rate / MHZ, ddr.idle_rate / MHZ, ddr.suspend_rate / MHZ, ddr.reboot_rate / MHZ);
