@@ -50,6 +50,7 @@ enum SYS_STATUS {
 	SYS_STATUS_REBOOT,	// 0x100
 	SYS_STATUS_LCDC0,	// 0x200
 	SYS_STATUS_LCDC1,	// 0x400
+	SYS_STATUS_WIFIDISPLAY,
 };
 
 struct ddr {
@@ -127,7 +128,9 @@ static noinline void ddrfreq_work(unsigned long sys_status)
 	      && (s & (1 << SYS_STATUS_LCDC1))
 	      ) {
 		ddrfreq_mode(false, &ddr.dualview_rate, "dual-view");
-	} else if ((ddr.video_rate || ddr.video_low_rate) && (s & (1 << SYS_STATUS_VIDEO))) {
+	} else if (&ddr.normal_rate && (s & (1 << SYS_STATUS_WIFIDISPLAY))) {
+		ddrfreq_mode(false, &ddr.normal_rate, "wifi-display(dual-view)");
+	}else if ((ddr.video_rate || ddr.video_low_rate) && (s & (1 << SYS_STATUS_VIDEO))) {
 		if(ddr.video_low_rate && (s & (1 << SYS_STATUS_VIDEO_720P)))
 			ddrfreq_mode(false, &ddr.video_low_rate, "video low");
 		else if(ddr.video_rate && (s & (1 << SYS_STATUS_VIDEO_1080P)))
@@ -353,6 +356,12 @@ static ssize_t video_state_write(struct file *file, const char __user *buffer,
 			ddrfreq_clear_sys_status(SYS_STATUS_VIDEO_720P);
 			ddrfreq_clear_sys_status(SYS_STATUS_VIDEO_1080P);
 		}
+		break;
+	case '2':
+		ddrfreq_clear_sys_status(SYS_STATUS_WIFIDISPLAY);
+		break;
+	case '3':
+		ddrfreq_set_sys_status(SYS_STATUS_WIFIDISPLAY);
 		break;
 	default:
 		vfree(buf);
