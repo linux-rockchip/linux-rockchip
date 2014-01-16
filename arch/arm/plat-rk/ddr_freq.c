@@ -128,7 +128,7 @@ static noinline void ddrfreq_work(unsigned long sys_status)
 	      && (s & (1 << SYS_STATUS_LCDC1))
 	      ) {
 		ddrfreq_mode(false, &ddr.dualview_rate, "dual-view");
-	} else if (&ddr.normal_rate && (s & (1 << SYS_STATUS_WIFIDISPLAY))) {
+	} else if (ddr.normal_rate && (s & (1 << SYS_STATUS_WIFIDISPLAY))) {
 		ddrfreq_mode(false, &ddr.normal_rate, "wifi-display(dual-view)");
 	}else if ((ddr.video_rate || ddr.video_low_rate) && (s & (1 << SYS_STATUS_VIDEO))) {
 		if(ddr.video_low_rate && (s & (1 << SYS_STATUS_VIDEO_720P)))
