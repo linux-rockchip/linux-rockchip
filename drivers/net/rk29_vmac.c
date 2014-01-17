@@ -715,12 +715,12 @@ static void vmac_toggle_irqmask(struct net_device *dev, int enable, int mask)
 
 static void vmac_toggle_txint(struct net_device *dev, int enable)
 {
-	struct vmac_priv *ap = netdev_priv(dev);
-	unsigned long flags;
+	//struct vmac_priv *ap = netdev_priv(dev);
+	//unsigned long flags;
 
-	spin_lock_irqsave(&ap->lock, flags);
+	//spin_lock_irqsave(&ap->lock, flags);
 	vmac_toggle_irqmask(dev, enable, TXINT_MASK);
-	spin_unlock_irqrestore(&ap->lock, flags);
+	//spin_unlock_irqrestore(&ap->lock, flags);
 }
 
 static void vmac_toggle_rxint(struct net_device *dev, int enable)
@@ -1194,7 +1194,7 @@ int vmac_open(struct net_device *dev)
 
 	/* schedule a link state check */
 	phy_start(ap->phy_dev);
-
+  phy_write(ap->phy_dev, 0x11, 0x2);
 	phydev = ap->phy_dev;
 	dev_info(&ap->pdev->dev, "PHY driver [%s] (mii_bus:phy_addr=%s, irq=%d)\n",
 	       phydev->drv->name, dev_name(&phydev->dev), phydev->irq);

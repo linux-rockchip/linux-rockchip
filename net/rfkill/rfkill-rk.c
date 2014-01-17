@@ -171,9 +171,9 @@ static int rfkill_rk_setup_gpio(struct rfkill_rk_gpio* gpio, int mux, const char
 		}
         if (gpio->iomux.name)
         {
-            if (mux==1)
+            if (mux==IOMUX_FGPIO)
                 rk_mux_api_set(gpio->iomux.name, gpio->iomux.fgpio);
-            else if (mux==2)
+            else if (mux==IOMUX_FMUX)
                 rk_mux_api_set(gpio->iomux.name, gpio->iomux.fmux);
             else
                 ;// do nothing
@@ -189,13 +189,17 @@ static int rfkill_rk_setup_wake_irq(struct rfkill_rk_data* rfkill)
     int ret=0;
     struct rfkill_rk_irq* irq = &(rfkill->pdata->wake_host_irq);
     
+#ifndef CONFIG_BK3515A_COMBO
     ret = rfkill_rk_setup_gpio(&irq->gpio, IOMUX_FGPIO, rfkill->pdata->name, "wake_host");
     if (ret) goto fail1;
+#endif
 
     if (gpio_is_valid(irq->gpio.io))
     {
+#ifndef CONFIG_BK3515A_COMBO
         ret = gpio_pull_updown(irq->gpio.io, (irq->gpio.enable==GPIO_LOW)?GPIOPullUp:GPIOPullDown);
         if (ret) goto fail2;
+#endif
         LOG("Request irq for bt wakeup host\n");
         irq->irq = gpio_to_irq(irq->gpio.io);
         sprintf(irq->name, "%s_irq", irq->gpio.name);
@@ -226,7 +230,24 @@ static inline void rfkill_rk_sleep_bt_internal(struct rfkill_rk_data *rfkill, bo
     struct rfkill_rk_gpio *wake = &rfkill->pdata->wake_gpio;
     
     DBG("*** bt sleep: %d ***\n", sleep);
+#ifndef CONFIG_BK3515A_COMBO
     gpio_direction_output(wake->io, sleep?!wake->enable:wake->enable);
+#else
+    if(!sleep)
+    {
+        DBG("HOST_UART0_TX pull down 10us\n");
+        if (rfkill_rk_setup_gpio(wake, IOMUX_FGPIO, rfkill->pdata->name, "wake") != 0) {
+            return;
+        }
+
+        gpio_direction_output(wake->io, wake->enable);
+        udelay(10);
+        gpio_direction_output(wake->io, !wake->enable);
+
+        rk_mux_api_set(wake->iomux.name, wake->iomux.fmux);
+        gpio_free(wake->io);
+    }
+#endif
 }
 
 static void rfkill_rk_delay_sleep_bt(struct work_struct *work)
@@ -298,7 +319,7 @@ static int rfkill_rk_set_power(void *data, bool blocked)
 
 	if (false == blocked) { 
         rfkill_rk_sleep_bt(BT_WAKEUP); // ensure bt is wakeup
-        
+
 		if (gpio_is_valid(poweron->io))
         {
 			gpio_direction_output(poweron->io, poweron->enable);
@@ -400,6 +421,16 @@ static int rfkill_rk_pm_prepare(struct device *dev)
     // enable bt wakeup host
     if (gpio_is_valid(wake_host_irq->gpio.io))
     {
+#ifdef CONFIG_BK3515A_COMBO
+        int ret = 0;
+        ret = rfkill_rk_setup_gpio(&wake_host_irq->gpio, IOMUX_FGPIO, rfkill->pdata->name, "wake_host");
+        if (ret)
+            LOG("irq rfkill_rk_setup_gpio failed\n");
+
+        ret = gpio_pull_updown(wake_host_irq->gpio.io, (wake_host_irq->gpio.enable==GPIO_LOW)?GPIOPullUp:GPIOPullDown);
+        if (ret)
+            LOG("irq gpio_pull_updown failed\n");
+#endif
         DBG("enable irq for bt wakeup host\n");
         enable_irq(wake_host_irq->irq);
     }
@@ -431,6 +462,10 @@ static void rfkill_rk_pm_complete(struct device *dev)
         // 而多次触发该中断
         LOG("** disable irq\n");
         disable_irq(wake_host_irq->irq);
+#ifdef CONFIG_BK3515A_COMBO
+        rk_mux_api_set(wake_host_irq->gpio.iomux.name, wake_host_irq->gpio.iomux.fmux);
+        gpio_free(wake_host_irq->gpio.io);
+#endif
     }
 
     /* 使用UART_RTS，此时蓝牙如果有数据就会送到UART
@@ -563,8 +598,10 @@ static int rfkill_rk_probe(struct platform_device *pdev)
     ret = rfkill_rk_setup_gpio(&pdata->reset_gpio, IOMUX_FGPIO, pdata->name, "reset");
     if (ret) goto fail_poweron;
 
+#ifndef CONFIG_BK3515A_COMBO
     ret = rfkill_rk_setup_gpio(&pdata->wake_gpio, IOMUX_FGPIO, pdata->name, "wake");
     if (ret) goto fail_reset;
+#endif
 
     ret = rfkill_rk_setup_wake_irq(rfkill);
     if (ret) goto fail_wake;
@@ -605,11 +642,15 @@ fail_rts:
 fail_wake_host_irq:
     if (gpio_is_valid(pdata->wake_host_irq.gpio.io)){
         free_irq(pdata->wake_host_irq.irq, rfkill);
+#ifndef CONFIG_BK3515A_COMBO
         gpio_free(pdata->wake_host_irq.gpio.io);
+#endif
     }
 fail_wake:
+#ifndef CONFIG_BK3515A_COMBO
     if (gpio_is_valid(pdata->wake_gpio.io))
         gpio_free(pdata->wake_gpio.io);
+#endif
 fail_reset:
 	if (gpio_is_valid(pdata->reset_gpio.io))
 		gpio_free(pdata->reset_gpio.io);
@@ -647,11 +688,15 @@ static int rfkill_rk_remove(struct platform_device *pdev)
     
     if (gpio_is_valid(rfkill->pdata->wake_host_irq.gpio.io)){
         free_irq(rfkill->pdata->wake_host_irq.irq, rfkill);
+#ifndef CONFIG_BK3515A_COMBO
         gpio_free(rfkill->pdata->wake_host_irq.gpio.io);
+#endif
     }
     
+#ifndef CONFIG_BK3515A_COMBO
     if (gpio_is_valid(rfkill->pdata->wake_gpio.io))
         gpio_free(rfkill->pdata->wake_gpio.io);
+#endif
     
     if (gpio_is_valid(rfkill->pdata->reset_gpio.io))
         gpio_free(rfkill->pdata->reset_gpio.io);

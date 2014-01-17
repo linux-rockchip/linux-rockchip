@@ -124,8 +124,8 @@ int debug_level = 5;
 //#define RK29_SDMMC_LIST_QUEUE            /* use list-queue for multi-card*/
 
 #define RK29_SDMMC_DEFAULT_SDIO_FREQ   0 // 1--run in default frequency(50Mhz); 0---run in 25Mhz, 
-#if defined(CONFIG_MT6620)
-#define RK29_MAX_SDIO_FREQ   45000000    //set max-sdio-frequency 45Mhz in MTK module.
+#if defined(CONFIG_MT6620)|| defined(CONFIG_ESP8089)
+#define RK29_MAX_SDIO_FREQ   50000000    //set max-sdio-frequency 50Mhz in MTK module.
 #else
 #define RK29_MAX_SDIO_FREQ   25000000    //set max-sdio-frequency 25Mhz at the present time
 #endif
@@ -2626,6 +2626,17 @@ static void rk29_sdmmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
     
 }
 
+#ifdef CONFIG_ESP8089
+void sdmmc_ack_interrupt(struct mmc_host *mmc)
+{
+       struct rk29_sdmmc *host;
+       host = mmc_priv(mmc);
+       rk29_sdmmc_write(host->regs, SDMMC_RINTSTS, SDMMC_INT_SDIO);
+}
+EXPORT_SYMBOL_GPL(sdmmc_ack_interrupt);
+#endif
+
+
 static void  rk29_sdmmc_init_card(struct mmc_host *mmc, struct mmc_card *card)
 {
         card->quirks = MMC_QUIRK_BLKSZ_FOR_BYTE_MODE;
@@ -3864,6 +3875,7 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 
 #endif
 	
+#ifndef CONFIG_BCM_OOB_ENABLED
 #if defined(CONFIG_RK29_SDIO_IRQ_FROM_GPIO)
     if(RK29_CTRL_SDIO1_ID == host->pdev->id)
     {
@@ -3899,6 +3911,7 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
     }
 
 #endif
+#endif //#ifndef CONFIG_BCM_OOB_ENABLE
     
     /* setup sdmmc1 wifi card detect change */
     if (pdata->register_status_notify) {

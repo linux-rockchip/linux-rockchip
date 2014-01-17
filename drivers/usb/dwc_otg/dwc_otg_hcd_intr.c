@@ -1602,7 +1602,7 @@ static int32_t handle_hc_xacterr_intr(dwc_otg_hcd_t *_hcd,
         DWC_PRINT("%s qtd %p\n", __func__, _qtd);
         goto out;
     }
-    if(((uint32_t) _qtd & 0x80000000)==0){
+    if(((uint32_t) _qtd & 0xf0000000)==0xf0000000){
         DWC_PRINT("%s qtd %p 1\n", __func__, _qtd);
         goto out;
     }
@@ -1963,7 +1963,8 @@ int32_t dwc_otg_hcd_handle_hc_n_intr (dwc_otg_hcd_t *_dwc_otg_hcd, uint32_t _num
 		retval |= handle_hc_nak_intr(_dwc_otg_hcd, hc, hc_regs, qtd);
 	}
 	if (hcint.b.ack) {
-		retval |= handle_hc_ack_intr(_dwc_otg_hcd, hc, hc_regs, qtd);
+		if(!hcint.b.chhltd)
+			retval |= handle_hc_ack_intr(_dwc_otg_hcd, hc, hc_regs, qtd);
 	}
 	if (hcint.b.nyet) {
 		retval |= handle_hc_nyet_intr(_dwc_otg_hcd, hc, hc_regs, qtd);
