@@ -26,8 +26,8 @@
 #define DWC_DSI_VERSION		0x3131302A
 #define DWC_DSI_VERSION_0x3131302A 1
 #elif defined(CONFIG_ARCH_RK319X)
-#define DWC_DSI_VERSION		0x3132302A
-#define DWC_DSI_VERSION_0x3132302A 1
+#define DWC_DSI_VERSION		0x3132312A
+#define DWC_DSI_VERSION_0x3132312A 1
 #else
 #define DWC_DSI_VERSION -1
 #endif  /* CONFIG_MFD_RK616 */
@@ -767,7 +767,7 @@ static int rk_mipi_dsi_init(void *array, u32 n)
 		gDsi->phy.ref_clk = clk_get_rate(dsi_rk616->mclk);
 #elif defined(CONFIG_ARCH_RK319X)
 	if(gDsi->phy.refclk)
-		gDsi->phy.ref_clk = clk_get_rate(gDsi->phy.refclk);
+		gDsi->phy.ref_clk = clk_get_rate(gDsi->phy.refclk) / 2;  // 1/2 of input refclk
 #endif   /* CONFIG_MFD_RK616 */
 	else
 		gDsi->phy.ref_clk = 24 * MHz;
@@ -1624,7 +1624,8 @@ static int rk616_mipi_dsi_probe(struct platform_device *pdev)
 
 	clk_enable(gDsi->dsi_pd);
 	clk_enable(gDsi->dsi_pclk);
-	//clk_enable(gDsi->phy.refclk);
+	clk_enable(clk_get(NULL, "pclk_mipiphy_dsi"));
+
 #endif  /* CONFIG_MFD_RK616 */
 
 	screen = rk_fb_get_prmry_screen();
