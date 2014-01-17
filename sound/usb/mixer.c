@@ -299,7 +299,7 @@ static int get_ctl_value_v1(struct usb_mixer_elem_info *cval, int request, int v
 		idx = snd_usb_ctrl_intf(chip) | (cval->id << 8);
 		if (snd_usb_ctl_msg(chip->dev, usb_rcvctrlpipe(chip->dev, 0), request,
 				    USB_RECIP_INTERFACE | USB_TYPE_CLASS | USB_DIR_IN,
-				    validx, idx, buf, val_len, 100) >= val_len) {
+				    validx, idx, buf, val_len, 1000) >= val_len) {
 			*value_ret = convert_signed_value(cval, snd_usb_combine_bytes(buf, val_len));
 			err = 0;
 			goto out;

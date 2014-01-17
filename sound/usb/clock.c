@@ -223,8 +223,8 @@ static int set_sample_rate_v1(struct snd_usb_audio *chip, int iface,
 	if ((err = snd_usb_ctl_msg(dev, usb_sndctrlpipe(dev, 0), UAC_SET_CUR,
 				   USB_TYPE_CLASS | USB_RECIP_ENDPOINT | USB_DIR_OUT,
 				   UAC_EP_CS_ATTR_SAMPLE_RATE << 8, ep,
-				   data, sizeof(data), 1000)) < 0) {
-		snd_printk(KERN_ERR "%d:%d:%d: cannot set freq %d to ep %#x\n",
+				   data, sizeof(data), 5000)) < 0) {
+		snd_printk(KERN_ERR "%d:%d:%d: out cannot set freq %d to ep %#x\n",
 			   dev->devnum, iface, fmt->altsetting, rate, ep);
 		return err;
 	}
@@ -232,8 +232,8 @@ static int set_sample_rate_v1(struct snd_usb_audio *chip, int iface,
 	if ((err = snd_usb_ctl_msg(dev, usb_rcvctrlpipe(dev, 0), UAC_GET_CUR,
 				   USB_TYPE_CLASS | USB_RECIP_ENDPOINT | USB_DIR_IN,
 				   UAC_EP_CS_ATTR_SAMPLE_RATE << 8, ep,
-				   data, sizeof(data), 1000)) < 0) {
-		snd_printk(KERN_WARNING "%d:%d:%d: cannot get freq at ep %#x\n",
+				   data, sizeof(data), 5000)) < 0) {
+		snd_printk(KERN_WARNING "%d:%d:%d: in cannot get freq at ep %#x\n",
 			   dev->devnum, iface, fmt->altsetting, ep);
 		return 0; /* some devices don't support reading */
 	}
