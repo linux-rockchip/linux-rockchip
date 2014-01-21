@@ -218,6 +218,7 @@ Comprehensive camera device registration:
                           
 */
 static struct rkcamera_platform_data new_camera[] = {                          
+    # if 0
     new_camera_device(RK29_CAM_SENSOR_OV2659,
                         back,
                         RK30_PIN1_PD6,
@@ -231,7 +232,43 @@ static struct rkcamera_platform_data new_camera[] = {
                         0,
                         0,
                         3,
-                        0),                        
+                        0),
+    # else
+    new_camera_device_ex(RK29_CAM_SENSOR_OV2659,
+			    back,
+			    0,
+			    INVALID_VALUE,
+			    INVALID_VALUE,
+			    INVALID_VALUE,
+			    INVALID_VALUE,
+			    RK30_PIN1_PD6,
+			    CONS(RK29_CAM_SENSOR_OV2659,_PWRDN_ACTIVE),
+			    false,
+			    CONS(RK29_CAM_SENSOR_OV2659,_FULL_RESOLUTION),
+			    0,
+			    3,
+			    250000,
+			    CONS(RK29_CAM_SENSOR_OV2659,_I2C_ADDR),
+			    0,
+			    24),
+		new_camera_device_ex(RK29_CAM_SENSOR_OV2659,
+			    front,
+			    0,
+			    INVALID_VALUE,
+			    INVALID_VALUE,
+			    INVALID_VALUE,
+			    INVALID_VALUE,
+			    RK30_PIN1_PB7,
+			    CONS(RK29_CAM_SENSOR_OV2659,_PWRDN_ACTIVE),
+			    false,
+			    CONS(RK29_CAM_SENSOR_OV2659,_FULL_RESOLUTION),
+			    0,
+			    3,
+			    250000,
+			    CONS(RK29_CAM_SENSOR_OV2659,_I2C_ADDR),
+			    0,
+			    24),
+    # endif
     new_camera_device_end
 };
 /*---------------- Camera Sensor Macro Define Begin  ------------------------*/
