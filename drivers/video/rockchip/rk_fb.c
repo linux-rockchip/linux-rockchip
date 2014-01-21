@@ -1167,11 +1167,11 @@ static int rk_fb_set_par(struct fb_info *info)
 					par2->cbr_start = par->cbr_start;
 				#endif
 					//the display image of the primary screen is no full screen size when play video that is YUV type
-					if(par->xsize != screen->x_res || par->ysize != screen->y_res) {
+					if(par->xpos != 0 || par->ypos != 0) {
 						par2->xsize = hdmi_xsize*par->xsize/screen->x_res;
 						par2->ysize = hdmi_ysize*par->ysize/screen->y_res;
-						par2->xpos = (dev_drv1->cur_screen->x_res - par2->xsize)>>1;
-						par2->ypos = (dev_drv1->cur_screen->y_res - par2->ysize)>>1;
+						par2->xpos = ((dev_drv1->cur_screen->x_res - hdmi_xsize)>>1) + hdmi_xsize*par->xpos/screen->x_res;
+						par2->ypos = ((dev_drv1->cur_screen->y_res - hdmi_ysize)>>1) + hdmi_ysize*par->ypos/screen->y_res;
 					}
 					else {	//the display image of the primary screen is full screen size
 						par2->xpos = (dev_drv1->cur_screen->x_res - hdmi_xsize)>>1;
