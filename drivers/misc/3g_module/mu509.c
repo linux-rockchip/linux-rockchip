@@ -174,7 +174,7 @@ static ssize_t modem_status_write(struct class *cls, const char *_buf, size_t _c
 	modem_status = new_state;
     return _count; 
 }
-static CLASS_ATTR(modem_status, 0777, modem_status_read, modem_status_write);
+static CLASS_ATTR(modem_status, 0664, modem_status_read, modem_status_write);
 static void rk29_early_suspend(struct early_suspend *h)
 {
 		 

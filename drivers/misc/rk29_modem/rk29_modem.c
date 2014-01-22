@@ -106,7 +106,7 @@ static ssize_t modem_status_read(struct class *cls, char *_buf)
 
     return sprintf(_buf, "%d\n", rk29_modem->status);
 }
-static CLASS_ATTR(modem_status, 0666, modem_status_read, modem_status_write);
+static CLASS_ATTR(modem_status, 0664, modem_status_read, modem_status_write);
 
 int __devinit rk29_modem_suspend(struct platform_device *pdev, pm_message_t state)
 {

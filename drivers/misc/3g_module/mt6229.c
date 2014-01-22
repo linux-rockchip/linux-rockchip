@@ -201,7 +201,7 @@ static ssize_t modem_status_write(struct class *cls, const char *_buf, size_t _c
 	modem_status = new_state;
     return _count; 
 }
-static CLASS_ATTR(modem_status, 0777, modem_status_read, modem_status_write);
+static CLASS_ATTR(modem_status, 0664, modem_status_read, modem_status_write);
 static int mt6229_probe(struct platform_device *pdev)
 {
 	struct rk29_mt6229_data *pdata = gpdata = pdev->dev.platform_data;

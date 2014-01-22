@@ -440,7 +440,7 @@ static ssize_t bp_status_write(struct class *cls, struct class_attribute *attr, 
 	}	   
 	return result; 
 }
-static CLASS_ATTR(bp_status, 0777, bp_status_read, bp_status_write);
+static CLASS_ATTR(bp_status, 0664, bp_status_read, bp_status_write);
 static int bp_probe(struct platform_device *pdev)
 {
 	struct bp_platform_data *pdata = pdev->dev.platform_data;
