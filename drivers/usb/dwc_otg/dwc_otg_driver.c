@@ -521,7 +521,7 @@ static ssize_t force_usb_mode_store(struct device_driver *_drv, const char *_buf
 	}	
 	return _count;	
 }
-static DRIVER_ATTR(force_usb_mode, 0666/*S_IRUGO|S_IWUSR*/, force_usb_mode_show, force_usb_mode_store);
+static DRIVER_ATTR(force_usb_mode, S_IRUGO|S_IWUSR|S_IWGRP, force_usb_mode_show, force_usb_mode_store);
 #endif
 static ssize_t dwc_otg_enable_show( struct device *_dev, 
 								struct device_attribute *attr, char *buf)
