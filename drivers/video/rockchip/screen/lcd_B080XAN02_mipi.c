@@ -7,6 +7,7 @@
 #include <mach/board.h>
 #include <mach/gpio.h>
 #include <mach/io.h>
+#include <linux/delay.h>
 
 #if  defined(CONFIG_RK610_LVDS) || defined(CONFIG_RK616_LVDS)
 #define SCREEN_TYPE	    	SCREEN_LVDS
@@ -57,6 +58,7 @@
 static struct rk29lcd_info *gLcd_info = NULL;
 
 int gTmp = 1;
+#define MIPI_RST_PIN RK30_PIN0_PC3
 int rk_lcd_init(void) {
 
 	int ret = 0;
@@ -65,23 +67,25 @@ int rk_lcd_init(void) {
 		return -1;
 	/*below is changeable*/
 
+	
 	if(gTmp == 1)
 	{
-		ret = gpio_request(RK30_PIN0_PC3, "mipi rest pin");
+		ret = gpio_request(MIPI_RST_PIN, "mipi rest pin");
 		if( ret != 0 )
 		{
-			gpio_free(RK30_PIN0_PC3);
+			gpio_free(MIPI_RST_PIN);
 			printk("mipi rest pin error\n");
 			return -EIO;
 		}
 		gTmp++;		
 	}
 
-	gpio_set_value(RK30_PIN0_PC3, !GPIO_LOW);
+	gpio_set_value(MIPI_RST_PIN, !GPIO_LOW);
 	msleep(10);
-	gpio_set_value(RK30_PIN0_PC3, GPIO_LOW);
+	gpio_set_value(MIPI_RST_PIN, GPIO_LOW);
 	msleep(10);
-	gpio_set_value(RK30_PIN0_PC3, !GPIO_LOW);
+	
+	gpio_set_value(MIPI_RST_PIN, GPIO_HIGH);
 	msleep(20);
 	
 	dsi_enable_hs_clk(1);
@@ -98,32 +102,43 @@ int rk_lcd_init(void) {
 	dsi_enable_video_mode(1);
 	
 	printk("++++++++++++++++%s:%d\n", __func__, __LINE__);
+	return 0 ;
 }
 
+int giFlag = 1;
 int rk_lcd_standby(u8 enable) {
 
 	u8 dcs[16] = {0};
-	if(dsi_is_active() != 1)
+	if(dsi_is_active() != 1 )
 		return -1;
 		
-	if(enable) {
+	if(enable){
+		
+		giFlag = giFlag - 1;
+		if( giFlag < 0 )
+			return -1;
+		
 		/*below is changeable*/
 		dcs[0] = LPDT;
 		dcs[1] = dcs_set_display_off; 
 		dsi_send_dcs_packet(dcs, 2);
+		
 		msleep(1);
+		
 		dcs[0] = LPDT;
 		dcs[1] = dcs_enter_sleep_mode; 
 		dsi_send_dcs_packet(dcs, 2);
+		
 		msleep(1);
-
-		printk("++++enable++++++++++++%s:%d\n", __func__, __LINE__);
-	
+		
+		printk("++++++++++++++++%s:%d\n" ,__func__, __LINE__);	
 	} else {
 		/*below is changeable*/
+		giFlag = giFlag + 1 ;
 		rk_lcd_init();
 		printk("++++++++++++++++%s:%d\n", __func__, __LINE__);	
 	}
+	return 0;
 }
 #endif
 

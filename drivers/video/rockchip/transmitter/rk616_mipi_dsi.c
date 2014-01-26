@@ -102,8 +102,9 @@
 *v1.5 : change early suspend level (BLANK_SCREEN + 1)
 *v1.6 : add dsi_rk616->resume to reduce the time driver resume takes
 *v2.0 : add mipi dsi support for rk319x
+*v2.1 : add inset and unplug the hdmi, mipi's lcd will be reset.
 */
-#define RK_MIPI_DSI_VERSION_AND_TIME  "rockchip mipi_dsi v2.0 2013-11-18"
+#define RK_MIPI_DSI_VERSION_AND_TIME  "rockchip mipi_dsi v2.0 2014-01-26"
 
 
 
@@ -720,8 +721,8 @@ static int rk_mipi_dsi_host_init(void *array, int n)
 	
 	dsi_set_bits(10000, max_rd_time);
 
-	//dsi_set_bits(1, dpicolom);
-	//dsi_set_bits(1, dpishutdn);
+	dsi_set_bits(1, dpicolom);
+	dsi_set_bits(1, dpishutdn);
 
 	dsi_set_bits(1, lp_hfp_en);
 	//dsi_set_bits(1, lp_hbp_en);
@@ -1429,7 +1430,7 @@ int rk616_mipi_dsi_ft_init(void)
 #ifdef CONFIG_MIPI_DSI_LINUX
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-static void rk616_mipi_dsi_early_suspend(struct early_suspend *h)
+void  rk616_mipi_dsi_suspend(void)
 {
 	u8 dcs[4] = {0};
 	
@@ -1456,7 +1457,7 @@ static void rk616_mipi_dsi_early_suspend(struct early_suspend *h)
 	MIPI_TRACE("%s:%d\n", __func__, __LINE__);
 }
 
-static void rk616_mipi_dsi_late_resume(struct early_suspend *h)
+void rk616_mipi_dsi_resume(void)
 {
 	u8 dcs[4] = {0};
 #if defined(CONFIG_ARCH_RK319X)
@@ -1498,12 +1499,43 @@ static void rk616_mipi_dsi_late_resume(struct early_suspend *h)
 	MIPI_TRACE("%s:%d\n", __func__, __LINE__);
 }
 
+//#ifdef CONFIG_MIPI_DSI_LINUX
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void rk616_mipi_dsi_early_suspend(struct early_suspend *h)
+{
+    rk616_mipi_dsi_suspend();
+}
+
+static void rk616_mipi_dsi_late_resume(struct early_suspend *h)
+{
+    rk616_mipi_dsi_resume();
+}
 #endif  /* end of CONFIG_HAS_EARLYSUSPEND */
+#endif
 
 static int rk616_mipi_dsi_notifier_event(struct notifier_block *this,
-		unsigned long event, void *ptr) 
-{
-	rk_mipi_dsi_init_lite();
+		unsigned long event, void *ptr) {
+   
+#ifdef CONFIG_RK616_MIPI_DSI_RST
+   if(event == 1)
+    {
+        g_screen->standby(0);
+        mdelay(5);
+        rk616_mipi_dsi_suspend();
+        mdelay(10);
+    }
+    else if(event == 2)
+    {
+        rk_mipi_dsi_init_lite();
+        mdelay(5);
+        g_screen->standby(1);
+        mdelay(5);
+        rk616_mipi_dsi_resume();
+    }
+#else
+      	rk_mipi_dsi_init_lite();
+#endif
 	return 0;
 }		
 
