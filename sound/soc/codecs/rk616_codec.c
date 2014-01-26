@@ -33,6 +33,8 @@
 
 //#define RK616_HPMIC_FROM_LINEIN
 
+//#define RK616_HPMIC_FROM_MIC2IN
+
 //#define VIRTUAL_HPGND
 
 /* volume setting
@@ -548,6 +550,10 @@ static int rk616_reset(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RK616_SINGNAL_ZC_CTL1, 0x3f);
 	snd_soc_write(codec, RK616_SINGNAL_ZC_CTL2, 0xff);
 
+	//set ADC Power for MICBIAS
+	snd_soc_update_bits(codec, RK616_PWR_ADD1,
+		RK616_ADC_PWRD, 0);
+
 	return 0;
 }
 
@@ -716,7 +722,7 @@ static struct rk616_reg_val_typ capture_power_down_list[] = {
 	{0x84c, 0x3c}, //MIXINL from MIXMUX volume 0dB(bit 3-5)
 	{0x848, 0x1f}, //MIXINL power down and mute, MININL No selecting, MICMUX from BST_L
 	{0x840, 0x99}, //BST_L power down, mute, and Single-Ended(bit 6), volume 0(bit 5)
-	{0x83c, 0x7c}, //power down
+	{0x83c, 0x3c}, //power down
 };
 #define RK616_CODEC_CAPTURE_POWER_DOWN_LIST_LEN ARRAY_SIZE(capture_power_down_list)
 
@@ -1462,6 +1468,9 @@ static int rk616_capture_path_put(struct snd_kcontrol *kcontrol,
 {
 	struct rk616_codec_priv *rk616 = rk616_priv;
 	long int pre_path;
+#if (defined RK616_HPMIC_FROM_LINEIN) || (defined RK616_HPMIC_FROM_MIC2IN)
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+#endif
 
 	if (!rk616) {
 		printk("%s : rk616_priv is NULL\n", __func__);
@@ -1491,6 +1500,11 @@ static int rk616_capture_path_put(struct snd_kcontrol *kcontrol,
 #ifdef RK616_HPMIC_FROM_LINEIN
 		snd_soc_write(codec, 0x848, 0x06); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_L
 #endif
+
+#ifdef RK616_HPMIC_FROM_MIC2IN
+	snd_soc_write(codec, 0x848, 0x06); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_L
+	snd_soc_write(codec, 0x840, 0x69); //BST_L power up, unmute, and Single-Ended(bit 6), volume 0-20dB(bit 5)
+#endif
 		rk616_set_gpio(RK616_CODEC_SET_MIC, GPIO_HIGH);
 		break;
 	case Hands_Free_Mic:
@@ -1499,6 +1513,11 @@ static int rk616_capture_path_put(struct snd_kcontrol *kcontrol,
 
 #ifdef RK616_HPMIC_FROM_LINEIN
 		snd_soc_write(codec, 0x848, 0x03); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from IN3L
+#endif
+
+#ifdef RK616_HPMIC_FROM_MIC2IN
+	snd_soc_write(codec, 0x848, 0x26); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_R
+	snd_soc_write(codec, 0x840, 0x96); //BST_R power up, unmute, and Single-Ended(bit 2), volume 0-20dB(bit 1)
 #endif
 		rk616_set_gpio(RK616_CODEC_SET_MIC, GPIO_LOW);
 		break;
@@ -2340,7 +2359,7 @@ static int rk616_set_bias_level(struct snd_soc_codec *codec,
 		break;
 
 	case SND_SOC_BIAS_OFF:
-		snd_soc_write(codec, RK616_PWR_ADD1, rk616_reg_defaults[RK616_PWR_ADD1]);
+		snd_soc_write(codec, RK616_PWR_ADD1, rk616_reg_defaults[RK616_PWR_ADD1] & ~RK616_ADC_PWRD);
 		snd_soc_write(codec, RK616_PWR_ADD2, rk616_reg_defaults[RK616_PWR_ADD2]);
 		snd_soc_write(codec, RK616_PWR_ADD3, rk616_reg_defaults[RK616_PWR_ADD3]);
 		if (!rk616_for_mid)
