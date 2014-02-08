@@ -323,9 +323,10 @@ EXPORT_SYMBOL(mmc_alloc_host);
 int mmc_add_host(struct mmc_host *host)
 {
 	int err;
-
+#if !defined(CONFIG_MTK_COMBO_MT66XX)
 	WARN_ON((host->caps & MMC_CAP_SDIO_IRQ) &&
 		!host->ops->enable_sdio_irq);
+#endif		
 
 	err = device_add(&host->class_dev);
 	if (err)

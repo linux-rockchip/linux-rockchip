@@ -1438,7 +1438,7 @@ static struct platform_device *devices[] __initdata = {
 	&rk29sdk_wifi_device,
 #endif
 
-#if defined(CONFIG_MT6620)
+#if defined(CONFIG_MT6620) && !defined(CONFIG_MTK_COMBO_MT66XX)
     &mt3326_device_gps,
 #endif   
 

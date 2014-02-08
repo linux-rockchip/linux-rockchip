@@ -677,7 +677,7 @@ EXPORT_SYMBOL(rk29sdk_wifi_combo_get_GPS_SYNC_gpio);
         }
         return;
     }
-#endif---//#if defined(CONFIG_MTK_COMBO_MT66XX)
+#endif //----#if defined(CONFIG_MTK_COMBO_MT66XX)
 
 static int rk29sdk_wifi_combo_module_gpio_init(void)
 {
