@@ -476,6 +476,11 @@ MPT_InitializeAdapter(
 	if (pAdapter->registrypriv.mp_mode == 1)
 		pmlmepriv->fw_state = WIFI_MP_STATE;
 
+#ifdef CONFIG_RTL8188E	
+		rtw_write32(pAdapter,REG_MACID_NO_LINK_0,0x0);
+		rtw_write32(pAdapter,REG_MACID_NO_LINK_1,0x0);
+#endif	
+
 	return	rtStatus;
 }
 

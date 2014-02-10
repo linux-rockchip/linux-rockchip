@@ -11801,7 +11801,7 @@ static int rtw_mp_set(struct net_device *dev,
 		return -ENETDOWN;
 	}
 
-	if((padapter->bup == _FALSE )||(padapter->hw_init_completed == _FALSE))
+    if( padapter->bup == _FALSE )
 	{
 		DBG_871X(" %s fail =>(padapter->bup == _FALSE )||(padapter->hw_init_completed == _FALSE) \n",__FUNCTION__);
 		return -ENETDOWN;
