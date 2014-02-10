@@ -142,6 +142,7 @@ struct	vmac_priv {
 	struct net_device_stats stats;
 
 	spinlock_t lock; /* TODO revisit */
+	spinlock_t lock_ext;
 	struct completion mdio_complete;
 
 	/* base address of register set */

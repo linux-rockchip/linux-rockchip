@@ -72,14 +72,15 @@ static int rk30_rmii_power_control(int enable)
 	return 0;
 }
 
-#define BIT_EMAC_SPEED      (1 << 1)
+#define BIT_EMAC_SPEED_100M      (1 << 1)
+#define BIT_EMAC_SPEED_10M       (0 << 1)
 static int rk29_vmac_speed_switch(int speed)
 {
 	//printk("%s--speed=%d\n", __FUNCTION__, speed);
 	if (10 == speed) {
-	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) & (~BIT_EMAC_SPEED), RK30_GRF_BASE + GRF_SOC_CON1);
+	    writel_relaxed((2<<16)|BIT_EMAC_SPEED_10M, RK30_GRF_BASE + GRF_SOC_CON1);
 	} else {
-	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) | ( BIT_EMAC_SPEED), RK30_GRF_BASE + GRF_SOC_CON1);
+	    writel_relaxed((2<<16)|BIT_EMAC_SPEED_100M, RK30_GRF_BASE + GRF_SOC_CON1);
 	}
 }
 

@@ -715,9 +715,9 @@ static void vmac_toggle_txint(struct net_device *dev, int enable)
 	struct vmac_priv *ap = netdev_priv(dev);
 	unsigned long flags;
 
-	spin_lock_irqsave(&ap->lock, flags);
+	spin_lock_irqsave(&ap->lock_ext, flags);
 	vmac_toggle_irqmask(dev, enable, TXINT_MASK);
-	spin_unlock_irqrestore(&ap->lock, flags);
+	spin_unlock_irqrestore(&ap->lock_ext, flags);
 }
 
 static void vmac_toggle_rxint(struct net_device *dev, int enable)
@@ -1524,6 +1524,7 @@ static int __devinit vmac_probe(struct platform_device *pdev)
 	dev->features |= NETIF_F_HIGHDMA;
 
 	spin_lock_init(&ap->lock);
+    spin_lock_init(&ap->lock_ext);
 
 	SET_NETDEV_DEV(dev, &pdev->dev);
 	ap->dev = dev;
@@ -1568,16 +1569,17 @@ static int __devinit vmac_probe(struct platform_device *pdev)
 		}
 	#endif
 	
-	#ifdef CONFIG_ETH_MAC_FROM_IDB
+	#if 1//def CONFIG_ETH_MAC_FROM_IDB
 		err = eth_mac_idb(dev->dev_addr);
-		if (err) {
-			printk("read mac from IDB fail.\n");
+		if (is_valid_ether_addr(dev->dev_addr)) {
+			printk("eth_mac_from_idb***********:%X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
+						dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],
+						dev->dev_addr[4],dev->dev_addr[5] );
 		} else {
-			if (is_valid_ether_addr(dev->dev_addr)) {
-				printk("eth_mac_from_idb***********:%X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
-							dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],
-							dev->dev_addr[4],dev->dev_addr[5] );
-			}
+			random_ether_addr(dev->dev_addr);
+			printk("random_ether_addr***********:%X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
+                          dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],
+                          dev->dev_addr[4],dev->dev_addr[5] );
 		}
 	#endif
 	
@@ -1594,12 +1596,12 @@ static int __devinit vmac_probe(struct platform_device *pdev)
 		}
 	#endif*/
 	
-	#ifdef CONFIG_ETH_MAC_FROM_RANDOM
+	/*#ifdef CONFIG_ETH_MAC_FROM_RANDOM
 	    random_ether_addr(dev->dev_addr);
         printk("random_ether_addr***********:%X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
 		                  dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],
 		                  dev->dev_addr[4],dev->dev_addr[5] );	
-	#endif
+	#endif*/
 	//add end	
 	}
 
@@ -1702,8 +1704,10 @@ rk29_vmac_suspend(struct device *dev)
 			netif_stop_queue(ndev);
 			netif_device_detach(ndev);
 			if (ap->suspending == 0) {
+#if 0
 				vmac_shutdown(ndev);
 				rk29_vmac_power_off(ndev);
+#endif
 				ap->suspending = 1;
 			}
 		}
@@ -1722,6 +1726,9 @@ rk29_vmac_resume(struct device *dev)
 		if (ap->open_flag == 1) {
 			netif_device_attach(ndev);
 			netif_start_queue(ndev);
+      if (ap->suspending == 1) {
+         ap->suspending = 0;
+			}
 		}
 	}
 	return 0;
