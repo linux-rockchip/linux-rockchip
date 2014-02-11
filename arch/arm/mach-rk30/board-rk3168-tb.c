@@ -904,7 +904,7 @@ static struct platform_device irda_device = {
 #endif
 
 #ifdef CONFIG_ION
-#define ION_RESERVE_SIZE        (80 * SZ_1M)
+#define ION_RESERVE_SIZE        (100 * SZ_1M)
 #define ION_RESERVE_SIZE_120M   (120 * SZ_1M)
 static struct ion_platform_data rk30_ion_pdata = {
 	.nr = 1,
