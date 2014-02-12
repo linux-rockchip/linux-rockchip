@@ -409,7 +409,17 @@ extern void mmc_request_done(struct mmc_host *, struct mmc_request *);
 static inline void mmc_signal_sdio_irq(struct mmc_host *host)
 {
 	host->ops->enable_sdio_irq(host, 0);
-	host->sdio_irq_pending = true;
+	
+	/* Fixme: Something bad happend in io-function devices's fsm(e.g wifi),
+	 * and cause kernel oops & panic in sdio-irq routepath. We cannot
+	 * point out what diff between well and wrong cases setup drivers 
+	 * working with their firmware inside themself, so bypass host register
+	 * and hardware can been sched up timing problem by just adding if condition
+	 * to workaround it reducing the nagative effect as possible.
+	 */
+	if(host && host->sdio_irq_thread)
+		host->sdio_irq_pending = true;
+
 	wake_up_process(host->sdio_irq_thread);
 }
 

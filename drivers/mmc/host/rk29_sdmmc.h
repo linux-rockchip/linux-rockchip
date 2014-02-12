@@ -20,6 +20,12 @@
 
 #define MAX_SG_CHN	2
 
+#if defined(CONFIG_ARCH_RK319X)
+    #define USE_NEW_CLOCK_ARBITER   1
+#else
+    #define USE_NEW_CLOCK_ARBITER   0
+#endif
+
 
 #define SDMMC_CTRL            (0x000)   //SDMMC Control register
 #define SDMMC_PWREN           (0x004)   //Power enable register
@@ -411,17 +417,17 @@ static struct sdmmc_reg rk_sdmmc_regs[] =
 #define RK29_SDMMC_WAIT_DTO_INTERNVAL   4500  //The time interval from the CMD_DONE_INT to DTO_INT
 #define RK29_SDMMC_REMOVAL_DELAY        2000  //The time interval from the CD_INT to detect_timer react.
 
-//#define RK29_SDMMC_VERSION "Ver.6.00 The last modify date is 2013-08-02"
+#if defined(CONFIG_ARCH_RK319X)&& defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
+    #define RK29_CTRL_SDMMC_ID   0  //mainly used by SDMMC
+#elif defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
+    #define RK29_CTRL_SDMMC_ID   5  //mainly used by SDMMC
+#else
+    #define RK29_CTRL_SDMMC_ID   0  //mainly used by SDMMC
+#endif
 
-#if !defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)	
-#define RK29_CTRL_SDMMC_ID   0  //mainly used by SDMMC
 #define RK29_CTRL_SDIO1_ID   1  //mainly used by sdio-wifi
 #define RK29_CTRL_SDIO2_ID   2  //mainly used by eMMC
-#else
-#define RK29_CTRL_SDMMC_ID   5  
-#define RK29_CTRL_SDIO1_ID   1  
-#define RK29_CTRL_SDIO2_ID   2  
-#endif
+
 #define RK29_SDMMC_EMMC_ID   2  
 
 #define SDMMC_CLOCK_TEST     0

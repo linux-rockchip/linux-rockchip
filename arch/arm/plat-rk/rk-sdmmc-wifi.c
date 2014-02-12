@@ -365,7 +365,9 @@ static int rk29sdk_wifi_status_register(void (*callback)(int card_present, void 
 static int __init rk29sdk_wifi_bt_gpio_control_init(void)
 {
     rk29sdk_init_wifi_mem();    
+ #if !(!!SDMMC_USE_NEW_IOMUX_API)
     rk29_mux_api_set(rk_platform_wifi_gpio.power_n.iomux.name, rk_platform_wifi_gpio.power_n.iomux.fgpio);
+ #endif   
 
 #ifdef CONFIG_MACH_RK_FAC
 	if(wifi_pwr!=-1)
@@ -402,6 +404,25 @@ static int __init rk29sdk_wifi_bt_gpio_control_init(void)
         gpio_direction_output(rk_platform_wifi_gpio.reset_n.io, !(rk_platform_wifi_gpio.reset_n.enable) );
 #endif    
 
+#if defined(CONFIG_ARCH_RK319X)|| defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
+    //////////////////////////////////////////////////////////////////////////////////////////
+   //mmc0--used for Wifi; mmc1--used for sd-card in project RK3190
+   gpio_request(rksdmmc0_gpio_init.data1_gpio.io, "mmc0-data1");
+   gpio_direction_output(rksdmmc0_gpio_init.data1_gpio.io,GPIO_LOW);//set mmc1-data1 to low.
+
+   gpio_request(rksdmmc1_gpio_init.data2_gpio.io, "mmc0-data2");
+   gpio_direction_output(rksdmmc1_gpio_init.data2_gpio.io,GPIO_LOW);//set mmc1-data2 to low.
+
+   gpio_request(rksdmmc0_gpio_init.data3_gpio.io, "mmc0-data3");
+   gpio_direction_output(rksdmmc0_gpio_init.data3_gpio.io,GPIO_LOW);//set mmc1-data3 to low.
+   
+   rk29_sdmmc_gpio_open(0, 0);
+  
+  printk("%d..%s  ====test ===\n",__LINE__, __FUNCTION__);            
+  
+   //////////////////////////////////////////////////////////////////////////////////////////
+
+#else //--#if defined(CONFIG_ARCH_RK319X)
     #if defined(CONFIG_SDMMC1_RK29) && !defined(CONFIG_SDMMC_RK29_OLD)
     
     #if !defined(CONFIG_MT5931) && !defined(CONFIG_MT5931_MT6622)
@@ -425,7 +446,9 @@ static int __init rk29sdk_wifi_bt_gpio_control_init(void)
     #endif
     
     rk29_sdmmc_gpio_open(1, 0); //added by xbw at 2011-10-13
-    #endif    
+    #endif
+#endif//--#else //--#if defined(CONFIG_ARCH_RK319X) 
+
     pr_info("%s: init finished\n",__func__);
 
     return 0;
@@ -462,7 +485,8 @@ int rk29sdk_wifi_power(int on)
         }
         return 0;
 }
-#else
+#else //---- #if (defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU)....defined(CONFIG_MACH_RK3026_86V).
+
 int rk29sdk_wifi_power(int on)
 {
         pr_info("%s: %d\n", __func__, on);
@@ -475,8 +499,10 @@ int rk29sdk_wifi_power(int on)
 			#endif
                 mdelay(50);
 
-                #if defined(CONFIG_SDMMC1_RK29) && !defined(CONFIG_SDMMC_RK29_OLD)	
-                rk29_sdmmc_gpio_open(1, 1); //added by xbw at 2011-10-13
+                #if defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
+                rk29_sdmmc_gpio_open(0, 1);
+                #else
+                rk29_sdmmc_gpio_open(1, 1);
                 #endif
 
             #ifdef RK30SDK_WIFI_GPIO_RESET_N
@@ -493,8 +519,10 @@ int rk29sdk_wifi_power(int on)
 				#else
 						gpio_set_value(rk_platform_wifi_gpio.power_n.io, !(rk_platform_wifi_gpio.power_n.enable));
 				#endif
-                        #if defined(CONFIG_SDMMC1_RK29) && !defined(CONFIG_SDMMC_RK29_OLD)	
-                        rk29_sdmmc_gpio_open(1, 0); //added by xbw at 2011-10-13
+                        #if defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
+                        rk29_sdmmc_gpio_open(0, 0);
+                        #else
+                        rk29_sdmmc_gpio_open(1, 0);
                         #endif
                         
                         mdelay(100);
@@ -512,7 +540,8 @@ int rk29sdk_wifi_power(int on)
 //        rk29sdk_wifi_power_state = on;
         return 0;
 }
-#endif
+#endif //----#else //---- #if (defined(CONFIG_RTL8192CU) ...defined(CONFIG_MACH_RK3026_86V).
+
 EXPORT_SYMBOL(rk29sdk_wifi_power);
 
 static int rk29sdk_wifi_reset_state;
@@ -639,7 +668,7 @@ EXPORT_SYMBOL(rk29sdk_wifi_combo_get_GPS_SYNC_gpio);
         .gps_lna = -EINVAL, //Optional. refer to HW design.
     };
     static struct mtk_sdio_eint_platform_data mtk_sdio_eint_pdata = {
-        .sdio_eint = RK30_PIN3_PD2,//53, //MUST set pin num in target system.
+        .sdio_eint = RK30SDK_WIFI_GPIO_WIFI_INT_B,//53, //MUST set pin num in target system.
     };
     static struct platform_device mtk_wmt_dev = {
         .name = "mtk_wmt",
