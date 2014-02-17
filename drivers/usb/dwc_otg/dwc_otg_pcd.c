@@ -1793,7 +1793,10 @@ static void dwc_otg_pcd_check_vbus_timer( unsigned long data )
             DWC_PRINT("********vbus detect*********************************************\n");
     	    _pcd->vbus_status = 1;
             if(_pcd->conn_en)
+            {        
+                otg_dev->core_if->pcd_cb->stop(otg_dev->core_if->pcd_cb->p);
                 goto connect;
+            }
             else if( pldata->phy_status == USB_PHY_ENABLED )
             {
                 // not connect, suspend phy
@@ -1849,7 +1852,6 @@ static void dwc_otg_pcd_check_vbus_timer( unsigned long data )
     return;
 
 connect:
-    otg_dev->core_if->pcd_cb->stop(otg_dev->core_if->pcd_cb->p);
     if(_pcd->conn_status==0)
         dwc_otg_msc_lock(_pcd);
     if( pldata->phy_status)
