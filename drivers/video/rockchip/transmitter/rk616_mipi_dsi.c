@@ -103,8 +103,9 @@
 *v1.6 : add dsi_rk616->resume to reduce the time driver resume takes
 *v2.0 : add mipi dsi support for rk319x
 *v2.1 : add inset and unplug the hdmi, mipi's lcd will be reset.
+*v2.2 : fix bug of V1.4 register temp, dpicolom
 */
-#define RK_MIPI_DSI_VERSION_AND_TIME  "rockchip mipi_dsi v2.0 2014-01-26"
+#define RK_MIPI_DSI_VERSION_AND_TIME  "rockchip mipi_dsi v2.1 2014-02-19"
 
 
 
@@ -219,7 +220,8 @@ static int dsi_set_bits(u32 data, u32 reg)
 			val = host_mem[(reg_addr - MIPI_DSI_HOST_OFFSET)>>2];
 		} else if(reg_addr >= MIPI_DSI_PHY_OFFSET) {
 			val = phy_mem[(reg_addr - MIPI_DSI_PHY_OFFSET)>>2];
-		}
+		} else
+			dsi_read_reg(reg_addr, &val);
 		if(val == 0xaaaaaaaa)
 			dsi_read_reg(reg_addr, &val);
 #else
@@ -1353,7 +1355,7 @@ static int reg_proc_init(char *name)
 	if(reg_proc_entry == NULL) {
 		MIPI_TRACE("Couldn't create proc entry : %s!\n", name);
 		ret = -ENOMEM;
-		return ret ;
+		return ret;
 	}
 	else {
 		MIPI_TRACE("Create proc entry:%s success!\n", name);
