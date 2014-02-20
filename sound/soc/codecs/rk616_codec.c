@@ -1492,6 +1492,12 @@ static int rk616_capture_path_put(struct snd_kcontrol *kcontrol,
 	case MIC_OFF:
 		if (pre_path != MIC_OFF)
 			rk616_codec_power_down(RK616_CODEC_CAPTURE);
+
+#ifdef RK616_HPMIC_FROM_MIC2IN
+		snd_soc_update_bits(codec, RK616_MICBIAS_CTL,
+			RK616_MICBIAS1_PWRD | RK616_MICBIAS1_V_MASK,
+			RK616_MICBIAS1_PWRD);
+#endif
 		break;
 	case Main_Mic:
 		if (pre_path == MIC_OFF)
@@ -1502,8 +1508,11 @@ static int rk616_capture_path_put(struct snd_kcontrol *kcontrol,
 #endif
 
 #ifdef RK616_HPMIC_FROM_MIC2IN
-	snd_soc_write(codec, 0x848, 0x06); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_L
-	snd_soc_write(codec, 0x840, 0x69); //BST_L power up, unmute, and Single-Ended(bit 6), volume 0-20dB(bit 5)
+		snd_soc_write(codec, 0x848, 0x06); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_L
+		snd_soc_write(codec, 0x840, 0x69); //BST_L power up, unmute, and Single-Ended(bit 6), volume 0-20dB(bit 5)
+		snd_soc_update_bits(codec, RK616_MICBIAS_CTL,
+			RK616_MICBIAS1_PWRD | RK616_MICBIAS1_V_MASK,
+			RK616_MICBIAS1_V_1_7);
 #endif
 		rk616_set_gpio(RK616_CODEC_SET_MIC, GPIO_HIGH);
 		break;
@@ -1516,8 +1525,11 @@ static int rk616_capture_path_put(struct snd_kcontrol *kcontrol,
 #endif
 
 #ifdef RK616_HPMIC_FROM_MIC2IN
-	snd_soc_write(codec, 0x848, 0x26); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_R
-	snd_soc_write(codec, 0x840, 0x96); //BST_R power up, unmute, and Single-Ended(bit 2), volume 0-20dB(bit 1)
+		snd_soc_write(codec, 0x848, 0x26); //MIXINL power up and unmute, MININL from MICMUX, MICMUX from BST_R
+		snd_soc_write(codec, 0x840, 0x96); //BST_R power up, unmute, and Single-Ended(bit 2), volume 0-20dB(bit 1)
+		snd_soc_update_bits(codec, RK616_MICBIAS_CTL,
+			RK616_MICBIAS1_PWRD | RK616_MICBIAS1_V_MASK,
+			RK616_MICBIAS1_PWRD);
 #endif
 		rk616_set_gpio(RK616_CODEC_SET_MIC, GPIO_LOW);
 		break;
@@ -1724,10 +1736,6 @@ static int rk616_voip_path_put(struct snd_kcontrol *kcontrol,
 
 	switch (rk616->voip_path) {
 	case OFF:
-		if (rk616->playback_path == OFF)
-			rk616_codec_power_down(RK616_CODEC_PLAYBACK);
-		if (rk616->capture_path == OFF)
-			rk616_codec_power_down(RK616_CODEC_CAPTURE);
 		break;
 	case RCV:
 	case SPK_PATH:
@@ -2725,8 +2733,13 @@ static int rk616_suspend(struct snd_soc_codec *codec, pm_message_t state)
 static int rk616_resume(struct snd_soc_codec *codec)
 {
 	if (rk616_for_mid) {
+#ifdef RK616_HPMIC_FROM_MIC2IN
+		snd_soc_write(codec, RK616_MICBIAS_CTL,
+			RK616_MICBIAS1_PWRD | RK616_MICBIAS2_V_1_7);
+#else
 		snd_soc_write(codec, RK616_MICBIAS_CTL,
 			RK616_MICBIAS2_PWRD | RK616_MICBIAS1_V_1_7);
+#endif
 	} else {
 		rk616_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	}
@@ -2821,8 +2834,13 @@ static int rk616_probe(struct snd_soc_codec *codec)
 	if  (rk616_for_mid) {
 		snd_soc_add_controls(codec, rk616_snd_path_controls,
 				ARRAY_SIZE(rk616_snd_path_controls));
+#ifdef RK616_HPMIC_FROM_MIC2IN
+		snd_soc_write(codec, RK616_MICBIAS_CTL,
+			RK616_MICBIAS1_PWRD | RK616_MICBIAS2_V_1_7);
+#else
 		snd_soc_write(codec, RK616_MICBIAS_CTL,
 			RK616_MICBIAS2_PWRD | RK616_MICBIAS1_V_1_7);
+#endif
 	} else {
 		codec->dapm.bias_level = SND_SOC_BIAS_OFF;
 		rk616_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
