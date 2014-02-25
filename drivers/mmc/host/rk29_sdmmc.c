@@ -575,6 +575,9 @@ static int rk29_sdmmc_reset_fifo(struct rk29_sdmmc *host)
 static int rk29_sdmmc_wait_unbusy(struct rk29_sdmmc *host)
 {
     int time_out = 500000;//250000; //max is 250ms; //adapt the value to the sick card.  modify at 2011-10-08
+    
+    if(RK29_SDMMC_EMMC_ID == host->host_dev_id)
+        time_out = 2500000;
 
 #if SDMMC_USE_INT_UNBUSY
     if((24==host->cmd->opcode)||(25==host->cmd->opcode))
@@ -4025,17 +4028,25 @@ out:
 
 static int rk29_sdmmc_shutdown(struct platform_device *pdev)
 {
-	struct mmc_host *mmc = platform_get_drvdata(pdev);
+	struct mmc_host *mmc;// = platform_get_drvdata(pdev);
 	struct rk29_sdmmc *host;
+    struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
 
+    if( !(pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
+        return 0;
+        
+    mmc =   platform_get_drvdata(pdev); 
 	host = mmc_priv(mmc);
 	printk("rk29_sdmmc_shutdown!\n");
 
-	/* NOT NEED force eMMC go pre-idle state*/
-	
 	/* SHOULD NOT CHANGE THIS STEP, PLS!*/
 	clk_enable(clk_get(&pdev->dev, "emmc"));
-	clk_enable(clk_get(&pdev->dev, "hclk_emmc"));	
+	clk_enable(clk_get(&pdev->dev, "hclk_emmc"));
+	
+	/*force eMMC go pre-idle state*/
+	rk29_sdmmc_write(host->regs, SDMMC_CMDARG, 0xF0F0F0F0);
+	rk29_sdmmc_write(host->regs, SDMMC_CMD, MMC_GO_IDLE_STATE| SDMMC_CMD_INIT| SDMMC_CMD_USE_HOLD_REG|SDMMC_CMD_START);
+	mdelay(10);
 	
 	rk29_sdmmc_write(host->regs,SDMMC_PWREN, 0x0);
 	rk29_sdmmc_write(host->regs,SDMMC_RST_n, 0x0);
@@ -4156,10 +4167,17 @@ static void rk29_sdmmc_sdcard_resume(struct rk29_sdmmc *host)
 
 static int rk29_sdmmc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-    struct mmc_host *mmc = platform_get_drvdata(pdev);
-    struct rk29_sdmmc *host = mmc_priv(mmc);
-    int ret = 0;
+	struct mmc_host *mmc=NULL;
+	struct rk29_sdmmc *host=NULL;
+	int ret = 0;
+    struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
 
+    if( !(pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
+        return 0;
+        
+    mmc =   platform_get_drvdata(pdev); 
+	host = mmc_priv(mmc);
+	
     if(host && host->pdev && (RK29_CTRL_SDMMC_ID == host->host_dev_id) )
     {
         if (mmc)
@@ -4220,9 +4238,16 @@ static int rk29_sdmmc_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int rk29_sdmmc_resume(struct platform_device *pdev)
 {
-    struct mmc_host *mmc = platform_get_drvdata(pdev);
-    struct rk29_sdmmc *host = mmc_priv(mmc);
-    int ret = 0;
+	struct mmc_host *mmc=NULL;
+	struct rk29_sdmmc *host=NULL;
+	int ret = 0;
+    struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
+
+    if( !(pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
+        return 0;
+        
+    mmc =   platform_get_drvdata(pdev); 
+	host = mmc_priv(mmc);
 
     if(host && host->pdev && (RK29_CTRL_SDMMC_ID == host->host_dev_id) )
     {
