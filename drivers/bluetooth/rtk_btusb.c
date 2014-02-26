@@ -925,8 +925,6 @@ static int btusb_probe(struct usb_interface *intf,
 	if (err < 0) return -1;
 	/*******************************/
 
-    download_patch(intf);
-
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
