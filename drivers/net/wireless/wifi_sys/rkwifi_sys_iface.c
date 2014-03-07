@@ -72,6 +72,11 @@ static ssize_t wifi_chip_read(struct class *cls, char *_buf)
     printk("Current WiFi chip is RTL8723AU.\n");
 #endif
 
+#ifdef CONFIG_RTL8723BU
+   count = sprintf(_buf, "%s", "RTL8723BU");
+   printk("Current WiFi chip is RTL8723BU.\n");
+#endif
+
 #ifdef CONFIG_RTL8723BS
     count = sprintf(_buf, "%s", "RTL8723BS");
     printk("Current WiFi chip is RTL8723BS.\n");
@@ -322,6 +327,10 @@ int check_wifi_type_from_id(int id, char * _buf) {
 		case 0x0724:
 			count = sprintf(_buf, "%s", "RTL8723AU");
     		printk("Current WiFi chip is RTL8723AU.\n");
+			break;
+		case 0xB720:
+		    count = sprintf(_buf, "%s", "RTL8723BU");
+			printk("Current WiFi chip is RTL8723BU.\n");
 			break;
 		case 0x8176:
 			count = sprintf(_buf, "%s", "RTL8188CU");

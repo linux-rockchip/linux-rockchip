@@ -9,6 +9,7 @@ obj-$(CONFIG_RTL8192CU) += rkusbwifi/
 obj-$(CONFIG_RTL8192DU) += rkusbwifi/
 obj-$(CONFIG_RTL8188EU)	+= rkusbwifi/
 obj-$(CONFIG_RTL8723AU)	+= rkusbwifi/
+obj-$(CONFIG_RTL8723BU) += rkusbwifi/
 obj-$(CONFIG_RT5370)	+= rkusbwifi/
 obj-$(CONFIG_AR6003)   += ar6003/
 obj-$(CONFIG_RKWIFI)   += rkwifi/
