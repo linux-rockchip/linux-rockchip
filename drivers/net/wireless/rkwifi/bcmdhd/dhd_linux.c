@@ -4013,6 +4013,8 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif /* defined(AP) && !defined(WLP2P) */
 	dhd_conf_set_bw(dhd);
+	dhd_conf_set_srl(dhd);
+	dhd_conf_set_lrl(dhd);
 
 #if defined(SOFTAP)
 	if (ap_fw_loaded == TRUE) {

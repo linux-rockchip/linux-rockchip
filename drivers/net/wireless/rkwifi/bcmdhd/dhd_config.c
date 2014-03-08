@@ -332,6 +332,36 @@ dhd_conf_set_bw(dhd_pub_t *dhd)
 	}
 }
 
+
+void
+dhd_conf_set_srl(dhd_pub_t *dhd)
+{
+	int bcmerror = -1;
+	uint srl = 0;
+
+	if (dhd->conf->srl >= 0) {
+		srl = (uint)dhd->conf->srl;
+		printf("%s: set srl %d\n", __FUNCTION__, srl);
+		if ((bcmerror = dhd_wl_ioctl_cmd(dhd, WLC_SET_SRL, &srl , sizeof(srl), true, 0)) < 0)
+			CONFIG_ERROR(("%s: WLC_SET_SRL setting failed %d\n", __FUNCTION__, bcmerror));
+	}
+}
+
+void
+dhd_conf_set_lrl(dhd_pub_t *dhd)
+{
+	int bcmerror = -1;
+	uint lrl = 0;
+
+	if (dhd->conf->lrl >= 0) {
+		lrl = (uint)dhd->conf->lrl;
+		printf("%s: set lrl %d\n", __FUNCTION__, lrl);
+		if ((bcmerror = dhd_wl_ioctl_cmd(dhd, WLC_SET_LRL, &lrl , sizeof(lrl), true, 0)) < 0)
+			CONFIG_ERROR(("%s: WLC_SET_LRL setting failed %d\n", __FUNCTION__, bcmerror));
+	}
+}
+
+
 unsigned int
 process_config_vars(char *varbuf, unsigned int len, char *pickbuf, char *param)
 {
@@ -547,6 +577,35 @@ dhd_conf_download_config(dhd_pub_t *dhd)
 				dhd->conf->keep_alive_period);
 		}
 
+		/* Process dhd_doflow parameters */
+		memset(pick, 0, MAXSZ_BUF);
+		len_val = process_config_vars(bufp, len, pick, "dhd_doflow=");
+		if (len_val) {
+			if (!strncmp(pick, "0", len_val))
+				dhd_doflow = FALSE;
+			else
+				dhd_doflow = TRUE;
+			printf("%s: dhd_doflow = %d\n", __FUNCTION__, dhd_doflow);
+		}
+
+
+		/* Process srl parameters */
+		memset(pick, 0, MAXSZ_BUF);
+		len_val = process_config_vars(bufp, len, pick, "srl=");
+		if (len_val) {
+			dhd->conf->srl = (int)simple_strtol(pick, NULL, 10);
+			printf("%s: srl = %d\n", __FUNCTION__, dhd->conf->srl);
+		}
+
+		/* Process lrl parameters */
+		memset(pick, 0, MAXSZ_BUF);
+		len_val = process_config_vars(bufp, len, pick, "lrl=");
+		if (len_val) {
+			dhd->conf->lrl = (int)simple_strtol(pick, NULL, 10);
+			printf("%s: lrl = %d\n", __FUNCTION__, dhd->conf->lrl);
+		}
+ 
+
 		bcmerror = 0;
 	} else {
 		CONFIG_ERROR(("%s: error reading config file: %d\n", __FUNCTION__, len));
@@ -600,6 +659,8 @@ dhd_conf_preinit(dhd_pub_t *dhd)
 #else
 	dhd->conf->keep_alive_period = 28000;
 #endif
+	dhd->conf->srl = -1;
+	dhd->conf->lrl = -1;
 
 	return 0;
 }
