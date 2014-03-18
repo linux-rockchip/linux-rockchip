@@ -336,13 +336,13 @@
 //#define CONFIG_DEBUG /* DBG_871X, etc... */
 
 #ifdef CONFIG_DEBUG
-define DBG	1	// for ODM & BTCOEX debug
+#define DBG	1	// for ODM & BTCOEX debug
 #define CONFIG_DEBUG_RTL871X /* RT_TRACE, RT_PRINT_DATA, _func_enter_, _func_exit_ */
 #else // !CONFIG_DEBUG
 #define DBG	0	// for ODM & BTCOEX debug
 #endif // !CONFIG_DEBUG
 
-//#define CONFIG_PROC_DEBUG
+#define CONFIG_PROC_DEBUG
 
 //#define DBG_CONFIG_ERROR_DETECT
 //#define DBG_CONFIG_ERROR_DETECT_INT

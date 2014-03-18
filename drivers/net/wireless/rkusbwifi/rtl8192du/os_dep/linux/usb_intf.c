@@ -1618,11 +1618,7 @@ static void rtw_drv_halt(void)
 extern int wifi_activate_usb(void);
 extern int wifi_deactivate_usb(void);
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-static int __init rockchip_wifi_init_module(void)
-#else
 int rockchip_wifi_init_module(void)
-#endif
 {
     printk("\n");
     printk("=======================================================\n");
@@ -1636,11 +1632,7 @@ int rockchip_wifi_init_module(void)
     return rtw_drv_entry();
 }
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-static void __exit rockchip_wifi_exit_module(void)
-#else
 void rockchip_wifi_exit_module(void)
-#endif
 {
     printk("\n");
     printk("=======================================================\n");
@@ -1651,13 +1643,8 @@ void rockchip_wifi_exit_module(void)
     wifi_deactivate_usb();
 }
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-late_initcall(rockchip_wifi_init_module);
-module_exit(rockchip_wifi_exit_module);
-#else
 EXPORT_SYMBOL(rockchip_wifi_init_module);
 EXPORT_SYMBOL(rockchip_wifi_exit_module);
-#endif
 //module_init(rtw_drv_entry);
 //module_exit(rtw_drv_halt);
 

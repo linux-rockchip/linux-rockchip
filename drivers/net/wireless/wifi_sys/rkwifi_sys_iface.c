@@ -407,6 +407,58 @@ static ssize_t wifi_aidc_read(struct class *cls, char *_buf)
 }
 #endif //CONFIG_AIDC
 
+extern int rk29sdk_wifi_power(int on);
+
+static ssize_t wifi_power_write(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
+{
+    int poweren = 0;
+    poweren = simple_strtol(_buf, NULL, 10);
+    printk("%s: poweren = %d\n", __func__, poweren);
+    if(poweren > 0) {
+        rk29sdk_wifi_power(1);
+    } else {
+        rk29sdk_wifi_power(0);
+    }
+
+return _count;
+}
+
+#ifdef CONFIG_WIFI_NONE
+int rockchip_wifi_init_module(void) {return 0;}
+void rockchip_wifi_exit_module(void) {return;}
+#else
+extern int rockchip_wifi_init_module(void);
+extern void rockchip_wifi_exit_module(void);
+#endif
+static struct semaphore driver_sem;
+static int wifi_driver_insmod = 0;
+
+static ssize_t wifi_driver_write(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
+{
+    int enable = 0, ret = 0;
+
+    down(&driver_sem);
+    enable = simple_strtol(_buf, NULL, 10);
+    //printk("%s: enable = %d\n", __func__, enable);
+    if (wifi_driver_insmod == enable) {
+        printk("%s: wifi driver already %s\n", __func__, enable? "insmod":"rmmod");
+        up(&driver_sem);
+        return _count;
+    }
+    if(enable > 0) {
+        ret = rockchip_wifi_init_module();
+        if (ret >= 0)
+            wifi_driver_insmod = enable;
+    } else {
+        rockchip_wifi_exit_module();
+        wifi_driver_insmod = enable;
+    }
+
+    up(&driver_sem);
+    //printk("%s: ret = %d\n", __func__, ret);
+    return _count;
+}
+
 static struct class *rkwifi_class = NULL;
 static CLASS_ATTR(chip, 0664, wifi_chip_read, NULL);
 static CLASS_ATTR(p2p, 0664, wifi_p2p_read, NULL);
@@ -414,6 +466,8 @@ static CLASS_ATTR(pcba, 0664, wifi_pcba_read, wifi_pcba_write);
 #ifdef CONFIG_AIDC
 static CLASS_ATTR(aidc, 0664, wifi_aidc_read, NULL);
 #endif
+static CLASS_ATTR(power, 0222, NULL, wifi_power_write);
+static CLASS_ATTR(driver, 0222, NULL, wifi_driver_write);
 
 int rkwifi_sysif_init(void)
 {
@@ -436,6 +490,9 @@ int rkwifi_sysif_init(void)
 #ifdef CONFIG_AIDC
     ret =  class_create_file(rkwifi_class, &class_attr_aidc);
 #endif
+    ret =  class_create_file(rkwifi_class, &class_attr_power);
+    ret =  class_create_file(rkwifi_class, &class_attr_driver);
+    sema_init(&driver_sem, 1);
     
     return 0;
 }
@@ -449,6 +506,8 @@ void rkwifi_sysif_exit(void)
 #ifdef CONFIG_AIDC
     class_remove_file(rkwifi_class, &class_attr_aidc);
 #endif
+    class_remove_file(rkwifi_class, &class_attr_power);
+    class_remove_file(rkwifi_class, &class_attr_driver);
     class_destroy(rkwifi_class);
     
     rkwifi_class = NULL;
