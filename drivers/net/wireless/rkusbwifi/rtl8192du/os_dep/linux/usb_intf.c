@@ -1625,8 +1625,6 @@ int rockchip_wifi_init_module(void)
     printk("==== Launching Wi-Fi driver! (Powered by Rockchip) ====\n");
     printk("=======================================================\n");
     printk("Realtek 8192DU USB WiFi driver (Powered by Rockchip,Ver %s) init.\n", RTL8192_DRV_VERSION);
-    wifi_deactivate_usb();
-    msleep(100);
     wifi_activate_usb();
 
     return rtw_drv_entry();
