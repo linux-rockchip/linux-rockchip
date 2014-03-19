@@ -1,0 +1,40 @@
+config BP_AUTO_MT6229
+bool "modem mt6229"
+	default n
+ 
+config BP_AUTO_MU509
+bool "modem mu509"
+	default n
+
+config BP_AUTO_MW100
+bool "modem mw100"
+	default n
+config BP_AUTO_MI700
+bool "modem mi700"
+	default n
+config BP_AUTO_C66A
+bool "modem c66a"
+        default n
+
+config BP_AUTO_SEW290
+bool "modem sew290"
+        default n
+config BP_AUTO_U7501
+bool "modem u7501"
+        default n
+	
+config BP_AUTO_U5501
+bool "modem u5501"
+	default n
+config BP_AUTO_AW706
+bool "modem aw706"
+        default n
+config BP_AUTO_E1230S
+bool "modem e1230s"
+	default n
+config BP_AUTO_LM80xS
+bool "modem lm80xs"
+        default n
+config BP_AUTO_LM80xA
+bool "modem lm80xa"
+        default n

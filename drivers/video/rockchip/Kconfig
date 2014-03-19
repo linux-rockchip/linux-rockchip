@@ -1,0 +1,32 @@
+menuconfig FB_ROCKCHIP
+        tristate "Frame buffer support for Rockchip "
+        depends on FB
+        select FB_CFB_FILLRECT
+        select FB_CFB_COPYAREA
+        select FB_CFB_IMAGEBLIT
+        ---help---
+          Framebuffer driver for rockchip based platform
+
+config THREE_FB_BUFFER
+        bool "Three fb buffer support"
+        depends on FB_ROCKCHIP
+        default y
+        help
+           select y if android support three buffer,like Jelly Bean
+
+config DISPLAY_KEY_LED_CONTROL
+	bool "Enable LED control for display interface."
+	depends on FB_ROCKCHIP
+	default n
+	help
+	   slect y if you need use led to indicate display status.
+
+source "drivers/video/rockchip/lcdc/Kconfig"
+source "drivers/video/rockchip/screen/Kconfig"
+source "drivers/video/rockchip/hdmi/Kconfig"
+source "drivers/video/rockchip/tvencoder/Kconfig"
+source "drivers/video/rockchip/transmitter/Kconfig"
+source "drivers/video/rockchip/rga/Kconfig"
+source "drivers/video/rockchip/iep/Kconfig"
+source "drivers/video/rockchip/rga2/Kconfig"
+

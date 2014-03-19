@@ -1,0 +1,20 @@
+config  HDMI_RK3028A
+        bool "RK3028A HDMI support"
+        depends on LCDC_RK3188 && RK_HDMI
+        help
+           Support rk3028a hdmi if you say y here
+
+config HDCP_RK3028A
+	bool "RK3028A HDCP support"
+        depends on HDMI_RK3028A
+        default n
+	help
+	  HDCP Interface. This adds the High Definition Content Protection Interface.
+	  See http://www.digital-cp.com/ for HDCP specification.
+	  
+config CEC_RK3028A
+	bool "RK3028A CEC support(EXPERIMENTAL)"
+	 depends on HDMI_RK3028A
+        default n
+	help
+	  CEC Interface. Under developing, not stable.

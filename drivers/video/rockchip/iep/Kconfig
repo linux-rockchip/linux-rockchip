@@ -1,0 +1,17 @@
+menu "IEP"
+	depends on ARCH_RK3026 || ARCH_RK319X
+
+config IEP
+	tristate "ROCKCHIP IEP driver"
+        default y
+	help
+	  rockchip iep module.
+
+config IEP_MMU
+        tristate "ROCKCHIP IEP MMU driver"
+        depends on ARCH_RK319X
+        default y
+        help
+          rockchip iep mmu
+
+endmenu

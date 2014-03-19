@@ -1,0 +1,9 @@
+menuconfig MTK_WIRELESS_SOLUTION	
+	bool "MTK wireless chip configuration"
+	help
+	  "enable/disable and config MTK wireless solution"
+
+if MTK_WIRELESS_SOLUTION
+source "drivers/misc/mediatek/combo_mt66xx/Kconfig"
+source "drivers/misc/mediatek/mt6622/Kconfig"
+endif

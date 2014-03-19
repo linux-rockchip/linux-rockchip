@@ -1,0 +1,9 @@
+menu "RGA2"
+	depends on ARCH_RK32 || ARCH_RK319X
+
+config RGA2_RK32
+	tristate "ROCKCHIP RK32 || RK319X RGA2"
+	help
+	  rk32 rga2 module.
+
+endmenu
