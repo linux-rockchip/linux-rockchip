@@ -466,8 +466,8 @@ static CLASS_ATTR(pcba, 0664, wifi_pcba_read, wifi_pcba_write);
 #ifdef CONFIG_AIDC
 static CLASS_ATTR(aidc, 0664, wifi_aidc_read, NULL);
 #endif
-static CLASS_ATTR(power, 0222, NULL, wifi_power_write);
-static CLASS_ATTR(driver, 0222, NULL, wifi_driver_write);
+static CLASS_ATTR(power, 0660, NULL, wifi_power_write);
+static CLASS_ATTR(driver, 0660, NULL, wifi_driver_write);
 
 int rkwifi_sysif_init(void)
 {
