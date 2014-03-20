@@ -65,6 +65,9 @@
 #define INTSR			  0x10
 #define XFER				0x18
 #define SMPDR				0x20
+#define VLDFR				0x60
+#define USRDR				0x90
+#define CHNSR				0xc0
 
 #define DATA_OUTBUF			0x20   
  
@@ -136,17 +139,23 @@ static void spdif_snd_txctrl(struct rockchip_spdif_info *spdif, int on)
 	opr  = readl(regs + DMACR) & DMACR_TRAN_DMA_MASK & (~DMACR_TRAN_DMA_CTL_MASK);
 	
 	if (on){
+		#if defined (CONFIG_ARCH_RK3188)
+		iomux_set(SPDIF_TX);
+		#endif
 		xfer |= XFER_TRAN_START;
 		opr |= DMACR_TRAN_DMA_ENABLE;
 		writel(xfer, regs + XFER);
-		writel(opr|0x10, regs + DMACR);
-		RK_SPDIF_DBG("on xfer=0x%x,opr=0x%x\n",readl(regs + XFER),readl(regs + DMACR));
-  }	else{
-  	xfer &= ~XFER_TRAN_START;
-  	opr  &= ~DMACR_TRAN_DMA_ENABLE; 
+		writel(opr, regs + DMACR);
+	}else{
+		#if defined (CONFIG_ARCH_RK3188)
+		iomux_set(SPI1_CS1);
+		#endif
+		xfer &= ~XFER_TRAN_START;
+		opr  &= ~DMACR_TRAN_DMA_ENABLE; 
 		writel(xfer, regs + XFER);
-		writel(opr|0x10, regs + DMACR);
-  }
+		writel(opr, regs + DMACR);
+		writel(1<<7, regs + CFGR);
+	}
 }
 
 static int spdif_set_syclk(struct snd_soc_dai *cpu_dai,
@@ -339,7 +348,7 @@ static __devinit int spdif_probe(struct platform_device *pdev)
 #endif
 
 #if defined (CONFIG_ARCH_RK3188)    
-  iomux_set(SPDIF_TX);
+  iomux_set(SPI1_CS1);
 #endif
 
 	dma_res = platform_get_resource_byname(pdev, IORESOURCE_DMA, "spdif_dma");
@@ -484,3 +493,47 @@ MODULE_AUTHOR("Seungwhan Youn, <sw.youn@rockchip.com>");
 MODULE_DESCRIPTION("rockchip S/PDIF Controller Driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:rockchip-spdif");
+
+#ifdef CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+static int proc_spdif_show(struct seq_file *s, void *v)
+{
+    void __iomem *regs = spdif_info.regs;
+
+	printk("spdif reg dump:\n");
+        
+	printk("CFGR = 0x%08X ", readl(regs+CFGR));
+	printk("SDBLR = 0x%08X ", readl(regs+SDBLR));
+	printk("DMACR = 0x%08X ", readl(regs+DMACR));
+	printk("INTCR = 0x%08X ", readl(regs+INTCR));
+	printk("INTSR = 0x%08X ", readl(regs+INTSR));
+	printk("XFER = 0x%08X ", readl(regs+XFER));
+	printk("SMPDR = 0x%08X ", readl(regs+SMPDR));
+	printk("VLDFR = 0x%08X ", readl(regs+VLDFR));
+	printk("USRDR = 0x%08X ", readl(regs+USRDR));	
+	printk("CHNSR = 0x%08X ", readl(regs+CHNSR));
+	printk("dump end.\n");
+	return 0;
+}
+
+static int proc_spdif_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_spdif_show, NULL);
+}
+
+static const struct file_operations proc_spdif_fops = {
+	.open		= proc_spdif_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int __init spdif_proc_init(void)
+{
+	proc_create("spdif_reg", 0, NULL, &proc_spdif_fops);
+	return 0;
+}
+late_initcall(spdif_proc_init);
+#endif /* CONFIG_PROC_FS */
+

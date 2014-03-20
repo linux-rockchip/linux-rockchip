@@ -635,6 +635,7 @@ static  int win0_set_par(struct rk3188_lcdc_device *lcdc_dev,rk_screen *screen,
 			lcdc_msk_reg(lcdc_dev, WIN_VIR,m_WIN0_VIR,v_YUV_VIRWIDTH(xvir));
 			//lcdc_msk_reg(lcdc_dev,ALPHA_CTRL,m_WIN0_ALPHA_EN,v_WIN0_ALPHA_EN(0));
 			lcdc_msk_reg(lcdc_dev,SYS_CTRL,m_WIN0_RB_SWAP,v_WIN0_RB_SWAP(0));
+			lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_WIN0_CSC_MODE, v_WIN0_CSC_MODE(1));
 			break;
 		default:
 			dev_err(lcdc_dev->driver.dev,"%s:un supported format!\n",__func__);
