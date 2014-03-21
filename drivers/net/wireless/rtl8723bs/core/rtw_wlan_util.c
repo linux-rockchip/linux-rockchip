@@ -21,7 +21,7 @@
 
 #include <drv_types.h>
 
-#ifdef CONFIG_WOWLAN
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
 #include <linux/inetdevice.h>
 #endif
 
@@ -493,10 +493,39 @@ inline u8 rtw_get_oper_ch(_adapter *adapter)
 
 inline void rtw_set_oper_ch(_adapter *adapter, u8 ch)
 {
-	if (adapter_to_dvobj(adapter)->oper_channel != ch)
-		adapter_to_dvobj(adapter)->on_oper_ch_time = rtw_get_current_time();
+#ifdef DBG_CH_SWITCH
+	const int len = 128;
+	char msg[128] = {0};
+	int cnt = 0;
+	int i = 0;
+#endif  /* DBG_CH_SWITCH */
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+	
+	if (dvobj->oper_channel != ch) {
+		dvobj->on_oper_ch_time = rtw_get_current_time();
 
-	adapter_to_dvobj(adapter)->oper_channel = ch;
+#ifdef DBG_CH_SWITCH
+		cnt += snprintf(msg+cnt, len-cnt, "switch to ch %3u", ch);
+
+		for (i = 0; i < dvobj->iface_nums; i++) {
+			_adapter *iface = dvobj->padapters[i];
+			cnt += snprintf(msg+cnt, len-cnt, " ["ADPT_FMT":", ADPT_ARG(iface));
+			if (iface->mlmeextpriv.cur_channel == ch)
+				cnt += snprintf(msg+cnt, len-cnt, "C");
+			else
+				cnt += snprintf(msg+cnt, len-cnt, "_");
+			if (iface->wdinfo.listen_channel == ch && !rtw_p2p_chk_state(&iface->wdinfo, P2P_STATE_NONE))
+				cnt += snprintf(msg+cnt, len-cnt, "L");
+			else
+				cnt += snprintf(msg+cnt, len-cnt, "_");
+			cnt += snprintf(msg+cnt, len-cnt, "]");
+		}
+
+		DBG_871X(FUNC_ADPT_FMT" %s\n", FUNC_ADPT_ARG(adapter), msg);
+#endif /* DBG_CH_SWITCH */
+	}
+
+	dvobj->oper_channel = ch;
 }
 
 inline u8 rtw_get_oper_bw(_adapter *adapter)
@@ -853,79 +882,80 @@ void read_cam(_adapter *padapter ,u8 entry, u8 *get_key)
 }
 #endif
 
-void write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key)
+void _write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key)
 {
-	unsigned int	i, val, addr;
-	//unsigned int    cmd;
+	unsigned int i, val, addr;
 	int j;
 	u32	cam_val[2];
 
 	addr = entry << 3;
 
-	for (j = 5; j >= 0; j--)
-	{	
-		switch (j)
-		{
-			case 0:
-				val = (ctrl | (mac[0] << 16) | (mac[1] << 24) );
-				break;
-				
-			case 1:
-				val = (mac[2] | ( mac[3] << 8) | (mac[4] << 16) | (mac[5] << 24));
-				break;
-			
-			default:
-				i = (j - 2) << 2;
-				val = (key[i] | (key[i+1] << 8) | (key[i+2] << 16) | (key[i+3] << 24));
-				break;
-				
+	for (j = 5; j >= 0; j--) {
+		switch (j) {
+		case 0:
+			val = (ctrl | (mac[0] << 16) | (mac[1] << 24) );
+			break;
+		case 1:
+			val = (mac[2] | ( mac[3] << 8) | (mac[4] << 16) | (mac[5] << 24));
+			break;
+		default:
+			i = (j - 2) << 2;
+			val = (key[i] | (key[i+1] << 8) | (key[i+2] << 16) | (key[i+3] << 24));
+			break;
 		}
 
 		cam_val[0] = val;
 		cam_val[1] = addr + (unsigned int)j;
 
 		rtw_hal_set_hwreg(padapter, HW_VAR_CAM_WRITE, (u8 *)cam_val);
-		
-		//rtw_write32(padapter, WCAMI, val);
-		
-		//cmd = CAM_POLLINIG | CAM_WRITE | (addr + j);
-		//rtw_write32(padapter, RWCAM, cmd);
-		
-		//DBG_871X("%s=> cam write: %x, %x\n",__FUNCTION__, cmd, val);
-		
 	}
-
 }
 
-void clear_cam_entry(_adapter *padapter, u8 entry)
-{	
-#if 0
-	u32	addr, val=0;
-	u32	cam_val[2];
-
-	addr = entry << 3;
-	
-
-	cam_val[0] = val;
-	cam_val[1] = addr + (unsigned int)0;
-
-	rtw_hal_set_hwreg(padapter, HW_VAR_CAM_WRITE, (u8 *)cam_val);
-
-
-
-	cam_val[0] = val;
-	cam_val[1] = addr + (unsigned int)1;
-
-	rtw_hal_set_hwreg(padapter, HW_VAR_CAM_WRITE, (u8 *)cam_val);
-#else
-
+void _clear_cam_entry(_adapter *padapter, u8 entry)
+{
 	unsigned char null_sta[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
 	unsigned char null_key[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00};
 
-	write_cam(padapter, entry, 0, null_sta, null_key);
+	_write_cam(padapter, entry, 0, null_sta, null_key);
+}
 
+inline void write_cam(_adapter *adapter, u8 id, u16 ctrl, u8 *mac, u8 *key)
+{
+#ifdef CONFIG_WRITE_CACHE_ONLY
+	write_cam_cache(adapter, id ,ctrl, mac, key);
+#else
+	_write_cam(adapter, id, ctrl, mac, key);
+	write_cam_cache(adapter, id ,ctrl, mac, key);
 #endif
+}
+
+inline void clear_cam_entry(_adapter *adapter, u8 id)
+{
+	_clear_cam_entry(adapter, id);
+	clear_cam_cache(adapter, id);
+}
+
+inline void write_cam_from_cache(_adapter *adapter, u8 id)
+{
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+
+	_write_cam(adapter, id, dvobj->cam_cache[id].ctrl, dvobj->cam_cache[id].mac, dvobj->cam_cache[id].key);
+}
+
+void write_cam_cache(_adapter *adapter, u8 id, u16 ctrl, u8 *mac, u8 *key)
+{
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+
+	dvobj->cam_cache[id].ctrl = ctrl;
+	_rtw_memcpy(dvobj->cam_cache[id].mac, mac, ETH_ALEN);
+	_rtw_memcpy(dvobj->cam_cache[id].key, key, 16);
+}
+
+void clear_cam_cache(_adapter *adapter, u8 id)
+{
+	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
+
+	_rtw_memset(&(dvobj->cam_cache[id]), 0, sizeof(struct cam_entry_cache));
 }
 
 int allocate_fw_sta_entry(_adapter *padapter)
@@ -974,10 +1004,7 @@ void flush_all_cam_entry(_adapter *padapter)
 				if(psta->state & WIFI_AP_STATE)
 				{}   //clear cam when ap free per sta_info        
 				else {
-
 					cam_id = (u8)rtw_get_camid(psta->mac_id);
-
-					//clear_cam_entry(padapter, cam_id);
 					rtw_clearstakey_cmd(padapter, (u8*)psta, cam_id, _FALSE);
 				}				
 			}
@@ -1322,12 +1349,11 @@ static void bwmode_update_check(_adapter *padapter, PNDIS_802_11_VARIABLE_IEs pI
 				psta->bw_mode = CHANNEL_WIDTH_20;
 				phtpriv_sta->ch_offset = HAL_PRIME_CHNL_OFFSET_DONT_CARE;
 			}
-			
+
+			rtw_dm_ra_mask_wk_cmd(padapter, (u8 *)psta);
 		}
 
 		//pmlmeinfo->bwmode_updated = _FALSE;//bwmode_updated done, reset it!
-
-		rtw_dm_ra_mask_wk_cmd(padapter);
 	}	
 #endif //CONFIG_80211N_HT
 }
@@ -1338,6 +1364,7 @@ void HT_caps_handler(_adapter *padapter, PNDIS_802_11_VARIABLE_IEs pIE)
 	unsigned int	i;
 	u8	rf_type;
 	u8	max_AMPDU_len, min_MPDU_spacing;
+	u8	cur_ldpc_cap=0, cur_stbc_cap=0, cur_beamform_cap=0;
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	struct mlme_priv 		*pmlmepriv = &padapter->mlmepriv;	
@@ -1415,6 +1442,71 @@ void HT_caps_handler(_adapter *padapter, PNDIS_802_11_VARIABLE_IEs pIE)
 		}
 		#endif
 	}
+
+	if (check_fwstate(pmlmepriv, WIFI_AP_STATE)) {
+		// Config STBC setting
+		if (TEST_FLAG(phtpriv->stbc_cap, STBC_HT_ENABLE_TX) && GET_HT_CAPABILITY_ELE_TX_STBC(pIE->data))
+		{
+			SET_FLAG(cur_stbc_cap, STBC_HT_ENABLE_TX);
+			DBG_871X("Enable HT Tx STBC !\n");
+		}
+		phtpriv->stbc_cap = cur_stbc_cap;
+
+#ifdef CONFIG_BEAMFORMING
+		// Config Tx beamforming setting
+		if (TEST_FLAG(phtpriv->beamform_cap, BEAMFORMING_HT_BEAMFORMER_ENABLE) && 
+			GET_HT_CAP_TXBF_EXPLICIT_COMP_STEERING_CAP(pIE->data))
+		{
+			SET_FLAG(cur_beamform_cap, BEAMFORMING_HT_BEAMFORMER_ENABLE);
+		}
+
+		if (TEST_FLAG(phtpriv->beamform_cap, BEAMFORMING_HT_BEAMFORMEE_ENABLE) &&
+			GET_HT_CAP_TXBF_EXPLICIT_COMP_FEEDBACK_CAP(pIE->data))
+		{
+			SET_FLAG(cur_beamform_cap, BEAMFORMING_HT_BEAMFORMEE_ENABLE);
+		}
+		phtpriv->beamform_cap = cur_beamform_cap;
+		if (cur_beamform_cap) {
+			DBG_871X("AP HT Beamforming Cap = 0x%02X\n", cur_beamform_cap);
+		}
+#endif //CONFIG_BEAMFORMING
+	} else {
+		// Config LDPC Coding Capability
+		if (TEST_FLAG(phtpriv->ldpc_cap, LDPC_HT_ENABLE_TX) && GET_HT_CAPABILITY_ELE_LDPC_CAP(pIE->data))
+		{
+			SET_FLAG(cur_ldpc_cap, (LDPC_HT_ENABLE_TX | LDPC_HT_CAP_TX));
+			DBG_871X("Enable HT Tx LDPC!\n");
+		}
+		phtpriv->ldpc_cap = cur_ldpc_cap;
+
+		// Config STBC setting
+		if (TEST_FLAG(phtpriv->stbc_cap, STBC_HT_ENABLE_TX) && GET_HT_CAPABILITY_ELE_RX_STBC(pIE->data))
+		{
+			SET_FLAG(cur_stbc_cap, (STBC_HT_ENABLE_TX | STBC_HT_CAP_TX) );
+			DBG_871X("Enable HT Tx STBC!\n");
+		}
+		phtpriv->stbc_cap = cur_stbc_cap;
+
+#ifdef CONFIG_BEAMFORMING
+		// Config Tx beamforming setting
+		if (TEST_FLAG(phtpriv->beamform_cap, BEAMFORMING_HT_BEAMFORMEE_ENABLE) && 
+			GET_HT_CAP_TXBF_EXPLICIT_COMP_STEERING_CAP(pIE->data))
+		{
+			SET_FLAG(cur_beamform_cap, BEAMFORMING_HT_BEAMFORMER_ENABLE);
+		}
+
+		if (TEST_FLAG(phtpriv->beamform_cap, BEAMFORMING_HT_BEAMFORMER_ENABLE) &&
+			GET_HT_CAP_TXBF_EXPLICIT_COMP_FEEDBACK_CAP(pIE->data))
+		{
+			SET_FLAG(cur_beamform_cap, BEAMFORMING_HT_BEAMFORMEE_ENABLE);
+		}
+		phtpriv->beamform_cap = cur_beamform_cap;
+		if (cur_beamform_cap) {
+			DBG_871X("Client HT Beamforming Cap = 0x%02X\n", cur_beamform_cap);
+		}
+#endif //CONFIG_BEAMFORMING
+	}
+
 #endif //CONFIG_80211N_HT
 	return;
 }
@@ -1589,6 +1681,34 @@ void VCS_update(_adapter *padapter, struct sta_info *psta)
 	}
 }
 
+void	update_ldpc_stbc_cap(struct sta_info *psta)
+{
+#ifdef CONFIG_80211N_HT
+
+#ifdef CONFIG_80211AC_VHT
+	if (psta->vhtpriv.vht_option) {
+		if(TEST_FLAG(psta->vhtpriv.ldpc_cap, LDPC_VHT_ENABLE_TX))
+			psta->ldpc = 1;
+
+		if(TEST_FLAG(psta->vhtpriv.stbc_cap, STBC_VHT_ENABLE_TX))
+			psta->stbc = 1;
+	}
+	else
+#endif //CONFIG_80211AC_VHT
+	if (psta->htpriv.ht_option) {
+		if(TEST_FLAG(psta->htpriv.ldpc_cap, LDPC_HT_ENABLE_TX))
+			psta->ldpc = 1;
+
+		if(TEST_FLAG(psta->htpriv.stbc_cap, STBC_HT_ENABLE_TX))
+			psta->stbc = 1;
+	} else {
+		psta->ldpc = 0;
+		psta->stbc = 0;
+	}
+
+#endif //CONFIG_80211N_HT
+}
+
 #ifdef CONFIG_TDLS
 int check_ap_tdls_prohibited(u8 *pframe, u8 pkt_len)
 {
@@ -1646,6 +1766,10 @@ int rtw_check_bcn_info(ADAPTER *Adapter, u8 *pframe, u32 packet_len)
 	}
 
 	bssid = (WLAN_BSSID_EX *)rtw_zmalloc(sizeof(WLAN_BSSID_EX));
+	if (bssid == NULL) {
+		DBG_871X("%s rtw_zmalloc fail !!!\n", __func__);
+		return _TRUE;
+	}
 
 	subtype = GetFrameSubType(pframe) >> 4;
 
@@ -1696,7 +1820,7 @@ int rtw_check_bcn_info(ADAPTER *Adapter, u8 *pframe, u32 packet_len)
 	if (p) {
 			bcn_channel = *(p + 2);
 	} else {/* In 5G, some ap do not have DSSET IE checking HT info for channel */
-			p = rtw_get_ie(bssid->IEs + _FIXED_IE_LENGTH_, _HT_ADD_INFO_IE_, &len, bssid->IELength - _FIXED_IE_LENGTH_);
+			rtw_get_ie(bssid->IEs + _FIXED_IE_LENGTH_, _HT_ADD_INFO_IE_, &len, bssid->IELength - _FIXED_IE_LENGTH_);
 			if(pht_info) {
 					bcn_channel = pht_info->primary_channel;
 			} else { /* we don't find channel IE, so don't check it */
@@ -1812,8 +1936,6 @@ int rtw_check_bcn_info(ADAPTER *Adapter, u8 *pframe, u32 packet_len)
 _mismatch:
 	rtw_mfree((u8 *)bssid, sizeof(WLAN_BSSID_EX));
 	return _FAIL;
-
-	_func_exit_;
 }
 
 void update_beacon_info(_adapter *padapter, u8 *pframe, uint pkt_len, struct sta_info *psta)
@@ -1849,7 +1971,11 @@ void update_beacon_info(_adapter *padapter, u8 *pframe, uint pkt_len, struct sta
 				//HT_info_handler(padapter, pIE);
 				bwmode_update_check(padapter, pIE);
 				break;
-
+#ifdef CONFIG_80211AC_VHT
+			case EID_OpModeNotification:
+				rtw_process_vht_op_mode_notify(padapter, pIE->data, psta);
+				break;
+#endif //CONFIG_80211AC_VHT
 			case _ERPINFO_IE_:
 				ERP_IE_handler(padapter, pIE);
 				VCS_update(padapter, psta);
@@ -2836,6 +2962,27 @@ void rtw_release_macid(_adapter *padapter, struct sta_info *psta)
 	_exit_critical_bh(&pdvobj->lock, &irqL);
 
 }
+//For 8188E RA
+u8 rtw_search_max_mac_id(_adapter *padapter)
+{
+	u8 max_mac_id=0;
+	struct dvobj_priv *pdvobj = adapter_to_dvobj(padapter);
+	int i;
+	_irqL	irqL;	
+	_enter_critical_bh(&pdvobj->lock, &irqL);
+	for(i=(NUM_STA-1); i>=0 ; i--)
+	{
+		if(pdvobj->macid[i] == _TRUE)
+		{			
+			break;
+		}
+	}
+	max_mac_id = i;
+	_exit_critical_bh(&pdvobj->lock, &irqL);
+
+	return max_mac_id;
+
+}		
 
 #if 0
 unsigned int setup_beacon_frame(_adapter *padapter, unsigned char *beacon_frame)
@@ -3009,7 +3156,51 @@ _adapter *dvobj_get_port0_adapter(struct dvobj_priv *dvobj)
 	return port0_iface;
 }
 
-#ifdef CONFIG_WOWLAN
+/*
+ * Description:
+ * dump_TX_FIFO: This is only used to dump TX_FIFO for debug WoW mode offload
+ * contant.
+ *
+ * Input:
+ * adapter: adapter pointer.
+ * page_num: The max. page number that user want to dump. 
+ * page_size: page size of each page. eg. 128 bytes, 256 bytes.
+ */
+void dump_TX_FIFO(_adapter* padapter, u8 page_num, u16 page_size){
+
+	int i;
+	u8 val = 0;
+	u8 base = 0;
+	u32 addr = 0;
+	u32 count = (page_size / 8);
+
+	if (page_num <= 0) {
+		DBG_871X("!!%s: incorrect input page_num paramter!\n", __func__);
+		return;
+	}
+
+	if (page_size < 128 || page_size > 256) {
+		DBG_871X("!!%s: incorrect input page_size paramter!\n", __func__);
+		return;
+	}
+
+	DBG_871X("+%s+\n", __func__);
+	val = rtw_read8(padapter, 0x106);
+	rtw_write8(padapter, 0x106, 0x69);
+	DBG_871X("0x106: 0x%02x\n", val);
+	base = rtw_read8(padapter, 0x209);
+	DBG_871X("0x209: 0x%02x\n", base);
+
+	addr = ((base) * page_size)/8;
+	for (i = 0 ; i < page_num * count ; i+=2) {
+		rtw_write32(padapter, 0x140, addr + i);
+		printk(" %08x %08x ", rtw_read32(padapter, 0x144), rtw_read32(padapter, 0x148));
+		rtw_write32(padapter, 0x140, addr + i + 1);
+		printk(" %08x %08x \n", rtw_read32(padapter, 0x144), rtw_read32(padapter, 0x148));
+	}
+}
+
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
 void rtw_get_current_ip_address(PADAPTER padapter, u8 *pcurrentip)
 {
 	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
@@ -3017,7 +3208,8 @@ void rtw_get_current_ip_address(PADAPTER padapter, u8 *pcurrentip)
 	struct in_device *my_ip_ptr = padapter->pnetdev->ip_ptr;
 	u8 ipaddress[4];
 	
-	if ( (pmlmeinfo->state & WIFI_FW_LINKING_STATE) ) {
+	if ( (pmlmeinfo->state & WIFI_FW_LINKING_STATE) ||
+			pmlmeinfo->state & WIFI_FW_AP_STATE) {
 		if ( my_ip_ptr != NULL ) {
 			struct in_ifaddr *my_ifa_list  = my_ip_ptr->ifa_list ;
 			if ( my_ifa_list != NULL ) {
@@ -3032,6 +3224,8 @@ void rtw_get_current_ip_address(PADAPTER padapter, u8 *pcurrentip)
 		}
 	}
 }
+#endif
+#ifdef CONFIG_WOWLAN
 void rtw_get_sec_iv(PADAPTER padapter, u8*pcur_dot11txpn, u8 *StaAddr)
 {
 	struct sta_info		*psta;
@@ -3070,27 +3264,25 @@ void rtw_set_sec_pn(PADAPTER padapter)
 
         if(psta)
         {
-			if (pwrpriv->wowlan_fw_iv > psta->dot11txpn.val)
-			{
-#ifdef CONFIG_RTL8188E
-				/* TODO: update 8188E FW to remove this workaround.*/
-				psta->dot11txpn.val += 4;
-				DBG_871X("%s: workaround only for 8188e, txpn +=4\n", __func__);
-#else
-				if (psecpriv->dot11PrivacyAlgrthm != _NO_PRIVACY_)
-					psta->dot11txpn.val = pwrpriv->wowlan_fw_iv + 2;
-#endif
-			} else {
-				DBG_871X("%s(): FW IV is smaller than driver\n", __func__);
-                psta->dot11txpn.val += 2;
-			}
-        	DBG_871X("%s: dot11txpn: 0x%016llx\n", __func__ ,psta->dot11txpn.val);
+		if (pwrpriv->wowlan_fw_iv > psta->dot11txpn.val)
+		{
+			if (psecpriv->dot11PrivacyAlgrthm != _NO_PRIVACY_)
+				psta->dot11txpn.val = pwrpriv->wowlan_fw_iv + 2;
+		} else {
+			DBG_871X("%s(): FW IV is smaller than driver\n", __func__);
+			psta->dot11txpn.val += 2;
+		}
+		DBG_871X("%s: dot11txpn: 0x%016llx\n", __func__ ,psta->dot11txpn.val);
         }
 }
 #endif //CONFIG_WOWLAN
 
 #ifdef CONFIG_PNO_SUPPORT
 #define	CSCAN_TLV_TYPE_SSID_IE	'S'
+#define CIPHER_IE "key_mgmt="
+#define CIPHER_NONE "NONE"
+#define CIPHER_WPA_PSK "WPA-PSK"
+#define CIPHER_WPA_EAP "WPA-EAP IEEE8021X"
 /*
  *  SSIDs list parsing from cscan tlv list
  */
@@ -3163,20 +3355,95 @@ int rtw_parse_ssid_list_tlv(char** list_str, pno_ssid_t* ssid,
 	return idx;
 }
 
+int rtw_parse_cipher_list(struct pno_nlo_info *nlo_info, char* list_str) {
+
+	char *pch, *pnext, *pend;
+	u8 key_len = 0, index = 0;
+
+	pch = list_str;
+
+	if (nlo_info == NULL || list_str == NULL) {
+		DBG_871X("%s error paramters\n", __func__);
+		return -1;
+	}
+
+	while (strlen(pch) != 0) {
+		pnext = strstr(pch, "key_mgmt=");
+		if (pnext != NULL) {
+			pch = pnext + strlen(CIPHER_IE);
+			pend = strstr(pch, "}");
+			if (strncmp(pch, CIPHER_NONE,
+						strlen(CIPHER_NONE)) == 0) {
+				nlo_info->ssid_cipher_info[index] = 0x00;
+			} else if (strncmp(pch, CIPHER_WPA_PSK,
+						strlen(CIPHER_WPA_PSK)) == 0) {
+				nlo_info->ssid_cipher_info[index] = 0x66;
+			} else if (strncmp(pch, CIPHER_WPA_EAP,
+						strlen(CIPHER_WPA_EAP)) == 0) {
+				nlo_info->ssid_cipher_info[index] = 0x01;
+			}
+			index ++;
+			pch = pend + 1;
+		} else {
+			break;
+		}
+	}
+	return 0;
+}
+
 int rtw_dev_nlo_info_set(struct pno_nlo_info *nlo_info, pno_ssid_t* ssid,
 	int num, int pno_time, int pno_repeat, int pno_freq_expo_max) {
 
 	int i = 0;
+	struct file *fp;
+	mm_segment_t fs;
+	loff_t pos = 0;
+	u8 *source = NULL;
+	long len = 0;
+
+	DBG_871X("+%s+\n", __func__);
+
 	nlo_info->fast_scan_period = pno_time;
 	nlo_info->ssid_num = num & BIT_LEN_MASK_32(8);
 	nlo_info->slow_scan_period = (pno_time * 2);
 	nlo_info->fast_scan_iterations = 5;
 
-	//TODO: chiper array, channel list and probe index is all empty.
+	//TODO: channel list and probe index is all empty.
 	for (i = 0 ; i < num ; i++) {
 		nlo_info->ssid_length[i]
 			= ssid[i].SSID_len;
 	}
+
+	/* cipher array */
+	fp = filp_open("/data/misc/wifi/wpa_supplicant.conf", O_RDONLY,  0644);
+	if (IS_ERR(fp)) {
+		DBG_871X("Error, wpa_supplicant.conf doesn't exist.\n");
+		DBG_871X("Error, cipher array using default value.\n");
+		return 0;
+	}
+
+	len = i_size_read(fp->f_path.dentry->d_inode);
+	if (len < 0 || len > 2048) {
+		DBG_871X("Error, file size is bigger than 2048.\n");
+		DBG_871X("Error, cipher array using default value.\n");
+		return 0;
+	}
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	source = rtw_zmalloc(2048);
+
+	if (source != NULL) {
+		len = vfs_read(fp, source, len, &pos);
+		rtw_parse_cipher_list(nlo_info, source);
+		rtw_mfree(source, 2048);
+	}
+
+	set_fs(fs);
+	filp_close(fp, NULL);
+
+	DBG_871X("-%s-\n", __func__);
 	return 0;
 }
 
@@ -3294,9 +3561,9 @@ void rtw_dev_pno_debug(struct net_device *net) {
 	}
 	DBG_871X("\n");
 
-	DBG_871X("chiper_info: ");
+	DBG_871X("cipher_info: ");
 	for (i = 0 ; i < MAX_PNO_LIST_COUNT ; i++) {
-		DBG_871X("%d, ", pwrctl->pnlo_info->ssid_chiper_info[i]);
+		DBG_871X("%d, ", pwrctl->pnlo_info->ssid_cipher_info[i]);
 	}
 	DBG_871X("\n");
 

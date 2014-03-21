@@ -429,8 +429,13 @@ _func_exit_;
 
 int rtw_xmit_entry(_pkt *pkt, _nic_hdl pnetdev)
 {
-	if (pkt)
+	int ret = 0;
+
+	if (pkt) {
 		rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, pkt->truesize);
-	return _rtw_xmit_entry(pkt, pnetdev);
+		ret = _rtw_xmit_entry(pkt, pnetdev);
+	}
+
+	return ret;
 }
 

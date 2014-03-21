@@ -97,7 +97,7 @@ typedef struct _COEX_DM_8723B_2ANT{
 	u1Byte		wifiChnlInfo[3];
 
 	BOOLEAN		bNeedRecover0x948;
-	u2Byte		backup0x948;
+	u4Byte		backup0x948;
 } COEX_DM_8723B_2ANT, *PCOEX_DM_8723B_2ANT;
 
 typedef struct _COEX_STA_8723B_2ANT{	

@@ -209,7 +209,7 @@ typedef struct pno_nlo_info
 	u32	slow_scan_period;			//slow scan period
 	u32	fast_scan_iterations;			//Fast scan iterations
 	u8	ssid_length[MAX_PNO_LIST_COUNT];	//SSID Length Array
-	u8	ssid_chiper_info[MAX_PNO_LIST_COUNT];	//Chiper information for security
+	u8	ssid_cipher_info[MAX_PNO_LIST_COUNT];	//Cipher information for security
 	u8	ssid_channel_info[MAX_PNO_LIST_COUNT];	//channel information
 }pno_nlo_info_t;	
 
@@ -281,9 +281,11 @@ struct pwrctrl_priv
 	uint 	ips_leave_cnts;
 
 	u8	ips_mode; 
+	u8	ips_org_mode; 
 	u8	ips_mode_req; // used to accept the mode setting request, will update to ipsmode later
 	uint bips_processing;
 	u32 ips_deny_time; /* will deny IPS when system time is smaller than this */
+	u8 pre_ips_type;// 0: default flow, 1: carddisbale flow
 
 	// ps_deny: if 0, power save is free to go; otherwise deny all kinds of power save.
 	// Use PS_DENY_REASON to decide reason.
@@ -297,6 +299,7 @@ struct pwrctrl_priv
 	u8	bLeisurePs;
 	u8	LpsIdleCount;
 	u8	power_mgnt;
+	u8	org_power_mgnt;
 	u8	bFwCurrentInPSMode;
 	u32	DelayLPSLastTimeStamp;
 	s32		pnp_current_pwr_state;
@@ -312,8 +315,9 @@ struct pwrctrl_priv
 	u8		bSupportRemoteWakeup;	
 	u8		wowlan_wake_reason;
 	u8		wowlan_ap_mode;
+	u8		wowlan_mode;
 #ifdef CONFIG_WOWLAN
-	u8		wowlan_mode;	u8		wowlan_pattern;
+	u8		wowlan_pattern;
 	u8		wowlan_magic;
 	u8		wowlan_unicast;
 	u8		wowlan_pattern_idx;

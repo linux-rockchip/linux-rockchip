@@ -374,13 +374,11 @@ struct	ss_res
 // 8: Set channel back to base channel
 // 9: Set channel back to off channel
 // 10: Restore RCR DATA BIT
-// 11: Check alive
-// 12: Check alive
-// 13: Free TDLS sta
+// 11: Free TDLS sta
 enum TDLS_option
 {
-	TDLS_WRCR			= 	1,
-	TDLS_SD_PTI		= 	2,
+	TDLS_ESTABLISHED	= 	1,
+	TDLS_SD_PTI		=	2,
 	TDLS_CS_OFF		= 	3,
 	TDLS_INIT_CH_SEN	= 	4,
 	TDLS_DONE_CH_SEN	=	5,
@@ -389,9 +387,7 @@ enum TDLS_option
 	TDLS_P_OFF_CH		=	8,
 	TDLS_P_BASE_CH	= 	9,
 	TDLS_RS_RCR		=	10,
-	TDLS_CKALV_PH1	=	11,
-	TDLS_CKALV_PH2	=	12,
-	TDLS_FREE_STA		=	13,
+	TDLS_TEAR_STA		=	11,
 	maxTDLS,
 };
 
@@ -651,8 +647,18 @@ unsigned int decide_wait_for_beacon_timeout(unsigned int bcn_interval);
 
 void read_cam(_adapter *padapter ,u8 entry, u8 *get_key);
 
-void write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key);
-void clear_cam_entry(_adapter *padapter, u8 entry);
+/* modify HW only */
+void _write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key);
+void _clear_cam_entry(_adapter *padapter, u8 entry);
+void write_cam_from_cache(_adapter *adapter, u8 id);
+
+/* modify both HW and cache */
+void write_cam(_adapter *padapter, u8 id, u16 ctrl, u8 *mac, u8 *key);
+void clear_cam_entry(_adapter *padapter, u8 id);
+
+/* modify cache only */
+void write_cam_cache(_adapter *adapter, u8 id, u16 ctrl, u8 *mac, u8 *key);
+void clear_cam_cache(_adapter *adapter, u8 id);
 
 void invalidate_cam_all(_adapter *padapter);
 void CAM_empty_entry(PADAPTER Adapter, u8 ucIndex);
@@ -689,6 +695,7 @@ void HTOnAssocRsp(_adapter *padapter);
 
 void ERP_IE_handler(_adapter *padapter, PNDIS_802_11_VARIABLE_IEs pIE);
 void VCS_update(_adapter *padapter, struct sta_info *psta);
+void	update_ldpc_stbc_cap(struct sta_info *psta);
 
 void update_beacon_info(_adapter *padapter, u8 *pframe, uint len, struct sta_info *psta);
 int rtw_check_bcn_info(ADAPTER *Adapter, u8 *pframe, u32 packet_len);
@@ -721,6 +728,7 @@ unsigned int should_forbid_n_rate(_adapter * padapter);
 extern uint rtw_get_camid(uint macid);
 extern void rtw_alloc_macid(_adapter *padapter, struct sta_info *psta);
 extern void rtw_release_macid(_adapter *padapter, struct sta_info *psta);
+extern u8 rtw_search_max_mac_id(_adapter *padapter);
 
 void report_join_res(_adapter *padapter, int res);
 void report_survey_event(_adapter *padapter, union recv_frame *precv_frame);
@@ -730,6 +738,7 @@ void report_add_sta_event(_adapter *padapter, unsigned char* MacAddr, int cam_id
 bool rtw_port_switch_chk(_adapter *adapter);
 
 void beacon_timing_control(_adapter *padapter);
+u8 chk_bmc_sleepq_cmd(_adapter* padapter);
 extern u8 set_tx_beacon_cmd(_adapter*padapter);
 unsigned int setup_beacon_frame(_adapter *padapter, unsigned char *beacon_frame);
 void update_mgnt_tx_rate(_adapter *padapter, u8 rate);
@@ -754,7 +763,7 @@ void issue_assocreq(_adapter *padapter);
 void issue_asocrsp(_adapter *padapter, unsigned short status, struct sta_info *pstat, int pkt_type);
 void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status);
 void issue_probereq(_adapter *padapter, NDIS_802_11_SSID *pssid, u8 *da);
-s32 issue_probereq_ex(_adapter *padapter, NDIS_802_11_SSID *pssid, u8* da, int try_cnt, int wait_ms);
+s32 issue_probereq_ex(_adapter *padapter, NDIS_802_11_SSID *pssid, u8* da, u8 ch, bool append_wps, int try_cnt, int wait_ms);
 int issue_nulldata(_adapter *padapter, unsigned char *da, unsigned int power_mode, int try_cnt, int wait_ms);
 s32 issue_nulldata_in_interrupt(PADAPTER padapter, u8 *da);
 int issue_qos_nulldata(_adapter *padapter, unsigned char *da, u16 tid, int try_cnt, int wait_ms);
@@ -796,6 +805,7 @@ unsigned int OnAction_ht(_adapter *padapter, union recv_frame *precv_frame);
 unsigned int OnAction_sa_query(_adapter *padapter, union recv_frame *precv_frame);
 #endif //CONFIG_IEEE80211W
 unsigned int OnAction_wmm(_adapter *padapter, union recv_frame *precv_frame);
+unsigned int OnAction_vht(_adapter *padapter, union recv_frame *precv_frame);
 unsigned int OnAction_p2p(_adapter *padapter, union recv_frame *precv_frame);
 
 
@@ -896,6 +906,7 @@ u8 add_ba_hdl(_adapter *padapter, unsigned char *pbuf);
 
 u8 mlme_evt_hdl(_adapter *padapter, unsigned char *pbuf);
 u8 h2c_msg_hdl(_adapter *padapter, unsigned char *pbuf);
+u8 chk_bmc_sleepq_hdl(_adapter *padapter, unsigned char *pbuf);
 u8 tx_beacon_hdl(_adapter *padapter, unsigned char *pbuf);
 u8 set_ch_hdl(_adapter *padapter, u8 *pbuf);
 u8 set_chplan_hdl(_adapter *padapter, unsigned char *pbuf);
@@ -977,6 +988,7 @@ struct cmd_hdl wlancmds[] =
 
 	GEN_MLME_EXT_HANDLER(sizeof(struct SetChannelSwitch_param), set_csa_hdl) /*61*/
 	GEN_MLME_EXT_HANDLER(sizeof(struct TDLSoption_param), tdls_hdl) /*62*/
+	GEN_MLME_EXT_HANDLER(0, chk_bmc_sleepq_hdl) /*63*/
 };
 
 #endif

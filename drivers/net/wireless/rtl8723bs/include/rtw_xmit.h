@@ -22,11 +22,12 @@
 
 
 #if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
-//#define MAX_XMITBUF_SZ (30720)//	(2048)
 #ifdef CONFIG_TX_AGGREGATION
 #define MAX_XMITBUF_SZ	(20480)	// 20k
+//#define SDIO_TX_AGG_MAX	5
 #else
-#define MAX_XMITBUF_SZ (12288)  //12k 1536*8
+#define MAX_XMITBUF_SZ (1664)
+#define SDIO_TX_AGG_MAX	1
 #endif
 
 #if defined CONFIG_SDIO_HCI
@@ -334,6 +335,7 @@ struct pkt_attrib
 	u8	pctrl;//per packet txdesc control enable
 	u8	triggered;//for ap mode handling Power Saving sta
 	u8	qsel;
+	u8	order;//order bit
 	u8	eosp;
 	u8	rate;
 	u8	intel_proxim;
@@ -351,6 +353,11 @@ struct pkt_attrib
 	union Keytype	dot11tkiptxmickey;
 	//union Keytype	dot11tkiprxmickey;
 	union Keytype	dot118021x_UncstKey;
+
+#ifdef CONFIG_TDLS
+	u8 direct_link;
+	struct sta_info *ptdls_sta;
+#endif //CONFIG_TDLS
 
 	u8 icmp_pkt;
 	
@@ -725,6 +732,8 @@ extern s32 rtw_free_xmitbuf(struct xmit_priv *pxmitpriv, struct xmit_buf *pxmitb
 
 void rtw_count_tx_stats(_adapter *padapter, struct xmit_frame *pxmitframe, int sz);
 extern void rtw_update_protection(_adapter *padapter, u8 *ie, uint ie_len);
+static s32 update_attrib_sec_info(_adapter *padapter, struct pkt_attrib *pattrib, struct sta_info *psta);
+static void update_attrib_phy_info(struct pkt_attrib *pattrib, struct sta_info *psta);
 extern s32 rtw_make_wlanhdr(_adapter *padapter, u8 *hdr, struct pkt_attrib *pattrib);
 extern s32 rtw_put_snap(u8 *data, u16 h_proto);
 
@@ -745,7 +754,9 @@ extern s32 rtw_xmitframe_coalesce(_adapter *padapter, _pkt *pkt, struct xmit_fra
 extern s32 rtw_mgmt_xmitframe_coalesce(_adapter *padapter, _pkt *pkt, struct xmit_frame *pxmitframe);
 #endif //CONFIG_IEEE80211W
 #ifdef CONFIG_TDLS
-s32 rtw_xmit_tdls_coalesce(_adapter *padapter, struct xmit_frame *pxmitframe, u8 action);
+extern struct tdls_txmgmt *ptxmgmt;
+s32 rtw_xmit_tdls_coalesce(_adapter *padapter, struct xmit_frame *pxmitframe, struct tdls_txmgmt *ptxmgmt);
+s32 update_tdls_attrib(_adapter *padapter, struct pkt_attrib *pattrib);
 #endif
 s32 _rtw_init_hw_txqueue(struct hw_txqueue* phw_txqueue, u8 ac_tag);
 void _rtw_init_sta_xmit_priv(struct sta_xmit_priv *psta_xmitpriv);
@@ -786,6 +797,7 @@ sint	check_pending_xmitbuf(struct xmit_priv *pxmitpriv);
 thread_return	rtw_xmit_thread(thread_context context);
 #endif
 
+static void do_queue_select(_adapter * padapter, struct pkt_attrib * pattrib);
 u32	rtw_get_ff_hwaddr(struct xmit_frame	*pxmitframe);
 
 #ifdef CONFIG_XMIT_ACK

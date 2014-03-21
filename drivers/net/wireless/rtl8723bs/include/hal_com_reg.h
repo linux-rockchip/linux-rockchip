@@ -104,6 +104,11 @@
 #define REG_GPIO_OUTSTS				0x00F4	// For RTL8723 only.
 #define REG_TYPE_ID						0x00FC
 
+//
+// 2010/12/29 MH Add for 92D
+//
+#define REG_MAC_PHY_CTRL_NORMAL		0x00f8
+
 
 //-----------------------------------------------------
 //
@@ -1094,7 +1099,7 @@ Current IOREG MAP
 #define FEN_CPUEN				BIT(10)
 #define FEN_DCORE				BIT(11)
 #define FEN_ELDR				BIT(12)
-//#define FEN_DIO_RF				BIT(13)
+#define FEN_EN_25_1				BIT(13)
 #define FEN_HWPDN				BIT(14)
 #define FEN_MREGEN				BIT(15)
 
@@ -1718,10 +1723,17 @@ Current IOREG MAP
 #define LAST_ENTRY_OF_TX_PKT_BUFFER_DUAL_MAC	127
 
 #define POLLING_LLT_THRESHOLD				20
+#if defined(CONFIG_RTL8723B) && defined(CONFIG_PCI_HCI)
+#define POLLING_READY_TIMEOUT_COUNT		6000
+#else
 #define POLLING_READY_TIMEOUT_COUNT		1000
+#endif
+
 
 // GPIO BIT
-#define HAL_8192C_HW_GPIO_WPS_BIT	BIT2
+#define	HAL_8192C_HW_GPIO_WPS_BIT	BIT2
+#define	HAL_8192EU_HW_GPIO_WPS_BIT	BIT7
+#define	HAL_8188E_HW_GPIO_WPS_BIT	BIT7
 
 #endif //__HAL_COMMON_H__
 

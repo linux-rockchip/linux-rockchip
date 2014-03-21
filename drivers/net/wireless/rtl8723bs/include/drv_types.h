@@ -76,16 +76,17 @@ typedef struct _ADAPTER _adapter, ADAPTER,*PADAPTER;
 #include <rtw_intel_widi.h>
 #endif
 
-#ifdef CONFIG_BEAMFORMING
-#include <rtw_beamforming.h>
-#endif
-
 #include <rtw_cmd.h>
 #include <cmd_osdep.h>
 #include <rtw_security.h>
 #include <rtw_xmit.h>
 #include <xmit_osdep.h>
 #include <rtw_recv.h>
+
+#ifdef CONFIG_BEAMFORMING
+#include <rtw_beamforming.h>
+#endif
+
 #include <recv_osdep.h>
 #include <rtw_efuse.h>
 #include <rtw_sreset.h>
@@ -254,6 +255,7 @@ struct registry_priv
 	u8	bt_iso;
 	u8	bt_sco;
 	u8	bt_ampdu;
+	s8	ant_num;
 #endif
 	BOOLEAN	bAcceptAddbaReq;
 
@@ -295,7 +297,6 @@ struct registry_priv
 	u8 force_ant;//0 normal,1 main,2 aux
 	u8 force_igi;//0 normal
 #endif
-	u8 regulatory_tid;
 
 	//define for tx power adjust
 	u8	RegEnableTxPowerLimit;
@@ -318,6 +319,7 @@ struct registry_priv
 #ifdef CONFIG_MULTI_VIR_IFACES
 	u8 ext_iface_num;//primary/secondary iface is excluded
 #endif
+	u8 qos_opt_enable;
 };
 
 
@@ -388,6 +390,14 @@ struct debug_priv {
 	u32 dbg_rpwm_toogle_cnt;
 	u32 dbg_rpwm_timeout_fail_cnt;
 	u32 dbg_sreset_cnt;
+	u64 dbg_rx_fifo_last_overflow;
+	u64 dbg_rx_fifo_curr_overflow;
+	u64 dbg_rx_fifo_diff_overflow;
+	u64 dbg_rx_ampdu_drop_count;
+	u64 dbg_rx_ampdu_forced_indicate_count;
+	u64 dbg_rx_ampdu_loss_count;
+	u64 dbg_rx_dup_mgt_frame_drop_count;
+	u64 dbg_rx_ampdu_window_shift_cnt;
 };
 
 struct rtw_traffic_statistics {
@@ -408,15 +418,26 @@ struct rtw_traffic_statistics {
 	u32	cur_rx_tp; // Rx throughput in MBps.
 };
 
+struct cam_entry_cache {
+	u16 ctrl;
+	u8 mac[ETH_ALEN];
+	u8 key[16];
+};
+
+#define KEY_FMT "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x"
+#define KEY_ARG(x) ((u8*)(x))[0],((u8*)(x))[1],((u8*)(x))[2],((u8*)(x))[3],((u8*)(x))[4],((u8*)(x))[5], \
+	((u8*)(x))[6],((u8*)(x))[7],((u8*)(x))[8],((u8*)(x))[9],((u8*)(x))[10],((u8*)(x))[11], \
+	((u8*)(x))[12],((u8*)(x))[13],((u8*)(x))[14],((u8*)(x))[15]
+
 struct dvobj_priv
 {
 	/*-------- below is common data --------*/	
-        _adapter *if1; //PRIMARY_ADAPTER
+	_adapter *if1; //PRIMARY_ADAPTER
 	_adapter *if2; //SECONDARY_ADAPTER
 
 	s32	processing_dev_remove;
 
-        struct debug_priv drv_dbg;
+	struct debug_priv drv_dbg;
 
 	//for local/global synchronization
 	//
@@ -439,6 +460,7 @@ struct dvobj_priv
 	_adapter *padapters[IFACE_ID_MAX];
 	u8 iface_nums; // total number of ifaces used runtime
 
+	struct cam_entry_cache cam_cache[32];
 
 	//For 92D, DMDP have 2 interface.
 	u8	InterfaceNumber;
@@ -446,11 +468,13 @@ struct dvobj_priv
 
 	//In /Out Pipe information
 	int	RtInPipe[2];
-	int	RtOutPipe[3];
+	int	RtOutPipe[4];
 	u8	Queue2Pipe[HW_QUEUE_ENTRY];//for out pipe mapping
 
 	u8	irq_alloc;
 	ATOMIC_T continual_io_error;
+
+	ATOMIC_T disable_func;
 
 	struct pwrctrl_priv pwrctl_priv;
 
@@ -773,11 +797,11 @@ struct _ADAPTER{
 	_lock glock;
 #endif //PLATFORM_FREEBSD
 	int net_closed;
+	
+	u8 netif_up;
 
 	u8 bFWReady;
 	u8 bBTFWReady;
-	u8 bReadPortCancel;
-	u8 bWritePortCancel;
 	u8 bLinkInfoDump;
 	u8 bRxRSSIDisplay;
 	//	Added by Albert 2012/10/26
@@ -853,6 +877,45 @@ struct _ADAPTER{
 #define adapter_to_dvobj(adapter) (adapter->dvobj)
 #define adapter_to_pwrctl(adapter) (dvobj_to_pwrctl(adapter->dvobj))
 #define adapter_wdev_data(adapter) (&((adapter)->wdev_data))
+
+//
+// Function disabled.
+//
+#define DF_TX_BIT		BIT0
+#define DF_RX_BIT		BIT1
+#define DF_IO_BIT		BIT2
+
+//#define RTW_DISABLE_FUNC(padapter, func) (ATOMIC_ADD(&adapter_to_dvobj(padapter)->disable_func, (func)))
+//#define RTW_ENABLE_FUNC(padapter, func) (ATOMIC_SUB(&adapter_to_dvobj(padapter)->disable_func, (func)))
+__inline static void RTW_DISABLE_FUNC(_adapter*padapter, int func_bit)
+{
+	int	df = ATOMIC_READ(&adapter_to_dvobj(padapter)->disable_func);
+	df |= func_bit;
+	ATOMIC_SET(&adapter_to_dvobj(padapter)->disable_func, df);
+}
+
+__inline static void RTW_ENABLE_FUNC(_adapter*padapter, int func_bit)
+{
+	int	df = ATOMIC_READ(&adapter_to_dvobj(padapter)->disable_func);
+	df &= ~(func_bit);
+	ATOMIC_SET(&adapter_to_dvobj(padapter)->disable_func, df);
+}
+
+#define RTW_IS_FUNC_DISABLED(padapter, func_bit) (ATOMIC_READ(&adapter_to_dvobj(padapter)->disable_func) & (func_bit))
+
+#define RTW_CANNOT_IO(padapter) \
+			((padapter)->bSurpriseRemoved || \
+			 RTW_IS_FUNC_DISABLED((padapter), DF_IO_BIT))
+
+#define RTW_CANNOT_RX(padapter) \
+			((padapter)->bDriverStopped || \
+			 (padapter)->bSurpriseRemoved || \
+			 RTW_IS_FUNC_DISABLED((padapter), DF_RX_BIT))
+
+#define RTW_CANNOT_TX(padapter) \
+			((padapter)->bDriverStopped || \
+			 (padapter)->bSurpriseRemoved || \
+			 RTW_IS_FUNC_DISABLED((padapter), DF_TX_BIT))
 
 int rtw_handle_dualmac(_adapter *adapter, bool init);
 

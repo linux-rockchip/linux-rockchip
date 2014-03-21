@@ -98,11 +98,11 @@ void rtw_hal_init_opmode(_adapter *padapter)
 
 	fw_state = get_fwstate(pmlmepriv);
 
-	if (fw_state | WIFI_ADHOC_STATE) 
+	if (fw_state & WIFI_ADHOC_STATE) 
 		networkType = Ndis802_11IBSS;
-	else if (fw_state | WIFI_STATION_STATE)
+	else if (fw_state & WIFI_STATION_STATE)
 		networkType = Ndis802_11Infrastructure;
-	else if (fw_state | WIFI_AP_STATE)
+	else if (fw_state & WIFI_AP_STATE)
 		networkType = Ndis802_11APMode;
 	else
 		return;

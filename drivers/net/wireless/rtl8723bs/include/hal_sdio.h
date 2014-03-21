@@ -17,30 +17,16 @@
  *
  *
  ******************************************************************************/
-#ifndef __PCI_HAL_H__
-#define __PCI_HAL_H__
+#ifndef __HAL_SDIO_H_
+#define __HAL_SDIO_H_
 
-#ifdef CONFIG_RTL8192C
-void rtl8192ce_set_hal_ops(_adapter * padapter);
-#endif
+#define ffaddr2deviceId(pdvobj, addr)	(pdvobj->Queue2Pipe[addr])
 
-#ifdef CONFIG_RTL8192D
-void rtl8192de_set_hal_ops(_adapter * padapter);
-#endif
+u8 rtw_hal_sdio_max_txoqt_free_space(_adapter *padapter);
+u8 rtw_hal_sdio_query_tx_freepage(_adapter *padapter, u8 PageIdx, u8 RequiredPageNum);
+void rtw_hal_sdio_update_tx_freepage(_adapter *padapter, u8 PageIdx, u8 RequiredPageNum);
+void rtw_hal_set_sdio_tx_max_length(PADAPTER padapter, u8 numHQ, u8 numNQ, u8 numLQ, u8 numPubQ);
+u32 rtw_hal_get_sdio_tx_max_length(PADAPTER padapter, u8 queue_idx);
 
-#ifdef CONFIG_RTL8188E
-void rtl8188ee_set_hal_ops(_adapter * padapter);
-#endif
-
-#if defined(CONFIG_RTL8812A) || defined(CONFIG_RTL8821A)
-void rtl8812ae_set_hal_ops(_adapter * padapter);
-#endif
-
-#ifdef CONFIG_RTL8723B
-void rtl8723be_set_hal_ops(_adapter * padapter);
-#endif
-
-void rtw_set_hal_ops(_adapter *padapter);
-
-#endif //__PCIE_HAL_H__
+#endif //__RTW_LED_H_
 

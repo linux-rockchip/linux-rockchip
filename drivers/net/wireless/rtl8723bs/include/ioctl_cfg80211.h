@@ -49,7 +49,7 @@ struct rtw_wdev_invit_info {
 	} while (0)
 
 struct rtw_wdev_nego_info {
-	u8 state; /* 0: req, 1:rep, 3:conf */
+	u8 state; /* 0: req, 1:rep, 2:conf */
 	u8 peer_mac[ETH_ALEN];
 	u8 active;
 	u8 token;

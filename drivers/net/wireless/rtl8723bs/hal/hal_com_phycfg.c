@@ -2694,7 +2694,7 @@ phy_ConfigBBWithParaFile(
 
 	_rtw_memset(pHalData->para_file_buf, 0, MAX_PARA_FILE_BUF_LEN);
 
-	if ((*pBufLen == 0) && (pBuf == NULL))
+	if ((pBufLen != NULL) && (*pBufLen == 0) && (pBuf == NULL))
 	{
 		rtw_merge_string(file_path, PATH_LENGTH_MAX, rtw_phy_file_path, pFileName);
 	
@@ -2717,10 +2717,6 @@ phy_ConfigBBWithParaFile(
 						case CONFIG_BB_AGC_TAB:
 							pHalData->bb_agc_tab = pBuf;
 							break;
-						default:
-							DBG_871X("Unknown ConfigType!! %d\r\n", ConfigType);
-							rtw_mfree(pBuf, rlen);
-							break;
 					}
 				}
 				else {
@@ -2731,7 +2727,7 @@ phy_ConfigBBWithParaFile(
 	}
 	else
 	{
-		if ((*pBufLen != 0) && (pBuf != NULL)) {
+		if ((pBufLen != NULL) && (*pBufLen == 0) && (pBuf == NULL)) {
 			_rtw_memcpy(pHalData->para_file_buf, pBuf, *pBufLen);
 			rtStatus = _SUCCESS;
 		}
@@ -2873,7 +2869,7 @@ phy_ParseBBPgParaFile(
 	{
 		if(!IsCommentString(szLine))
 		{
-			if( isAllSpaceOrTab( szLine, sizeof( szLine ) ) )
+			if( isAllSpaceOrTab( szLine, sizeof( *szLine ) ) )
 				continue;
 
 			// Get header info (relative value or exact value)
@@ -3350,7 +3346,7 @@ PHY_ConfigRFWithParaFile(
 
 	_rtw_memset(pHalData->para_file_buf, 0, MAX_PARA_FILE_BUF_LEN);
 
-	if ((*pBufLen == 0) && (pBuf == NULL))
+	if ((pBufLen != NULL) && (*pBufLen == 0) && (pBuf == NULL))
 	{
 		rtw_merge_string(file_path, PATH_LENGTH_MAX, rtw_phy_file_path, pFileName);
 
@@ -3373,10 +3369,6 @@ PHY_ConfigRFWithParaFile(
 						case ODM_RF_PATH_B:
 							pHalData->rf_radio_b = pBuf;
 							break;
-						default:
-							DBG_871X("Unknown eRFPath!! %d\r\n", eRFPath);
-							rtw_mfree(pBuf, rlen);
-							break;
 					}
 				}
 				else {
@@ -3387,7 +3379,7 @@ PHY_ConfigRFWithParaFile(
 	}
 	else
 	{
-		if ((*pBufLen != 0) && (pBuf != NULL)) {
+		if ((pBufLen != NULL) && (*pBufLen == 0) && (pBuf == NULL)) {
 			_rtw_memcpy(pHalData->para_file_buf, pBuf, *pBufLen);
 			rtStatus = _SUCCESS;
 		}

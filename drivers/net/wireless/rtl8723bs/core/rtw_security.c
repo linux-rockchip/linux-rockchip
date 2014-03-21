@@ -21,6 +21,28 @@
 
 #include <drv_types.h>
 
+static const char *_security_type_str[] = {
+	"N/A",
+	"WEP40",
+	"TKIP",
+	"TKIP_WM",
+	"AES",
+	"WEP104",
+	"SMS4",
+	"WEP_WPA",
+	"BIP",
+};
+
+const char *security_type_str(u8 value)
+{
+#ifdef CONFIG_IEEE80211W
+	if (value <= _BIP_)
+#else
+	if (value <= _WEP_WPA_MIXED_)
+#endif
+		return _security_type_str[value];
+	return NULL;
+}
 
 //=====WEP related===== 
 

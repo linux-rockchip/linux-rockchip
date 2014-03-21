@@ -84,8 +84,8 @@
 //
 //-----------------------------------------------------
 #ifdef CONFIG_WOWLAN
-#define REG_TXPKTBUF_IV_LOW             0x0484
-#define REG_TXPKTBUF_IV_HIGH            0x0488
+#define REG_TXPKTBUF_IV_LOW             0x01a4
+#define REG_TXPKTBUF_IV_HIGH            0x01a8
 #endif
 
 //-----------------------------------------------------

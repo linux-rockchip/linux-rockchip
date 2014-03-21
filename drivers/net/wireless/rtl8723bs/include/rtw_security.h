@@ -34,6 +34,8 @@
 #endif //CONFIG_IEEE80211W
 #define is_wep_enc(alg) (((alg) == _WEP40_) || ((alg) == _WEP104_))
 
+const char *security_type_str(u8 value);
+
 #define _WPA_IE_ID_	0xdd
 #define _WPA2_IE_ID_	0x30
 

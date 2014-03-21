@@ -86,6 +86,8 @@ const char *android_wifi_cmd_str[ANDROID_WIFI_CMD_MAX] = {
 #ifdef CONFIG_GTK_OL
 	"GTK_REKEY_OFFLOAD",
 #endif //CONFIG_GTK_OL
+/*	Private command for	P2P disable*/
+	"P2P_DISABLE"
 };
 
 #ifdef CONFIG_PNO_SUPPORT
@@ -468,7 +470,10 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		ret = -EFAULT;
 		goto exit;
 	}
-	
+	if ( padapter->registrypriv.mp_mode == 1) {
+		ret = -EFAULT;
+		goto exit;
+	}
 	//DBG_871X("%s priv_cmd.buf=%p priv_cmd.total_len=%d  priv_cmd.used_len=%d\n",__func__,priv_cmd.buf,priv_cmd.total_len,priv_cmd.used_len);
 	command = rtw_zmalloc(priv_cmd.total_len);
 	if (!command)
@@ -522,7 +527,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		//rtw_set_scan_mode((_adapter *)rtw_netdev_priv(net), SCAN_ACTIVE);
 #ifdef CONFIG_PLATFORM_MSTAR
 #ifdef CONFIG_IOCTL_CFG80211
-		(adapter_wdev_data((_adapter *)rtw_netdev_priv(net))->bandroid_scan = _TRUE;
+		adapter_wdev_data((_adapter *)rtw_netdev_priv(net))->bandroid_scan = _TRUE;
 #endif //CONFIG_IOCTL_CFG80211
 #endif //CONFIG_PLATFORM_MSTAR
 		break;
@@ -738,6 +743,16 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		rtw_gtk_offload(net, priv_cmd.buf);
 		break;
 #endif //CONFIG_GTK_OL		
+	case ANDROID_WIFI_CMD_P2P_DISABLE:
+	{
+		struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;	
+		struct wifidirect_info 	*pwdinfo= &(padapter->wdinfo);
+		u8 channel, ch_offset;
+		u16 bwmode;
+
+		rtw_p2p_enable(padapter, P2P_ROLE_DISABLE);
+		break;
+	}
 	default:
 		DBG_871X("Unknown PRIVATE command %s - ignored\n", command);
 		snprintf(command, 3, "OK");

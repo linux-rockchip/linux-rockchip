@@ -27,6 +27,10 @@
 #include <hal_btcoex.h>
 #endif
 
+#ifdef CONFIG_SDIO_HCI
+#include <hal_sdio.h>
+#endif
+
 //
 // <Roger_Notes> For RTL8723 WiFi/BT/GPS multi-function configuration. 2010.10.06.
 //
@@ -131,6 +135,10 @@ typedef enum _USB_RX_AGG_MODE{
 //#define MAX_RX_DMA_BUFFER_SIZE	10240		// 10K for 8192C RX DMA buffer
 
 #endif
+
+#define PAGE_SIZE_128	128
+#define PAGE_SIZE_256	256
+#define PAGE_SIZE_512	512
 
 struct dm_priv
 {
@@ -517,12 +525,17 @@ typedef struct hal_com_data
 	// HIQ, MID, LOW, PUB free pages; padapter->xmitpriv.free_txpg
 	u8			SdioTxFIFOFreePage[SDIO_TX_FREE_PG_QUEUE];
 	_lock		SdioTxFIFOFreePageLock;
+	u8			SdioTxOQTMaxFreeSpace;
+	u8			SdioTxOQTFreeSpace;
+	
 
 	//
 	// SDIO Rx FIFO related.
 	//
 	u8			SdioRxFIFOCnt;
 	u16			SdioRxFIFOSize;
+
+	u32			sdio_tx_max_len[SDIO_MAX_TX_QUEUE];// H, N, L, used for sdio tx aggregation max length per queue
 #endif //CONFIG_SDIO_HCI
 
 #ifdef CONFIG_USB_HCI
@@ -580,7 +593,6 @@ typedef struct hal_com_data
 	
 	u8	bInterruptMigration;
 	u8	bDisableTxInt;
-	u8	bGpioHwWpsPbc;
 #endif //CONFIG_PCI_HCI
 
 	struct dm_priv	dmpriv;
@@ -598,9 +610,11 @@ typedef struct hal_com_data
 #endif // CONFIG_BT_COEXIST
 
 #if defined(CONFIG_RTL8723A) || defined(CONFIG_RTL8723B)
+	#ifndef CONFIG_PCI_HCI	// mutual exclusive with PCI -- so they're SDIO and GSPI 
 	// Interrupt relatd register information.
 	u32			SysIntrStatus;
 	u32			SysIntrMask;
+	#endif
 #endif //endif CONFIG_RTL8723A
 
 	

@@ -682,60 +682,60 @@ odm_RxPhyStatus92CSeries_Parsing(
 			VGA_idx = (cck_agc_rpt & 0x1F); 
 			if(pDM_Odm->SupportICType & (ODM_RTL8188E|ODM_RTL8192E))
 			{
-			switch(LNA_idx)
-			{
-				case 7:
-					if(VGA_idx <= 27)
-						rx_pwr_all = -100 + 2*(27-VGA_idx); //VGA_idx = 27~2
-					else
-						rx_pwr_all = -100;
-					break;
-				case 6:
-						rx_pwr_all = -48 + 2*(2-VGA_idx); //VGA_idx = 2~0
-					break;
-				case 5:
-						rx_pwr_all = -42 + 2*(7-VGA_idx); //VGA_idx = 7~5
-					break;
-				case 4:
-						rx_pwr_all = -36 + 2*(7-VGA_idx); //VGA_idx = 7~4
-					break;
-				case 3:
-						//rx_pwr_all = -28 + 2*(7-VGA_idx); //VGA_idx = 7~0
-						rx_pwr_all = -24 + 2*(7-VGA_idx); //VGA_idx = 7~0
-					break;
-				case 2:
-					if(cck_highpwr)
-						rx_pwr_all = -12 + 2*(5-VGA_idx); //VGA_idx = 5~0
-					else
-						rx_pwr_all = -6+ 2*(5-VGA_idx);
-					break;
-				case 1:
-						rx_pwr_all = 8-2*VGA_idx;
-					break;
-				case 0:
-						rx_pwr_all = 14-2*VGA_idx;
-					break;
-				default:
-					//DbgPrint("CCK Exception default\n");
-					break;
-			}
-			rx_pwr_all += 6;
+				switch(LNA_idx)
+				{
+					case 7:
+						if(VGA_idx <= 27)
+							rx_pwr_all = -100 + 2*(27-VGA_idx); //VGA_idx = 27~2
+						else
+							rx_pwr_all = -100;
+						break;
+					case 6:
+							rx_pwr_all = -48 + 2*(2-VGA_idx); //VGA_idx = 2~0
+						break;
+					case 5:
+							rx_pwr_all = -42 + 2*(7-VGA_idx); //VGA_idx = 7~5
+						break;
+					case 4:
+							rx_pwr_all = -36 + 2*(7-VGA_idx); //VGA_idx = 7~4
+						break;
+					case 3:
+							//rx_pwr_all = -28 + 2*(7-VGA_idx); //VGA_idx = 7~0
+							rx_pwr_all = -24 + 2*(7-VGA_idx); //VGA_idx = 7~0
+						break;
+					case 2:
+						if(cck_highpwr)
+							rx_pwr_all = -12 + 2*(5-VGA_idx); //VGA_idx = 5~0
+						else
+							rx_pwr_all = -6+ 2*(5-VGA_idx);
+						break;
+					case 1:
+							rx_pwr_all = 8-2*VGA_idx;
+						break;
+					case 0:
+							rx_pwr_all = 14-2*VGA_idx;
+						break;
+					default:
+						//DbgPrint("CCK Exception default\n");
+						break;
+				}
+				rx_pwr_all += 6;
 
-			//2012.10.08 LukeLee: Modify for 92E CCK RSSI
-			if(pDM_Odm->SupportICType == ODM_RTL8192E)
-				rx_pwr_all += 10;
-			
-			PWDB_ALL = odm_QueryRxPwrPercentage(rx_pwr_all);
-			if(cck_highpwr == FALSE)
-			{
-				if(PWDB_ALL >= 80)
-					PWDB_ALL = ((PWDB_ALL-80)<<1)+((PWDB_ALL-80)>>1)+80;
-				else if((PWDB_ALL <= 78) && (PWDB_ALL >= 20))
-					PWDB_ALL += 3;
-				if(PWDB_ALL>100)
-					PWDB_ALL = 100;
+				//2012.10.08 LukeLee: Modify for 92E CCK RSSI
+				if(pDM_Odm->SupportICType == ODM_RTL8192E)
+					rx_pwr_all += 10;
+				
+				PWDB_ALL = odm_QueryRxPwrPercentage(rx_pwr_all);
+				if(cck_highpwr == FALSE)
+				{
+					if(PWDB_ALL >= 80)
+						PWDB_ALL = ((PWDB_ALL-80)<<1)+((PWDB_ALL-80)>>1)+80;
+					else if((PWDB_ALL <= 78) && (PWDB_ALL >= 20))
+						PWDB_ALL += 3;
+					if(PWDB_ALL>100)
+						PWDB_ALL = 100;
+				}
 			}
-		}
 			else if(pDM_Odm->SupportICType & (ODM_RTL8723B))
 			{
 #if (RTL8723B_SUPPORT == 1)			
@@ -832,7 +832,7 @@ odm_RxPhyStatus92CSeries_Parsing(
 		//
 		// (3) Get Signal Quality (EVM)
 		//
-		if(pPktinfo->bPacketMatchBSSID)
+		//if(pPktinfo->bPacketMatchBSSID)
 		{
 			u1Byte	SQ,SQ_rpt;			
 			
@@ -917,7 +917,7 @@ odm_RxPhyStatus92CSeries_Parsing(
 		#endif
 		
 			/* Record Signal Strength for next packet */
-			if(pPktinfo->bPacketMatchBSSID)
+			//if(pPktinfo->bPacketMatchBSSID)
 			{				
 				if((pDM_Odm->SupportPlatform == ODM_WIN) &&
 					(pDM_Odm->PatchID==RT_CID_819x_Lenovo))
@@ -976,7 +976,7 @@ odm_RxPhyStatus92CSeries_Parsing(
 				//RT_DISP(FRX, RX_PHY_SQ, ("RXRATE=%x RXEVM=%x EVM=%s%d\n", 
 				//GET_RX_STATUS_DESC_RX_MCS(pDesc), pDrvInfo->rxevm[i], "%", EVM));
 				
-				if(pPktinfo->bPacketMatchBSSID)
+				//if(pPktinfo->bPacketMatchBSSID)
 				{
 					if(i==ODM_RF_PATH_A) // Fill value in RFD, Get the first spatial stream only
 					{						
@@ -1214,7 +1214,7 @@ odm_RxPhyStatusJaguarSeries_Parsing(
 		//
 		// (3) Get Signal Quality (EVM)
 		//
-		if(pPktinfo->bPacketMatchBSSID)
+		//if(pPktinfo->bPacketMatchBSSID)
 		{
 			u1Byte	SQ,SQ_rpt;			
 			
@@ -1293,7 +1293,7 @@ odm_RxPhyStatusJaguarSeries_Parsing(
 			pPhyInfo->Cfo_tail[i] = odm_Cfo( (pPhyStaRpt->cfotail[i]) );
 
 			/* Record Signal Strength for next packet */
-			if(pPktinfo->bPacketMatchBSSID)
+			//if(pPktinfo->bPacketMatchBSSID)
 			{				
 				if((pDM_Odm->SupportPlatform == ODM_WIN) &&
 					(pDM_Odm->PatchID==RT_CID_819x_Lenovo))
@@ -1347,7 +1347,7 @@ odm_RxPhyStatusJaguarSeries_Parsing(
 			else
 				Max_spatial_stream = 1; 
 
-			if(pPktinfo->bPacketMatchBSSID)
+			//if(pPktinfo->bPacketMatchBSSID)
 			{
 				//DbgPrint("pPktinfo->DataRate = %d\n", pPktinfo->DataRate);
 
@@ -1620,7 +1620,7 @@ odm_Process_RSSIForDM(
 		{
 			RSSI_Ave = pPhyInfo->RxPWDBAll;
 			pDM_Odm->RSSI_A = (u1Byte) pPhyInfo->RxPWDBAll;
-			pDM_Odm->RSSI_B = 0xFF;
+			pDM_Odm->RSSI_B = 0;
 
 			//1 Process CCK RSSI
 			if(UndecoratedSmoothedCCK <= 0)	// initialize
@@ -2259,10 +2259,12 @@ ODM_ConfigFWWithHeaderFile(
 		{
 			READ_FIRMWARE(8723B,_FW_WoWLAN);
 		}
+#ifdef CONFIG_AP_WOWLAN
 		else if (ConfigType == CONFIG_FW_AP_WoWLAN)
 		{
 			READ_FIRMWARE(8723B,_FW_AP_WoWLAN);
 		}
+#endif
 		else if (ConfigType == CONFIG_FW_BT)
 		{
 			READ_FIRMWARE_MP(8723B,_FW_BT);
@@ -2319,6 +2321,13 @@ ODM_ConfigFWWithHeaderFile(
 		{
 			READ_FIRMWARE(8192E,_FW_WoWLAN);
 		}
+#ifdef CONFIG_AP_WOWLAN
+		else if (ConfigType == CONFIG_FW_AP_WoWLAN)
+		{
+			READ_FIRMWARE(8192E,_FW_AP_WoWLAN);
+		}
+#endif
+
 	}
 #endif
 	return HAL_STATUS_SUCCESS;    

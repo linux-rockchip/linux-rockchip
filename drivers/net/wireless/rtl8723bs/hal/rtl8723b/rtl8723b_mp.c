@@ -328,10 +328,13 @@ void Hal_MPT_CCKTxPowerAdjustbyIndex(PADAPTER pAdapter, BOOLEAN beven)
 			}
 		}
 
-		if (Action == 1)
+		if (Action == 1) {
+			if (CCK_index_old == 0)
+				CCK_index_old = 1;
 			CCK_index = CCK_index_old - 1;
-		else
+		} else {
 			CCK_index = CCK_index_old + 1;
+		}
 
 		if (CCK_index == CCK_TABLE_SIZE) {
 			CCK_index = CCK_TABLE_SIZE -1;

@@ -82,6 +82,7 @@
 	#endif
 	//#define CONFIG_FIND_BEST_CHANNEL
 	//#define CONFIG_NO_WIRELESS_HANDLERS
+	#define CONFIG_TX_MCAST2UNI		// Support IP multicast->unicast
 #endif
 
 #define CONFIG_P2P
@@ -97,7 +98,8 @@
 	#define CONFIG_P2P_PS
 	#define CONFIG_P2P_IPS
 	#define CONFIG_P2P_OP_CHK_SOCIAL_CH
-	#define CONFIG_P2P_CHK_INVITE_CH_LIST
+	#define CONFIG_CFG80211_ONECHANNEL_UNDER_CONCURRENT  //replace CONFIG_P2P_CHK_INVITE_CH_LIST flag
+	#define CONFIG_P2P_INVITE_IOT
 #endif
 
 //	Added by Kurt 20110511
@@ -113,7 +115,7 @@
 #define CONFIG_LAYER2_ROAMING
 #define CONFIG_LAYER2_ROAMING_RESUME
 
-#define CONFIG_SCAN_SPARSE 	//partial scan, ASUS RK3188 use the feature
+//#define CONFIG_SCAN_SPARSE 	//partial scan, ASUS RK3188 use the feature
 #ifdef CONFIG_SCAN_SPARSE 
 	#define ALLOW_SCAN_INTERVAL	12000 // unit is ms
 	#define SCAN_DIVISION_NUM 4
@@ -135,8 +137,10 @@
 /*
  * Interface Related Config
  */
+#define CONFIG_TX_AGGREGATION
 #define CONFIG_SDIO_RX_COPY
 #define CONFIG_XMIT_THREAD_MODE
+#define CONFIG_SDIO_TX_ENABLE_AVAL_INT
 
 /*
  * Others
@@ -358,12 +362,12 @@
 #else // !CONFIG_DEBUG
 #define DBG	0	// for ODM & BTCOEX debug
 #endif // !CONFIG_DEBUG
-//
+
 #define CONFIG_PROC_DEBUG
-//
+
 #define DBG_CONFIG_ERROR_DETECT
 //#define DBG_XMIT_BUF
 //#define DBG_XMIT_BUF_EXT
 //#define DBG_CHECK_FW_PS_STATE
 //#define DBG_CHECK_FW_PS_STATE_H2C
-//
+

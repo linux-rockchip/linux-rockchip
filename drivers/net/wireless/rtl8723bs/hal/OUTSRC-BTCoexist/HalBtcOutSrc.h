@@ -628,7 +628,8 @@ EXhalbtcoutsrc_PnpNotify(
 	);
 VOID
 EXhalbtcoutsrc_CoexDmSwitch(
-	IN	PBTC_COEXIST		pBtCoexist
+	IN	PBTC_COEXIST		pBtCoexist,
+	IN	BOOLEAN 			antInverse
 	);
 VOID
 EXhalbtcoutsrc_Periodical(
@@ -669,7 +670,8 @@ EXhalbtcoutsrc_SetChipType(
 VOID
 EXhalbtcoutsrc_SetAntNum(
 	IN	u1Byte		type,
-	IN	u1Byte		antNum
+	IN	u1Byte		antNum,
+	IN	BOOLEAN 	antInverse
 	);
 VOID
 EXhalbtcoutsrc_DisplayBtCoexInfo(

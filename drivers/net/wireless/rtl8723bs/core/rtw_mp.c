@@ -292,7 +292,8 @@ s32 init_mp_priv(PADAPTER padapter)
 	pmppriv->tx.stop = 1;
 	pmppriv->bSetTxPower=0;		//for  manually set tx power
 	pmppriv->bTxBufCkFail=_FALSE;
-
+	pmppriv->pktInterval=300;
+	
 	mp_init_xmit_attrib(&pmppriv->tx, padapter);
 
 	switch (padapter->registrypriv.rf_config) {
@@ -442,7 +443,23 @@ void mpt_InitHWConfig(PADAPTER Adapter)
 #endif //CONFIG_RTL8812A_8821A
 
 #ifdef CONFIG_RTL8723B
-#define PHY_IQCalibrate(a,b)	PHY_IQCalibrate_8723B(a,b)
+static void PHY_IQCalibrate(PADAPTER padapter, u8 bReCovery)
+{
+	PHAL_DATA_TYPE pHalData;
+	u8 b2ant;	//false:1ant, true:2-ant
+	u8 RF_Path;	//0:S1, 1:S0
+
+
+	pHalData = GET_HAL_DATA(padapter);
+	b2ant = pHalData->EEPROMBluetoothAntNum==Ant_x2?_TRUE:_FALSE;
+	RF_Path = 0;
+#ifdef CONFIG_USB_HCI
+	RF_Path = 1;
+#endif
+
+	PHY_IQCalibrate_8723B(padapter, bReCovery, _FALSE, b2ant, RF_Path);
+}
+
 #define PHY_LCCalibrate(a)	PHY_LCCalibrate_8723B(&(GET_HAL_DATA(a)->odmpriv))
 #define PHY_SetRFPathSwitch(a,b)	PHY_SetRFPathSwitch_8723B(a,b)
 #endif
@@ -707,7 +724,9 @@ u32 mp_join(PADAPTER padapter,u8 mode)
 	struct mp_priv *pmppriv = &padapter->mppriv;
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 	struct wlan_network *tgt_network = &pmlmepriv->cur_network;
-
+	_adapter				*pbuddyadapter = padapter->pbuddy_adapter;
+	struct mlme_priv *pbuddymlmepriv = &pbuddyadapter->mlmepriv;
+	
 	// 1. initialize a new WLAN_BSSID_EX
 	_rtw_memset(&bssid, 0, sizeof(WLAN_BSSID_EX));
 	DBG_8192C("%s ,pmppriv->network_macaddr=%x %x %x %x %x %x \n",__func__,
@@ -760,6 +779,13 @@ u32 mp_join(PADAPTER padapter,u8 mode)
 		RT_TRACE(_module_mp_, _drv_notice_, ("+start mp in normal mode\n"));
 	}
 #endif
+		_clr_fwstate_(pmlmepriv, _FW_UNDER_SURVEY);
+		_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
+		_clr_fwstate_(pmlmepriv, _FW_LINKED);
+		_clr_fwstate_(pbuddymlmepriv, _FW_UNDER_SURVEY);
+		_clr_fwstate_(pbuddymlmepriv, _FW_UNDER_LINKING);
+		_clr_fwstate_(pbuddymlmepriv, _FW_LINKED);
+
 	set_fwstate(pmlmepriv, _FW_UNDER_LINKING);
 	set_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
 
@@ -1246,14 +1272,17 @@ static thread_return mp_xmit_packet_thread(thread_context context)
 				goto exit;
 			}
 			else {
-				rtw_msleep_os(1);
+				rtw_usleep_os(100);
 				continue;
 			}
 		}
 		_rtw_memcpy((u8 *)(pxmitframe->buf_addr+TXDESC_OFFSET), pmptx->buf, pmptx->write_size);
 		_rtw_memcpy(&(pxmitframe->attrib), &(pmptx->attrib), sizeof(struct pkt_attrib));
 
+		
+		rtw_udelay_os(padapter->mppriv.pktInterval);
 		dump_mpframe(padapter, pxmitframe);
+		
 		pmptx->sended++;
 		pmp_priv->tx_pktcount++;
 
@@ -1414,7 +1443,7 @@ void fill_tx_desc_8812a(PADAPTER padapter)
 		SET_TX_DESC_SEQ_8812(pDesc, pattrib->seqnum);
 	}
 	
-	if ((pmp_priv->bandwidth >= 0) && (pmp_priv->bandwidth <= CHANNEL_WIDTH_160)) {
+	if (pmp_priv->bandwidth <= CHANNEL_WIDTH_160) {
 		SET_TX_DESC_DATA_BW_8812(pDesc, pmp_priv->bandwidth);
 	} else {
 		DBG_871X("%s:Err: unknown bandwidth %d, use 20M\n", __func__,pmp_priv->bandwidth);
@@ -1463,7 +1492,7 @@ void fill_tx_desc_8192e(PADAPTER padapter)
 		SET_TX_DESC_SEQ_92E(pDesc, pattrib->seqnum);
 	}
 		
-	if ((pmp_priv->bandwidth >= CHANNEL_WIDTH_20) && (pmp_priv->bandwidth <= CHANNEL_WIDTH_40)) {
+	if ((pmp_priv->bandwidth == CHANNEL_WIDTH_20) || (pmp_priv->bandwidth == CHANNEL_WIDTH_40)) {
 		SET_TX_DESC_DATA_BW_92E(pDesc, pmp_priv->bandwidth);
 	} else {
 		DBG_871X("%s:Err: unknown bandwidth %d, use 20M\n", __func__,pmp_priv->bandwidth);
@@ -1512,6 +1541,21 @@ void fill_tx_desc_8723b(PADAPTER padapter)
 
 }
 #endif
+
+static void Rtw_MPSetMacTxEDCA(PADAPTER padapter)
+{
+
+	rtw_write32(padapter, 0x508 , 0x00a43f); //Disable EDCA BE Txop for MP pkt tx adjust Packet interval
+	//DBG_871X("%s:write 0x508~~~~~~ 0x%x\n", __func__,rtw_read32(padapter, 0x508));
+	PHY_SetMacReg(padapter, 0x458 ,bMaskDWord , 0x0);
+	//DBG_8192C("%s()!!!!! 0x460 = 0x%x\n" ,__func__,PHY_QueryBBReg(padapter, 0x460, bMaskDWord));
+	PHY_SetMacReg(padapter, 0x460 ,bMaskLWord , 0x0);//fast EDCA queue packet interval & time out vaule
+	PHY_SetMacReg(padapter, ODM_EDCA_VO_PARAM ,bMaskLWord , 0x431C);
+	PHY_SetMacReg(padapter, ODM_EDCA_BE_PARAM ,bMaskLWord , 0x431C);
+	PHY_SetMacReg(padapter, ODM_EDCA_BK_PARAM ,bMaskLWord , 0x431C);
+	DBG_8192C("%s()!!!!! 0x460 = 0x%x\n" ,__func__,PHY_QueryBBReg(padapter, 0x460, bMaskDWord));
+
+}
 
 void SetPacketTx(PADAPTER padapter)
 {
@@ -1652,6 +1696,9 @@ void SetPacketTx(PADAPTER padapter)
 		DBG_871X("Create PktTx Thread Fail !!!!!\n");
 }
 #endif
+
+	Rtw_MPSetMacTxEDCA(padapter);
+
 }
 
 void SetPacketRx(PADAPTER pAdapter, u8 bStartRx)
@@ -1813,8 +1860,8 @@ u32 mp_query_psd(PADAPTER pAdapter, u8 *data)
 	} else {
 		sscanf(data, "pts=%d,start=%d,stop=%d", &psd_pts, &psd_start, &psd_stop);
 	}
-
-	_rtw_memset(data, '\0', sizeof(data));
+	
+	data[0]='\0';
 
 	i = psd_start;
 	while (i < psd_stop)

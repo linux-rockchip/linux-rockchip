@@ -39,7 +39,7 @@ u8 hal_btcoex_IsBtExist(PADAPTER padapter);
 u8 hal_btcoex_IsBtDisabled(PADAPTER);
 void hal_btcoex_SetChipType(PADAPTER padapter, u8 chipType);
 u8 hal_btcoex_GetChipType(PADAPTER padapter);
-void hal_btcoex_SetPgAntNum(PADAPTER padapter, u8 antNum);
+void hal_btcoex_SetPgAntNum(PADAPTER padapter, u8 antNum, BOOLEAN antInverse);
 u8 hal_btcoex_GetPgAntNum(PADAPTER padapter);
 
 u8 hal_btcoex_Initialize(PADAPTER padapter);
@@ -51,6 +51,7 @@ void hal_btcoex_ScanNotify(PADAPTER padapter, u8 type);
 void hal_btcoex_ConnectNotify(PADAPTER padapter, u8 action);
 void hal_btcoex_MediaStatusNotify(PADAPTER padapter, u8 mediaStatus);
 void hal_btcoex_SpecialPacketNotify(PADAPTER padapter, u8 pktType);
+void hal_btcoex_IQKNotify(PADAPTER padapter, u8 state);
 void hal_btcoex_BtInfoNotify(PADAPTER padapter, u8 length, u8 *tmpBuf);
 void hal_btcoex_SuspendNotify(PADAPTER padapter, u8 state);
 void hal_btcoex_HaltNotify(PADAPTER padapter);
