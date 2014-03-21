@@ -1813,6 +1813,35 @@ uint32_t __sramlocalfunc ddr_set_pll_rk3188_plus(uint32_t nMHz, uint32_t set)
         dpllvaluel = ddr_get_pll_freq(DPLL);
         gpllvaluel = ddr_get_pll_freq(GPLL);
 
+        if(ddr_rk3188_dpll_is_good == false)    //if rk3188 DPLL is bad,use GPLL
+        {
+            if( (gpllvaluel < 200) ||(gpllvaluel > 2000))
+            {
+                ddr_print("DPLL is bad and GPLL freq = %dMHz,Not suitable for ddr_clock\n",gpllvaluel);
+                return 0;
+            }
+
+            if(gpllvaluel > 1000)    //GPLL:1000MHz-2000MHz
+            {
+                ddr_select_gpll_div=4;    //DDR_CLCOK:250MHz-500MHz
+            }
+            else if(gpllvaluel > 800)    //GPLL:800MHz-1000MHz
+            {
+                if(nMHz > 250)
+                    ddr_select_gpll_div=2;    //DDR_CLCOK:400MHz-500MHz
+                else
+                    ddr_select_gpll_div=4;    //DDR_CLCOK:200MHz-250MHz
+            }
+            else if(gpllvaluel > 500)    //GPLL:500MHz-800MHz
+            {
+                ddr_select_gpll_div=2;    //DDR_CLCOK:250MHz-400MHz
+            }
+            else     //GPLL:200MHz-500MHz
+            {
+                ddr_select_gpll_div=1;    //DDR_CLCOK:200MHz-500MHz
+            }
+        }
+
         if(ddr_select_gpll_div > 0)
         {
             if(ddr_select_gpll_div == 4)
@@ -1862,7 +1891,7 @@ uint32_t __sramlocalfunc ddr_set_pll_rk3188_plus(uint32_t nMHz, uint32_t set)
                                                           | 2;           //clk_ddr_src:clk_ddrphy = 4:1                
                 dsb();
             }
-            if(ddr_select_gpll_div == 2)
+            else if(ddr_select_gpll_div == 2)
             {
                 pCRU_Reg->CRU_CLKGATE_CON[1] = 0x00800000;
                 pCRU_Reg->CRU_CLKSEL_CON[26] = ((0x3 | (0x1<<8))<<16)
