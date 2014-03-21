@@ -34,6 +34,8 @@
 #include "hdmi/rk_hdmi.h"
 #include <linux/linux_logo.h>
 
+#include <mach/clock.h>
+#include <linux/clk.h>
 void rk29_backlight_set(bool on);
 bool rk29_get_backlight_status(void);
 
@@ -83,6 +85,129 @@ struct rk_lcdc_device_driver * rk_get_lcdc_drv(char *name)
 	}
 	return inf->lcdc_dev_drv[i];
 	
+}
+
+static struct rk_lcdc_device_driver * rk_get_prmry_lcdc_drv(void)
+{
+	struct rk_fb_inf *inf = NULL; 
+	struct rk_lcdc_device_driver *dev_drv = NULL;
+	int i = 0;
+
+	if(likely(g_fb_pdev))
+		inf = platform_get_drvdata(g_fb_pdev);
+	else
+		return NULL;
+	
+	for(i = 0; i < inf->num_lcdc;i++)
+	{
+		if(inf->lcdc_dev_drv[i]->screen_ctr_info->prop ==  PRMRY)
+		{
+			dev_drv = inf->lcdc_dev_drv[i];
+			break;
+		}
+	}
+
+	return dev_drv;
+}
+
+//get one frame time
+int rk_fb_get_prmry_screen_ft(void)
+{
+	uint32_t pix_count,ft_us,dclk_mhz;
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+        if (!dev_drv)
+		return 0;
+		
+        if (0 == dev_drv->id)
+                dclk_mhz = clk_get_rate(clk_get(NULL, "dclk_lcdc0"))/(1000*1000);
+        else 
+                dclk_mhz = clk_get_rate(clk_get(NULL, "dclk_lcdc1"))/(1000*1000);
+
+        pix_count = (dev_drv->cur_screen->upper_margin + dev_drv->cur_screen->lower_margin + dev_drv->cur_screen->y_res +dev_drv->cur_screen->vsync_len)*
+        (dev_drv->cur_screen->left_margin + dev_drv->cur_screen->right_margin + dev_drv->cur_screen->x_res + dev_drv->cur_screen->hsync_len);       // one frame time ,(pico seconds)
+        
+        ft_us = pix_count / dclk_mhz;
+
+        
+        return ft_us;
+
+}
+
+static struct rk_lcdc_device_driver * rk_get_extend_lcdc_drv(void)
+{
+	struct rk_fb_inf *inf = NULL; 
+	struct rk_lcdc_device_driver *dev_drv = NULL;
+	int i = 0;
+	
+	if(likely(g_fb_pdev))
+		inf = platform_get_drvdata(g_fb_pdev);
+	else
+		return NULL;
+	
+	for(i = 0; i < inf->num_lcdc; i++)
+	{
+		if(inf->lcdc_dev_drv[i]->screen_ctr_info->prop == EXTEND)
+		{
+			dev_drv = inf->lcdc_dev_drv[i];
+			break;
+		}
+	}
+
+	return dev_drv;
+}
+
+rk_screen *rk_fb_get_prmry_screen(void)
+{
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	return dev_drv->screen0;
+	
+}
+
+u32 rk_fb_get_prmry_screen_pixclock(void)
+{
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	return dev_drv->pixclock;
+}
+
+int rk_fb_poll_prmry_screen_vblank(void)
+{
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	if(likely(dev_drv))
+	{
+		if(dev_drv->poll_vblank)
+			return dev_drv->poll_vblank(dev_drv);
+		else
+			return RK_LF_STATUS_NC;	
+	}
+	else
+		return RK_LF_STATUS_NC;
+}
+
+bool rk_fb_poll_wait_frame_complete(void)
+{
+	uint32_t timeout = RK_LF_MAX_TIMEOUT;
+	struct rk_lcdc_device_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	
+	if (likely(dev_drv)) {
+		if (dev_drv->set_irq_to_cpu)
+			dev_drv->set_irq_to_cpu(dev_drv,0);
+	}
+
+	if (rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_NC) {
+		if(dev_drv->set_irq_to_cpu)
+                        dev_drv->set_irq_to_cpu(dev_drv,1);
+		return false;
+	}
+
+	while( !(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_FR)  &&  --timeout);
+	while( !(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_FC)  &&  --timeout);
+
+	if (likely(dev_drv)) {
+                if (dev_drv->set_irq_to_cpu)
+                        dev_drv->set_irq_to_cpu(dev_drv,1);
+        }
+
+	return true;
 }
 static int rk_fb_open(struct fb_info *info,int user)
 {

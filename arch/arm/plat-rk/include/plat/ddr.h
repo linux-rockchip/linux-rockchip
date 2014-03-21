@@ -99,6 +99,10 @@
 #define DDR_TYPE DDR3_1600J
 #endif
 
+#ifdef CONFIG_DDR_TYPE_DDR3_1600K
+#define DDR_TYPE DDR3_1600K
+#endif
+
 #ifdef CONFIG_DDR_TYPE_DDR3_1866J
 #define DDR_TYPE DDR3_1866J
 #endif
@@ -143,10 +147,18 @@
 #define DDR_TYPE DDR_LPDDR
 #endif
 
+struct ddr_freq_t {
+    unsigned long screen_ft_us;
+    unsigned long long t0;
+    unsigned long long t1;
+    unsigned long t2;
+};
+
 void __sramfunc ddr_suspend(void);
 void __sramfunc ddr_resume(void);
 //void __sramlocalfunc delayus(uint32_t us);
 uint32_t ddr_change_freq(uint32_t nMHz);
+uint32_t __sramfunc ddr_change_freq_sram(uint32_t nMHz , struct ddr_freq_t ddr_freq_t);
 uint32_t ddr_get_cap(void);
 int ddr_init(uint32_t dram_type, uint32_t freq);
 void ddr_set_auto_self_refresh(bool en);
@@ -154,6 +166,12 @@ uint32_t __sramlocalfunc ddr_set_pll(uint32_t nMHz, uint32_t set);
 uint32_t __sramlocalfunc ddr_set_pll_rk3066b(uint32_t nMHz, uint32_t set);
 #if defined(CONFIG_ARCH_RK3066B)
 int ddr_get_datatraing_value_3168(bool end_flag,uint32_t dqstr_value,uint32_t min_freq);
+#endif
+
+#if defined(CONFIG_ARCH_RK3188) || defined(CONFIG_ARCH_RK3026)
+#if !defined(CONFIG_MACH_RK3188_FT)&&!defined(CONFIG_MACH_RK3168_FT) && !defined(CONFIG_MACH_RK3026_FT)
+#define DDR_CHANGE_FREQ_IN_LCDC_VSYNC
+#endif
 #endif
 
 #endif
