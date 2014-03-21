@@ -1307,6 +1307,7 @@ static int rk3188_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 		dev_drv->screen_ctr_info->io_disable();
 
 	spin_lock(&lcdc_dev->reg_lock);
+	lcdc_dev->standby = 1;
 	if(likely(lcdc_dev->clk_on))
 	{
 		lcdc_msk_reg(lcdc_dev,INT_STATUS,m_FS_INT_CLEAR,v_FS_INT_CLEAR(1));
@@ -1363,6 +1364,7 @@ static int rk3188_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL,m_LCDC_STANDBY,v_LCDC_STANDBY(0));
 		lcdc_cfg_done(lcdc_dev);
 	}
+        lcdc_dev->standby = 0;
 	spin_unlock(&lcdc_dev->reg_lock);
 
 	if(!lcdc_dev->atv_layer_cnt)

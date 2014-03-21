@@ -467,9 +467,15 @@ static int ddrfreq_scanfreq_datatraing_3168(void)
     for (i = 0; table && table[i].frequency != CPUFREQ_TABLE_END; i++)
     {
         if(i == 0)
+        {
             min_freq = table[i].frequency / 1000;
-
-        max_freq = table[i].frequency / 1000;
+            max_freq = table[i].frequency / 1000;
+        }
+        else
+        {
+            min_freq = (min_freq > (table[i].frequency / 1000)) ? (table[i].frequency / 1000) : min_freq;
+            max_freq = (max_freq < (table[i].frequency / 1000)) ? (table[i].frequency / 1000) : max_freq;
+        }
     }
 
     //get data training value for RK3066B ddr_change_freq
@@ -483,12 +489,15 @@ static int ddrfreq_scanfreq_datatraing_3168(void)
 
         ddr_get_datatraing_value_3168(false,dqstr_value,min_freq);
     }
-    if (clk_set_rate(ddr.clk, max_freq*MHZ) != 0)
+    if((dqstr_freq-50) < max_freq)  //solve min=200, max=432
     {
-        pr_err("failed to clk_set_rate ddr.clk %dhz\n",dqstr_freq*MHZ);
+        if (clk_set_rate(ddr.clk, max_freq*MHZ) != 0)
+        {
+            pr_err("failed to clk_set_rate ddr.clk %dhz\n",dqstr_freq*MHZ);
+        }
+        dqstr_value++;
+        ddr_get_datatraing_value_3168(false,dqstr_value,min_freq);
     }
-    dqstr_value++;
-    ddr_get_datatraing_value_3168(false,dqstr_value,min_freq);
 
     ddr_get_datatraing_value_3168(true,0,min_freq);
     dprintk(DEBUG_DDR,"get datatraing from %dMhz to %dMhz\n",min_freq,max_freq);
