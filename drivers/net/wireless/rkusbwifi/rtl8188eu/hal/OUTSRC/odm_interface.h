@@ -42,7 +42,7 @@
 // _cat: implemented by Token-Pasting Operator.
 #if 0
 #define _cat(_name, _ic_type, _func)								\
-	( 																		\
+	( 															\
 		_func##_all(_name)										\
 	)
 #endif
@@ -98,14 +98,14 @@ typedef enum _ODM_H2C_CMD
 // 2012/02/17 MH For non-MP compile pass only. Linux does not support workitem.
 // Suggest HW team to use thread instead of workitem. Windows also support the feature.
 //
-#if (DM_ODM_SUPPORT_TYPE != ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE != ODM_WIN)
 typedef  void *PRT_WORK_ITEM ;
 typedef  void RT_WORKITEM_HANDLE,*PRT_WORKITEM_HANDLE;
 typedef VOID (*RT_WORKITEM_CALL_BACK)(PVOID pContext);
 
 #if 0
 typedef struct tasklet_struct RT_WORKITEM_HANDLE, *PRT_WORKITEM_HANDLE;
-	
+
 typedef struct _RT_WORK_ITEM
 {
 	
@@ -205,19 +205,19 @@ ODM_GetBBReg(
 
 VOID
 ODM_SetRFReg(	
-	IN 	PDM_ODM_T				pDM_Odm,
+	IN 	PDM_ODM_T			pDM_Odm,
 	IN	ODM_RF_RADIO_PATH_E	eRFPath,
-	IN	u4Byte					RegAddr,
-	IN	u4Byte					BitMask,
-	IN	u4Byte					Data
+	IN	u4Byte				RegAddr,
+	IN	u4Byte				BitMask,
+	IN	u4Byte				Data
 	);
 
 u4Byte 
 ODM_GetRFReg(	
-	IN 	PDM_ODM_T				pDM_Odm,
+	IN 	PDM_ODM_T			pDM_Odm,
 	IN	ODM_RF_RADIO_PATH_E	eRFPath,
-	IN	u4Byte					RegAddr,
-	IN	u4Byte					BitMask
+	IN	u4Byte				RegAddr,
+	IN	u4Byte				BitMask
 	);
 
 
@@ -235,6 +235,14 @@ ODM_FreeMemory(
 	IN 	PDM_ODM_T	pDM_Odm,
 	OUT	PVOID		pPtr,
 	IN	u4Byte		length
+	);
+
+VOID
+ODM_MoveMemory(	
+	IN 	PDM_ODM_T	pDM_Odm,
+	OUT PVOID		pDest,
+	IN  PVOID		pSrc,
+	IN  u4Byte		Length
 	);
 
 s4Byte ODM_CompareMemory(
@@ -307,7 +315,8 @@ ODM_StallExecution(
 
 VOID
 ODM_delay_ms(IN u4Byte	ms);
-
+
+
 
 VOID
 ODM_delay_us(IN u4Byte	us);
@@ -350,7 +359,7 @@ ODM_ReleaseTimer(
 //
 // ODM FW relative API.
 //
-#if (DM_ODM_SUPPORT_TYPE & ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE & ODM_WIN)
 VOID
 ODM_FillH2CCmd(
 	IN	PADAPTER		Adapter,
@@ -370,5 +379,16 @@ ODM_FillH2CCmd(
 	IN	pu1Byte		CmdStartSeq
 	);
 #endif
+
+u4Byte
+ODM_GetCurrentTime(	
+	IN 	PDM_ODM_T		pDM_Odm
+	);
+s4Byte
+ODM_GetProgressingTime(	
+	IN 	PDM_ODM_T		pDM_Odm,
+	IN	u4Byte			Start_Time
+	);
+
 #endif	// __ODM_INTERFACE_H__
 

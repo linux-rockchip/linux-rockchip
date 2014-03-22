@@ -29,11 +29,7 @@
 //============================================================
 // include files
 //============================================================
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
-#include <rtw_byteorder.h>
-
 #include <rtl8188e_hal.h>
 
 //============================================================
@@ -89,6 +85,7 @@ dm_CheckStatistics(
 #endif
 }
 
+#ifdef CONFIG_SUPPORT_HW_WPS_PBC
 static void dm_CheckPbcGPIO(_adapter *padapter)
 {
 	u8	tmp1byte;
@@ -136,26 +133,10 @@ static void dm_CheckPbcGPIO(_adapter *padapter)
 		// Here we only set bPbcPressed to true
 		// After trigger PBC, the variable will be set to false
 		DBG_8192C("CheckPbcGPIO - PBC is pressed\n");
-
-#ifdef RTK_DMP_PLATFORM
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,12))
-		kobject_uevent(&padapter->pnetdev->dev.kobj, KOBJ_NET_PBC);
-#else
-		kobject_hotplug(&padapter->pnetdev->class_dev.kobj, KOBJ_NET_PBC);
-#endif
-#else
-
-		if ( padapter->pid[0] == 0 )
-		{	//	0 is the default value and it means the application monitors the HW PBC doesn't privde its pid to driver.
-			return;
-		}
-
-#ifdef PLATFORM_LINUX
-		rtw_signal_process(padapter->pid[0], SIGUSR1);
-#endif
-#endif
+		rtw_request_wps_pbc_event(padapter);
 	}
 }
+#endif//#ifdef CONFIG_SUPPORT_HW_WPS_PBC
 
 #ifdef CONFIG_PCI_HCI
 //
@@ -274,7 +255,7 @@ dm_InitGPIOSetting(
 //============================================================
 static void Init_ODM_ComInfo_88E(PADAPTER	Adapter)
 {
-
+	EEPROM_EFUSE_PRIV	*pEEPROM = GET_EEPROM_EFUSE_PRIV(Adapter);
 	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 	PDM_ODM_T		pDM_Odm = &(pHalData->odmpriv);
@@ -283,21 +264,24 @@ static void Init_ODM_ComInfo_88E(PADAPTER	Adapter)
 	//
 	// Init Value
 	//
-	_rtw_memset(pDM_Odm,0,sizeof(pDM_Odm));
+	_rtw_memset(pDM_Odm,0,sizeof(*pDM_Odm));
 	
 	pDM_Odm->Adapter = Adapter;	
 	
 	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_PLATFORM,ODM_CE);
 
-	if(Adapter->interface_type == RTW_GSPI )
+	if (Adapter->interface_type == RTW_GSPI)
 		ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_INTERFACE,ODM_ITRF_SDIO);
 	else
-		ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_INTERFACE,Adapter->interface_type);//RTL871X_HCI_TYPE
+		ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_INTERFACE,Adapter->interface_type);
 	
 	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_IC_TYPE,ODM_RTL8188E);
 
 	fab_ver = ODM_TSMC;
 	cut_ver = ODM_CUT_A;	
+
+	if(IS_I_CUT(pHalData->VersionID) || IS_J_CUT(pHalData->VersionID) || IS_K_CUT(pHalData->VersionID))
+		cut_ver = ODM_CUT_I;
 
 	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_FAB_VER,fab_ver);		
 	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_CUT_VER,cut_ver);
@@ -313,7 +297,7 @@ static void Init_ODM_ComInfo_88E(PADAPTER	Adapter)
 		ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_EXT_PA,_TRUE);
 	}
 #endif	
-	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_PATCH_ID,pHalData->CustomerID);
+	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_PATCH_ID,pEEPROM->CustomerID);
 	//	ODM_CMNINFO_BINHCT_TEST only for MP Team
 	ODM_CmnInfoInit(pDM_Odm,ODM_CMNINFO_BWIFI_TEST,Adapter->registrypriv.wifi_spec);
 		
@@ -351,18 +335,16 @@ static void Update_ODM_ComInfo_88E(PADAPTER	Adapter)
 	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(Adapter);
 	PDM_ODM_T		pDM_Odm = &(pHalData->odmpriv);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;	
-	int i;	
+	int i;
 
 	pdmpriv->InitODMFlag = 0
 		| ODM_BB_DIG
-#ifdef CONFIG_ODM_REFRESH_RAMASK
 		| ODM_BB_RA_MASK
-#endif
 		| ODM_BB_DYNAMIC_TXPWR
 		| ODM_BB_FA_CNT
 		| ODM_BB_RSSI_MONITOR
 		| ODM_BB_CCK_PD
-		| ODM_BB_PWR_SAVE
+		| ODM_BB_PWR_SAVE		
 		| ODM_RF_CALIBRATION
 		| ODM_RF_TX_PWR_TRACK
 #ifdef CONFIG_ODM_ADAPTIVITY
@@ -373,7 +355,7 @@ static void Update_ODM_ComInfo_88E(PADAPTER	Adapter)
 	if (!Adapter->registrypriv.qos_opt_enable) {
 		pdmpriv->InitODMFlag |= ODM_MAC_EDCA_TURBO;
 	}
-
+	
 	if(pHalData->AntDivCfg)
 		pdmpriv->InitODMFlag |= ODM_BB_ANT_DIV;
 
@@ -401,12 +383,16 @@ static void Update_ODM_ComInfo_88E(PADAPTER	Adapter)
 	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_CHNL,&( pHalData->CurrentChannel));	
 	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_NET_CLOSED,&( Adapter->net_closed));
 	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_MP_MODE,&(Adapter->registrypriv.mp_mode));
-
-	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_BAND,&(pDM_Odm->u1Byte_temp));
+	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_FORCED_IGI_LB,&(pHalData->u1ForcedIgiLb));
 	//================= only for 8192D   =================
+	
+	//pHalData->CurrentBandType92D hook fake band_type for power tracking
+	//ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_BAND,&(pDM_Odm->u1Byte_temp));
+	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_BAND,&(pHalData->CurrentBandType));
+
+	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_FORCED_RATE,&(pHalData->ForcedDataRate));
+	
 	/*
-	//pHalData->CurrentBandType92D
-	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_BAND,&(pDM_Odm->u1Byte_temp));
 	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_DMSP_GET_VALUE,&(pDM_Odm->u1Byte_temp));
 	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_BUDDY_ADAPTOR,&(pDM_Odm->PADAPTER_temp));
 	ODM_CmnInfoHook(pDM_Odm,ODM_CMNINFO_DMSP_IS_MASTER,&(pDM_Odm->u1Byte_temp));
@@ -446,9 +432,6 @@ rtl8188e_InitHalDm(
 	
 	Update_ODM_ComInfo_88E(Adapter);
 	ODM_DMInit(pDM_Odm);
-
-	Adapter->fix_rate = 0xFF;
-
 }
 
 
@@ -493,7 +476,8 @@ rtl8188e_HalDmWatchDog(
 		// Calculate Tx/Rx statistics.
 		//
 		dm_CheckStatistics(Adapter);
-	
+		
+		rtw_hal_check_rxfifo_full(Adapter);
 		//
 		// Dynamically switch RTS/CTS protection.
 		//
@@ -515,45 +499,39 @@ rtl8188e_HalDmWatchDog(
 	if (hw_init_completed == _TRUE)
 	{
 		u8	bLinked=_FALSE;
-		u8   bsta_state = _FALSE;
-
+		u8	bsta_state=_FALSE;
 		#ifdef CONFIG_DISABLE_ODM
 		pHalData->odmpriv.SupportAbility = 0;
 		#endif
-			
-		if(rtw_linked_check(Adapter))
+
+		if(rtw_linked_check(Adapter)){			
 			bLinked = _TRUE;
+			if (check_fwstate(&Adapter->mlmepriv, WIFI_STATION_STATE))
+				bsta_state = _TRUE;
+		}
 		
 #ifdef CONFIG_CONCURRENT_MODE
-		if(pbuddy_adapter && rtw_linked_check(pbuddy_adapter))
+		if(pbuddy_adapter && rtw_linked_check(pbuddy_adapter)){
 			bLinked = _TRUE;
+			if(pbuddy_adapter && check_fwstate(&pbuddy_adapter->mlmepriv, WIFI_STATION_STATE))
+				bsta_state = _TRUE;
+		}
 #endif //CONFIG_CONCURRENT_MODE
+
 		ODM_CmnInfoUpdate(&pHalData->odmpriv ,ODM_CMNINFO_LINK, bLinked);
-
-
-		if (check_fwstate(&Adapter->mlmepriv, WIFI_STATION_STATE))
-			bsta_state = _TRUE;
-#ifdef CONFIG_CONCURRENT_MODE
-		if(pbuddy_adapter && check_fwstate(&pbuddy_adapter->mlmepriv, WIFI_STATION_STATE))
-			bsta_state = _TRUE;
-#endif //CONFIG_CONCURRENT_MODE	
 		ODM_CmnInfoUpdate(&pHalData->odmpriv ,ODM_CMNINFO_STATION_STATE, bsta_state);
-		
+
+
 		ODM_DMWatchdog(&pHalData->odmpriv);
 			
 	}
 
 skip_dm:
-
-	// Check GPIO to determine current RF on/off and Pbc status.
-	// Check Hardware Radio ON/OFF or not
-#ifdef CONFIG_PCI_HCI
-	if(pHalData->bGpioHwWpsPbc)
-#endif
-	{
-		//temp removed
-		//dm_CheckPbcGPIO(Adapter);				
-	}
+	
+#ifdef CONFIG_SUPPORT_HW_WPS_PBC
+	// Check GPIO to determine current Pbc status.
+	dm_CheckPbcGPIO(Adapter);
+#endif	
 	return;
 }
 
@@ -632,11 +610,11 @@ u8 AntDivBeforeLink8188E(PADAPTER Adapter )
 	if(pDM_SWAT_Table->SWAS_NoLink_State == 0){
 		//switch channel
 		pDM_SWAT_Table->SWAS_NoLink_State = 1;
-		pDM_SWAT_Table->CurAntenna = (pDM_SWAT_Table->CurAntenna==Antenna_A)?Antenna_B:Antenna_A;
+		pDM_SWAT_Table->CurAntenna = (pDM_SWAT_Table->CurAntenna==MAIN_ANT)?AUX_ANT:MAIN_ANT;
 
 		//PHY_SetBBReg(Adapter, rFPGA0_XA_RFInterfaceOE, 0x300, pDM_SWAT_Table->CurAntenna);
 		rtw_antenna_select_cmd(Adapter, pDM_SWAT_Table->CurAntenna, _FALSE);
-		//DBG_8192C("%s change antenna to ANT_( %s ).....\n",__FUNCTION__, (pDM_SWAT_Table->CurAntenna==Antenna_A)?"A":"B");
+		//DBG_8192C("%s change antenna to ANT_( %s ).....\n",__FUNCTION__, (pDM_SWAT_Table->CurAntenna==MAIN_ANT)?"MAIN":"AUX");
 		return _TRUE;
 	}
 	else

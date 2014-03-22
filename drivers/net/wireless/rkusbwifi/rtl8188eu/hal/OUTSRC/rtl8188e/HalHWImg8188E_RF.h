@@ -19,8 +19,8 @@
 ******************************************************************************/
 
 #if (RTL8188E_SUPPORT == 1)
-#ifndef __INC_RF_8188E_HW_IMG_H
-#define __INC_RF_8188E_HW_IMG_H
+#ifndef __INC_MP_RF_HW_IMG_8188E_H
+#define __INC_MP_RF_HW_IMG_8188E_H
 
 //static BOOLEAN CheckCondition(const u4Byte Condition, const u4Byte Hex);
 
@@ -29,17 +29,55 @@
 ******************************************************************************/
 
 HAL_STATUS
-ODM_ReadAndConfig_RadioA_1T_8188E(
+ODM_ReadAndConfig_MP_8188E_RadioA_1T( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
+
 /******************************************************************************
 *                           RadioA_1T_ICUT.TXT
 ******************************************************************************/
 
-void
-ODM_ReadAndConfig_RadioA_1T_ICUT_8188E( // TC: Test Chip, MP: MP Chip
+HAL_STATUS
+ODM_ReadAndConfig_MP_8188E_RadioA_1T_ICUT( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
+
+/******************************************************************************
+*                           TxPowerTrack_AP.TXT
+******************************************************************************/
+
+void
+ODM_ReadAndConfig_MP_8188E_TxPowerTrack_AP( // TC: Test Chip, MP: MP Chip
+	IN   PDM_ODM_T  pDM_Odm
+);
+
+/******************************************************************************
+*                           TxPowerTrack_PCIE.TXT
+******************************************************************************/
+
+void
+ODM_ReadAndConfig_MP_8188E_TxPowerTrack_PCIE( // TC: Test Chip, MP: MP Chip
+	IN   PDM_ODM_T  pDM_Odm
+);
+
+/******************************************************************************
+*                           TxPowerTrack_USB.TXT
+******************************************************************************/
+
+void
+ODM_ReadAndConfig_MP_8188E_TxPowerTrack_USB( // TC: Test Chip, MP: MP Chip
+	IN   PDM_ODM_T  pDM_Odm
+);
+
+/******************************************************************************
+*                           TXPWR_LMT.TXT
+******************************************************************************/
+
+void
+ODM_ReadAndConfig_MP_8188E_TXPWR_LMT( // TC: Test Chip, MP: MP Chip
+	IN   PDM_ODM_T  pDM_Odm
+);
+
 #endif
 #endif // end of HWIMG_SUPPORT
 

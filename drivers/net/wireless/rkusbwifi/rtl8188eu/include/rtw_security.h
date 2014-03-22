@@ -21,11 +21,6 @@
 #define __RTW_SECURITY_H_
 
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
-
-
 #define _NO_PRIVACY_		0x0
 #define _WEP40_				0x1
 #define _TKIP_				0x2
@@ -39,12 +34,18 @@
 #endif //CONFIG_IEEE80211W
 #define is_wep_enc(alg) (((alg) == _WEP40_) || ((alg) == _WEP104_))
 
+const char *security_type_str(u8 value);
+
 #define _WPA_IE_ID_	0xdd
 #define _WPA2_IE_ID_	0x30
 
 #define SHA256_MAC_LEN 32
 #define AES_BLOCK_SIZE 16
 #define AES_PRIV_SIZE (4 * 44)
+
+#define RTW_KEK_LEN 16
+#define RTW_KCK_LEN 16
+#define RTW_REPLAY_CTR_LEN 8
 
 typedef enum {
 	ENCRYP_PROTOCOL_OPENSYS,   //open system
@@ -154,6 +155,9 @@ struct security_priv
 	
 	
 	u8	binstallGrpkey;
+#ifdef CONFIG_GTK_OL
+	u8	binstallKCK_KEK;
+#endif //CONFIG_GTK_OL
 #ifdef CONFIG_IEEE80211W
 	u8	binstallBIPkey;
 #endif //CONFIG_IEEE80211W
@@ -234,6 +238,7 @@ do{\
 	}\
 }while(0)
 
+#define _AES_IV_LEN_ 8
 
 #define SET_ICE_IV_LEN( iv_len, icv_len, encrypt)\
 do{\
@@ -435,7 +440,7 @@ void rtw_wep_decrypt(_adapter *padapter, u8  *precvframe);
 u32	rtw_BIP_verify(_adapter *padapter, u8 *precvframe);
 #endif //CONFIG_IEEE80211W
 #ifdef CONFIG_TDLS
-void wpa_tdls_generate_tpk(_adapter *padapter, struct sta_info *psta);
+void wpa_tdls_generate_tpk(_adapter *padapter, PVOID sta);
 int wpa_tdls_ftie_mic(u8 *kck, u8 trans_seq, 
 						u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie,
 						u8 *mic);
@@ -443,21 +448,7 @@ int tdls_verify_mic(u8 *kck, u8 trans_seq,
 						u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie);
 #endif //CONFIG_TDLS
 
-#ifdef PLATFORM_WINDOWS
-void rtw_use_tkipkey_handler (
-	IN	PVOID					SystemSpecific1,
-	IN	PVOID					FunctionContext,
-	IN	PVOID					SystemSpecific2,
-	IN	PVOID					SystemSpecific3
-	);
-#endif
-#ifdef PLATFORM_LINUX
-void rtw_use_tkipkey_handler(void* FunctionContext);
-#endif
-
-#ifdef PLATFORM_FREEBSD
-void rtw_use_tkipkey_handler(void* FunctionContext);
-#endif //PLATFORM_FREEBSD
+void rtw_use_tkipkey_handler(RTW_TIMER_HDL_ARGS);
 
 void rtw_sec_restore_wep_key(_adapter *adapter);
 u8 rtw_handle_tkip_countermeasure(_adapter* adapter, const char *caller);

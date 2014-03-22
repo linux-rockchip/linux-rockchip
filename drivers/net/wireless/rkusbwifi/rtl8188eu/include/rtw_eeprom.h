@@ -20,14 +20,14 @@
 #ifndef __RTW_EEPROM_H__
 #define __RTW_EEPROM_H__
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
 
 #define	RTL8712_EEPROM_ID			0x8712
 //#define	EEPROM_MAX_SIZE			256
 
+#define	HWSET_MAX_SIZE_128		128
+#define	HWSET_MAX_SIZE_256		256
 #define	HWSET_MAX_SIZE_512		512
+
 #define	EEPROM_MAX_SIZE			HWSET_MAX_SIZE_512
 
 #define	CLOCK_RATE					50			//100us		
@@ -49,20 +49,6 @@
 #define eeprom_cis1_sz	50
 #endif
 
-#define	EEPROM_CID_DEFAULT			0x0
-#define	EEPROM_CID_ALPHA				0x1
-#define	EEPROM_CID_Senao				0x3
-#define	EEPROM_CID_NetCore				0x5
-#define	EEPROM_CID_CAMEO				0X8
-#define	EEPROM_CID_SITECOM				0x9
-#define	EEPROM_CID_COREGA				0xB
-#define	EEPROM_CID_EDIMAX_BELKIN		0xC
-#define	EEPROM_CID_SERCOMM_BELKIN		0xE
-#define	EEPROM_CID_CAMEO1				0xF
-#define	EEPROM_CID_WNC_COREGA		0x12
-#define	EEPROM_CID_CLEVO				0x13
-#define	EEPROM_CID_WHQL				0xFE // added by chiyoko for dtm, 20090108
-
 //
 // Customer ID, note that: 
 // This variable is initiailzed through EEPROM or registry, 
@@ -79,7 +65,7 @@ typedef enum _RT_CUSTOMER_ID
 	RT_CID_8187_HW_LED = 3,
 	RT_CID_8187_NETGEAR = 4,
 	RT_CID_WHQL = 5,
-	RT_CID_819x_CAMEO  = 6, 
+	RT_CID_819x_CAMEO  = 6,
 	RT_CID_819x_RUNTOP = 7,
 	RT_CID_819x_Senao = 8,
 	RT_CID_TOSHIBA = 9,	// Merge by Jacken, 2008/01/31.
@@ -92,10 +78,10 @@ typedef enum _RT_CUSTOMER_ID
 	RT_CID_819x_ALPHA = 16,
 	RT_CID_819x_Sitecom = 17,
 	RT_CID_CCX = 18, // It's set under CCX logo test and isn't demanded for CCX functions, but for test behavior like retry limit and tx report. By Bruce, 2009-02-17.
-	RT_CID_819x_Lenovo = 19,	
+	RT_CID_819x_Lenovo = 19,
 	RT_CID_819x_QMI = 20,
-	RT_CID_819x_Edimax_Belkin = 21,		
-	RT_CID_819x_Sercomm_Belkin = 22,			
+	RT_CID_819x_Edimax_Belkin = 21,
+	RT_CID_819x_Sercomm_Belkin = 22,
 	RT_CID_819x_CAMEO1 = 23,
 	RT_CID_819x_MSI = 24,
 	RT_CID_819x_Acer = 25,
@@ -109,12 +95,17 @@ typedef enum _RT_CUSTOMER_ID
 	RT_CID_819x_DELL = 33,
 	RT_CID_819x_PRONETS = 34,
 	RT_CID_819x_Edimax_ASUS = 35,
-	RT_CID_819x_CAMEO_NETGEAR = 36,
+	RT_CID_NETGEAR = 36,
 	RT_CID_PLANEX = 37,
 	RT_CID_CC_C = 38,
 	RT_CID_819x_Xavi = 39,
-	RT_CID_819x_FUNAI_TV = 40,
-	RT_CID_819x_ALPHA_WD=41,
+	RT_CID_LENOVO_CHINA = 40,
+	RT_CID_INTEL_CHINA = 41,
+	RT_CID_TPLINK_HPWR = 42,
+	RT_CID_819x_Sercomm_Netgear = 43,
+	RT_CID_819x_ALPHA_Dlink = 44,//add by ylb 20121012 for customer led for alpha
+	RT_CID_WNC_NEC = 45,//add by page for NEC
+	RT_CID_DNI_BUFFALO = 46,//add by page for NEC
 }RT_CUSTOMER_ID, *PRT_CUSTOMER_ID;
 
 struct eeprom_priv 
@@ -122,23 +113,19 @@ struct eeprom_priv
 	u8		bautoload_fail_flag;
 	u8		bloadfile_fail_flag;
 	u8		bloadmac_fail_flag;
-	//u8		bempty;
-	//u8		sys_config;
-	u8		mac_addr[6];	//PermanentAddress
-	//u8		config0;
-	u16		channel_plan;
-	//u8		country_string[3];	
-	//u8		tx_power_b[15];
-	//u8		tx_power_g[15];
-	//u8		tx_power_a[201];
-
 	u8		EepromOrEfuse;
 
-	u8		efuse_eeprom_data[HWSET_MAX_SIZE_512]; //92C:256bytes, 88E:512bytes, we use union set (512bytes)
+	u8		mac_addr[6];	//PermanentAddress
+
+	u16		channel_plan;
+	u16		CustomerID;
+
+	u8		efuse_eeprom_data[EEPROM_MAX_SIZE]; //92C:256bytes, 88E:512bytes, we use union set (512bytes)
+	u8		adjuseVoltageVal;
 
 #ifdef CONFIG_RF_GAIN_OFFSET
-	u8		EEPROMRFGainOffset;
-	u8		EEPROMRFGainVal;
+		u8		EEPROMRFGainOffset;
+		u8		EEPROMRFGainVal;
 #endif //CONFIG_RF_GAIN_OFFSET
 
 #ifdef CONFIG_SDIO_HCI

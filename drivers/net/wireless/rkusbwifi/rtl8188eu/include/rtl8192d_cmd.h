@@ -40,18 +40,6 @@
 #define SET_H2CCMD_RSVDPAGE_LOC_PSPOLL(__pH2CCmd, __Value)			SET_BITS_TO_LE_1BYTE((__pH2CCmd)+1, 0, 8, __Value)
 #define SET_H2CCMD_RSVDPAGE_LOC_NULL_DATA(__pH2CCmd, __Value)		SET_BITS_TO_LE_1BYTE((__pH2CCmd)+2, 0, 8, __Value)
 
-//P2P_PS_OFFLOAD
-
-struct P2P_PS_Offload_t {
- unsigned char Offload_En:1;
- unsigned char role:1; // 1: Owner, 0: Client
- unsigned char CTWindow_En:1;
- unsigned char NoA0_En:1;
- unsigned char NoA1_En:1;
- unsigned char AllStaSleep:1; // Only valid in Owner
- unsigned char discovery:1;
- unsigned char rsvd:1;
-};
 
 #define SET_H2CCMD_P2P_PS_OFFLOAD_EN(__pH2CCmd, __Value)		SET_BITS_TO_LE_1BYTE(__pH2CCmd, 0, 1, __Value)
 #define SET_H2CCMD_P2P_PS_OFFLOAD_ROLE(__pH2CCmd, __Value)		SET_BITS_TO_LE_1BYTE(__pH2CCmd, 1, 1, __Value)
@@ -76,6 +64,8 @@ typedef enum _RTL8192D_H2C_CMD
 	H2C_PWRM=15,
 	H2C_P2P_PS_CTW_CMD = 24,
 	H2C_PathDiv = 26,                  //PathDiv--NeilChen--2011.07.15
+	H2C_92D_TSF_SYNC=36,
+	H2C_92D_RESET_TSF = 43,
 	H2C_CMD_MAX
 }RTL8192D_H2C_CMD;
 
@@ -92,11 +82,15 @@ void	FillH2CCmd92D(_adapter* padapter, u8 ElementID, u32 CmdLen, u8* pCmdBuffer)
 void	rtl8192d_set_FwPwrMode_cmd(_adapter*padapter, u8 Mode);
 void	rtl8192d_set_FwJoinBssReport_cmd(_adapter* padapter, u8 mstatus);
 u8	rtl8192d_set_rssi_cmd(_adapter*padapter, u8 *param);
-u8	rtl8192d_set_raid_cmd(_adapter*padapter, u32 mask, u8 arg);
-void	rtl8192d_Add_RateATid(PADAPTER pAdapter, u32 bitmap, u8 arg, u8 rssi_level);
+void	rtl8192d_set_raid_cmd(_adapter*padapter, u32 mask, u8* arg);
+void	rtl8192d_Add_RateATid(PADAPTER pAdapter, u32 bitmap, u8* arg, u8 rssi_level);
 #ifdef CONFIG_P2P
 void	rtl8192d_set_p2p_ps_offload_cmd(_adapter* padapter, u8 p2p_ps_state);
 #endif //CONFIG_P2P
+
+#ifdef CONFIG_TSF_RESET_OFFLOAD
+int reset_tsf(PADAPTER Adapter, u8 reset_port );
+#endif	// CONFIG_TSF_RESET_OFFLOAD
 
 #endif
 

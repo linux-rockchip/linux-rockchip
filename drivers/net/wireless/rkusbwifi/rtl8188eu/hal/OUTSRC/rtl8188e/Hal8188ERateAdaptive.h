@@ -21,7 +21,7 @@ Major Change History:
 #define	RATESIZE	28
 #define	TX_RPT2_ITEM_SIZE 	8
 
-#if (DM_ODM_SUPPORT_TYPE  != ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE  != ODM_WIN)
 //
 // TX report 2 format in Rx desc
 //

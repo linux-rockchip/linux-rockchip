@@ -20,10 +20,7 @@
 #define _IEEE80211_C
 
 #include <drv_types.h>
-#include <ieee80211.h>
-#include <wifi.h>
-#include <osdep_service.h>
-#include <wlan_bssdef.h>
+
 
 u8 RTW_WPA_OUI_TYPE[] = { 0x00, 0x50, 0xf2, 1 };
 u16 RTW_WPA_VERSION = 1;
@@ -370,6 +367,7 @@ _func_enter_;
 		case WIRELESS_11A:
 		case WIRELESS_11_5N:
 		case WIRELESS_11A_5N://Todo: no basic rate for ofdm ?
+		case WIRELESS_11_5AC:
 			_rtw_memcpy(SupportedRates, WIFI_OFDMRATES, IEEE80211_NUM_OFDM_RATESLEN);
 			break;
 		
@@ -756,16 +754,25 @@ int rtw_parse_wpa2_ie(u8* rsn_ie, int rsn_ie_len, int *group_cipher, int *pairwi
 	
 }
 
-#ifdef CONFIG_WAPI_SUPPORT
+//#ifdef CONFIG_WAPI_SUPPORT
 int rtw_get_wapi_ie(u8 *in_ie,uint in_len,u8 *wapi_ie,u16 *wapi_len)
 {
+	int len = 0;
 	u8 authmode, i;
 	uint 	cnt;
 	u8 wapi_oui1[4]={0x0,0x14,0x72,0x01};
 	u8 wapi_oui2[4]={0x0,0x14,0x72,0x02};
 
 _func_enter_;
+
+	if(wapi_len)
+		*wapi_len = 0;
+
+	if(!in_ie || in_len<=0)
+		return len;
+
 	cnt = (_TIMESTAMP_ + _BEACON_ITERVAL_ + _CAPABILITY_);
+	
 	while(cnt<in_len)
 	{
 		authmode=in_ie[cnt];
@@ -784,7 +791,9 @@ _func_enter_;
 				}
 			}
 
-			*wapi_len=in_ie[cnt+1]+2;
+			if(wapi_len)
+				*wapi_len=in_ie[cnt+1]+2;
+			
 			cnt+=in_ie[cnt+1]+2;  //get next
 		}
 		else
@@ -793,12 +802,15 @@ _func_enter_;
 		}
 	}
 
-	return *wapi_len;
+	if(wapi_len)
+		len = *wapi_len;
+
 _func_exit_;
 
+	return len;
 
 }
-#endif
+//#endif
 
 int rtw_get_sec_ie(u8 *in_ie,uint in_len,u8 *rsn_ie,u16 *rsn_len,u8 *wpa_ie,u16 *wpa_len)
 {
@@ -1262,6 +1274,18 @@ ParseRes rtw_ieee802_11_parse_elems(u8 *start, uint len,
 			elems->ht_operation = pos;
 			elems->ht_operation_len = elen;
 			break;
+		case WLAN_EID_VHT_CAPABILITY:
+			elems->vht_capabilities = pos;
+			elems->vht_capabilities_len = elen;
+			break;
+		case WLAN_EID_VHT_OPERATION:
+			elems->vht_operation = pos;
+			elems->vht_operation_len = elen;
+			break;
+		case WLAN_EID_VHT_OP_MODE_NOTIFY:
+			elems->vht_op_mode_notify = pos;
+			elems->vht_op_mode_notify_len = elen;
+			break;
 		default:
 			unknown++;
 			if (!show_errors)
@@ -1308,6 +1332,16 @@ u8 key_2char2num(u8 hch, u8 lch)
     return ((key_char2num(hch) << 4) | key_char2num(lch));
 }
 
+void macstr2num(u8 *dst, u8 *src);
+void macstr2num(u8 *dst, u8 *src)
+{
+	int	jj, kk;
+	for (jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3)
+	{
+		dst[jj] = key_2char2num(src[kk], src[kk + 1]);
+	}
+}
+
 u8 convert_ip_addr(u8 hch, u8 mch, u8 lch)
 {
     return ((key_char2num(hch) * 100) + (key_char2num(mch) * 10 ) + key_char2num(lch));
@@ -1315,29 +1349,27 @@ u8 convert_ip_addr(u8 hch, u8 mch, u8 lch)
 
 extern char* rtw_initmac;
 extern int rk29sdk_wifi_mac_addr(unsigned char *buf);
-
 void rtw_macaddr_cfg(u8 *mac_addr)
 {
-    u8 mac[ETH_ALEN];
+	u8 mac[ETH_ALEN];
     u8 macbuf[30] = {0};
+	if(mac_addr == NULL)	return;
+	
+	if ( rtw_initmac )
+	{	//	Users specify the mac address
+		int jj,kk;
 
-    if(mac_addr == NULL)    return;
-
-    if ( rtw_initmac )
-    {   //  Users specify the mac address
-        int jj,kk;
-
-        for( jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3 )
-        {
-            mac[jj] = key_2char2num(rtw_initmac[kk], rtw_initmac[kk+ 1]);
-        }
-        _rtw_memcpy(mac_addr, mac, ETH_ALEN);
-    }
-    else
+		for( jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3 )
+		{
+			mac[jj] = key_2char2num(rtw_initmac[kk], rtw_initmac[kk+ 1]);
+		}
+		_rtw_memcpy(mac_addr, mac, ETH_ALEN);
+	}
+	else
     {
         printk("Wifi Efuse Mac => %02x:%02x:%02x:%02x:%02x:%02x\n", mac_addr[0], mac_addr[1],
             mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-		if (!rk29sdk_wifi_mac_addr(macbuf)) {
+        if (!rk29sdk_wifi_mac_addr(macbuf)) {
             int jj,kk;
             printk("=========> get mac address from flash %s\n", macbuf);
             for( jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3 )
@@ -1350,24 +1382,24 @@ void rtw_macaddr_cfg(u8 *mac_addr)
             _rtw_memcpy(mac, mac_addr, ETH_ALEN);
         }
     }
+	
+	if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
+	     (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||
+	    ((mac[0]==0x0) && (mac[1]==0x0) && (mac[2]==0x0) &&
+	     (mac[3]==0x0) && (mac[4]==0x0) &&(mac[5]==0x0)))
+	{
+		mac[0] = 0x00;
+		mac[1] = 0xe0;
+		mac[2] = 0x4c;
+		mac[3] = 0x87;
+		mac[4] = 0x00;
+		mac[5] = 0x00;
+		// use default mac addresss
+		_rtw_memcpy(mac_addr, mac, ETH_ALEN);
+		DBG_871X("MAC Address from efuse error, assign default one !!!\n");
+	}	
 
-    if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
-         (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||
-        ((mac[0]==0x0) && (mac[1]==0x0) && (mac[2]==0x0) &&
-         (mac[3]==0x0) && (mac[4]==0x0) &&(mac[5]==0x0)))
-    {
-        mac[0] = 0x00;
-        mac[1] = 0xe0;
-        mac[2] = 0x4c;
-        mac[3] = 0x87;
-        mac[4] = 0x00;
-        mac[5] = 0x00;
-        // use default mac addresss
-        _rtw_memcpy(mac_addr, mac, ETH_ALEN);
-        DBG_871X("MAC Address from efuse error, assign default one !!!\n");
-    }
-
-    DBG_871X("rtw_macaddr_cfg MAC Address  = "MAC_FMT"\n", MAC_ARG(mac_addr));
+	DBG_871X("rtw_macaddr_cfg MAC Address  = "MAC_FMT"\n", MAC_ARG(mac_addr));
 }
 
 void dump_ies(u8 *buf, u32 buf_len)
@@ -1555,9 +1587,7 @@ u8 *rtw_get_p2p_ie(u8 *in_ie, int in_len, u8 *p2p_ie, uint *p2p_ielen)
 	{
 		eid = in_ie[cnt];
 		if ((in_len < 0) || (cnt > MAX_IE_SZ)) {
-#ifdef PLATFORM_LINUX
-			dump_stack();
-#endif
+			rtw_dump_stack();
 			return NULL;
 		}		
 		if( ( eid == _VENDOR_SPECIFIC_IE_ ) && ( _rtw_memcmp( &in_ie[cnt+2], p2p_oui, 4) == _TRUE ) )
@@ -1823,7 +1853,7 @@ int rtw_get_wfd_ie(u8 *in_ie, int in_len, u8 *wfd_ie, uint *wfd_ielen)
 			if ( wfd_ie != NULL )
 			{
 				_rtw_memcpy( wfd_ie, &in_ie[ cnt ], in_ie[ cnt + 1 ] + 2 );
-				
+			
 			}
 			else
 			{
@@ -2077,68 +2107,68 @@ void rtw_get_bcn_info(struct wlan_network *pnetwork)
 }
 
 //show MCS rate, unit: 100Kbps
-u16 rtw_mcs_rate(u8 rf_type, u8 bw_40MHz, u8 short_GI_20, u8 short_GI_40, unsigned char * MCS_rate)
+u16 rtw_mcs_rate(u8 rf_type, u8 bw_40MHz, u8 short_GI, unsigned char * MCS_rate)
 {
 	u16 max_rate = 0;
 	
 	if(rf_type == RF_1T1R)
 	{
 		if(MCS_rate[0] & BIT(7))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?1500:1350):((short_GI_20)?722:650);
+			max_rate = (bw_40MHz) ? ((short_GI)?1500:1350):((short_GI)?722:650);
 		else if(MCS_rate[0] & BIT(6))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?1350:1215):((short_GI_20)?650:585);
+			max_rate = (bw_40MHz) ? ((short_GI)?1350:1215):((short_GI)?650:585);
 		else if(MCS_rate[0] & BIT(5))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?1200:1080):((short_GI_20)?578:520);
+			max_rate = (bw_40MHz) ? ((short_GI)?1200:1080):((short_GI)?578:520);
 		else if(MCS_rate[0] & BIT(4))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?900:810):((short_GI_20)?433:390);
+			max_rate = (bw_40MHz) ? ((short_GI)?900:810):((short_GI)?433:390);
 		else if(MCS_rate[0] & BIT(3))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?600:540):((short_GI_20)?289:260);
+			max_rate = (bw_40MHz) ? ((short_GI)?600:540):((short_GI)?289:260);
 		else if(MCS_rate[0] & BIT(2))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?450:405):((short_GI_20)?217:195);
+			max_rate = (bw_40MHz) ? ((short_GI)?450:405):((short_GI)?217:195);
 		else if(MCS_rate[0] & BIT(1))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?300:270):((short_GI_20)?144:130);
+			max_rate = (bw_40MHz) ? ((short_GI)?300:270):((short_GI)?144:130);
 		else if(MCS_rate[0] & BIT(0))
-			max_rate = (bw_40MHz) ? ((short_GI_40)?150:135):((short_GI_20)?72:65);
+			max_rate = (bw_40MHz) ? ((short_GI)?150:135):((short_GI)?72:65);
 	}
 	else
 	{
 		if(MCS_rate[1])
 		{
 			if(MCS_rate[1] & BIT(7))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?3000:2700):((short_GI_20)?1444:1300);
+				max_rate = (bw_40MHz) ? ((short_GI)?3000:2700):((short_GI)?1444:1300);
 			else if(MCS_rate[1] & BIT(6))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?2700:2430):((short_GI_20)?1300:1170);
+				max_rate = (bw_40MHz) ? ((short_GI)?2700:2430):((short_GI)?1300:1170);
 			else if(MCS_rate[1] & BIT(5))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?2400:2160):((short_GI_20)?1156:1040);
+				max_rate = (bw_40MHz) ? ((short_GI)?2400:2160):((short_GI)?1156:1040);
 			else if(MCS_rate[1] & BIT(4))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?1800:1620):((short_GI_20)?867:780);
+				max_rate = (bw_40MHz) ? ((short_GI)?1800:1620):((short_GI)?867:780);
 			else if(MCS_rate[1] & BIT(3))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?1200:1080):((short_GI_20)?578:520);
+				max_rate = (bw_40MHz) ? ((short_GI)?1200:1080):((short_GI)?578:520);
 			else if(MCS_rate[1] & BIT(2))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?900:810):((short_GI_20)?433:390);
+				max_rate = (bw_40MHz) ? ((short_GI)?900:810):((short_GI)?433:390);
 			else if(MCS_rate[1] & BIT(1))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?600:540):((short_GI_20)?289:260);
+				max_rate = (bw_40MHz) ? ((short_GI)?600:540):((short_GI)?289:260);
 			else if(MCS_rate[1] & BIT(0))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?300:270):((short_GI_20)?144:130);
+				max_rate = (bw_40MHz) ? ((short_GI)?300:270):((short_GI)?144:130);
 		}
 		else
 		{
 			if(MCS_rate[0] & BIT(7))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?1500:1350):((short_GI_20)?722:650);
+				max_rate = (bw_40MHz) ? ((short_GI)?1500:1350):((short_GI)?722:650);
 			else if(MCS_rate[0] & BIT(6))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?1350:1215):((short_GI_20)?650:585);
+				max_rate = (bw_40MHz) ? ((short_GI)?1350:1215):((short_GI)?650:585);
 			else if(MCS_rate[0] & BIT(5))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?1200:1080):((short_GI_20)?578:520);
+				max_rate = (bw_40MHz) ? ((short_GI)?1200:1080):((short_GI)?578:520);
 			else if(MCS_rate[0] & BIT(4))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?900:810):((short_GI_20)?433:390);
+				max_rate = (bw_40MHz) ? ((short_GI)?900:810):((short_GI)?433:390);
 			else if(MCS_rate[0] & BIT(3))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?600:540):((short_GI_20)?289:260);
+				max_rate = (bw_40MHz) ? ((short_GI)?600:540):((short_GI)?289:260);
 			else if(MCS_rate[0] & BIT(2))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?450:405):((short_GI_20)?217:195);
+				max_rate = (bw_40MHz) ? ((short_GI)?450:405):((short_GI)?217:195);
 			else if(MCS_rate[0] & BIT(1))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?300:270):((short_GI_20)?144:130);
+				max_rate = (bw_40MHz) ? ((short_GI)?300:270):((short_GI)?144:130);
 			else if(MCS_rate[0] & BIT(0))
-				max_rate = (bw_40MHz) ? ((short_GI_40)?150:135):((short_GI_20)?72:65);
+				max_rate = (bw_40MHz) ? ((short_GI)?150:135):((short_GI)?72:65);
 		}
 	}
 	return max_rate;
@@ -2148,7 +2178,8 @@ int rtw_action_frame_parse(const u8 *frame, u32 frame_len, u8* category, u8 *act
 {
 	const u8 *frame_body = frame + sizeof(struct rtw_ieee80211_hdr_3addr);
 	u16 fc;
-	u8 c, a;
+	u8 c;
+	u8 a = ACT_PUBLIC_MAX;
 
 	fc = le16_to_cpu(((struct rtw_ieee80211_hdr_3addr *)frame)->frame_ctl);
 

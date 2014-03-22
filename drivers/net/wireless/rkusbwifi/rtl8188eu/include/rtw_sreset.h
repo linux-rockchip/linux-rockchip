@@ -17,12 +17,10 @@
  *
  *
  ******************************************************************************/
-#ifndef _RTW_SRESET_C_
-#define _RTW_SRESET_C_
+#ifndef _RTW_SRESET_H_
+#define _RTW_SRESET_H_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
+//#include <drv_types.h>
 
 enum {
 	SRESET_TGP_NULL = 0,
@@ -40,18 +38,7 @@ struct sreset_priv {
 	s32 dbg_trigger_point;
 };
 
-#ifdef CONFIG_RTL8192C
-#include <rtl8192c_hal.h>
-#endif
-#ifdef CONFIG_RTL8192D
-#include <rtl8192d_hal.h>
-#endif
-#ifdef CONFIG_RTL8723A
-#include <rtl8723a_hal.h>
-#endif
-#ifdef CONFIG_RTL8188E
-#include <rtl8188e_hal.h>
-#endif
+
 
 #define	WIFI_STATUS_SUCCESS 		0
 #define	USB_VEN_REQ_CMD_FAIL 	BIT0

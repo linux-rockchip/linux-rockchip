@@ -48,30 +48,11 @@ jackson@realtek.com.tw
 */
 
 #define _RTW_IO_C_
-#include <drv_conf.h>
-#include <osdep_service.h>
+
 #include <drv_types.h>
-#include <rtw_io.h>
-#include <osdep_intf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 #error "Shall be Linux or Windows, but not both!\n"
-#endif
-
-#ifdef CONFIG_SDIO_HCI
-#include <sdio_ops.h>
-#endif
-
-#ifdef CONFIG_GSPI_HCI
-#include <gspi_ops.h>
-#endif
-
-#ifdef CONFIG_USB_HCI
-#include <usb_ops.h>
-#endif
-
-#ifdef CONFIG_PCI_HCI
-#include <pci_ops.h>
 #endif
 
 #ifdef CONFIG_SDIO_HCI
@@ -196,6 +177,28 @@ int _rtw_writeN(_adapter *adapter, u32 addr ,u32 length , u8 *pdata)
 
 	return RTW_STATUS_CODE(ret);
 }
+
+#ifdef CONFIG_SDIO_HCI
+u8 _rtw_sd_f0_read8(_adapter *adapter, u32 addr)
+{
+	u8 r_val = 0x00;
+	struct io_priv *pio_priv = &adapter->iopriv;
+	struct intf_hdl *pintfhdl = &(pio_priv->intf);
+	u8 (*_sd_f0_read8)(struct intf_hdl *pintfhdl, u32 addr);
+
+	_func_enter_;
+	_sd_f0_read8 = pintfhdl->io_ops._sd_f0_read8;
+
+	if (_sd_f0_read8)
+		r_val = _sd_f0_read8(pintfhdl, addr);
+	else
+		DBG_871X_LEVEL(_drv_warning_, FUNC_ADPT_FMT" _sd_f0_read8 callback is NULL\n", FUNC_ADPT_ARG(adapter));
+
+	_func_exit_;
+	return r_val;
+}
+#endif /* CONFIG_SDIO_HCI */
+
 int _rtw_write8_async(_adapter *adapter, u32 addr, u8 val)
 {
 	//struct	io_queue  	*pio_queue = (struct io_queue *)adapter->pio_queue;
@@ -313,9 +316,10 @@ void _rtw_read_port_cancel(_adapter *adapter)
 
 	_read_port_cancel = pintfhdl->io_ops._read_port_cancel;
 
+	RTW_DISABLE_FUNC(adapter, DF_RX_BIT);
+
 	if(_read_port_cancel)
 		_read_port_cancel(pintfhdl);
-
 }
 
 u32 _rtw_write_port(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem)
@@ -349,7 +353,7 @@ u32 _rtw_write_port_and_wait(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem, int
 	ret = _rtw_write_port(adapter, addr, cnt, pmem);
 
 	if (ret == _SUCCESS)
-		ret = rtw_sctx_wait(&sctx);
+		ret = rtw_sctx_wait(&sctx, __func__);
 
 	 return ret;
 }
@@ -362,12 +366,12 @@ void _rtw_write_port_cancel(_adapter *adapter)
 
 	_write_port_cancel = pintfhdl->io_ops._write_port_cancel;
 
+	RTW_DISABLE_FUNC(adapter, DF_TX_BIT);
+
 	if(_write_port_cancel)
 		_write_port_cancel(pintfhdl);
-
 }
-
-int rtw_init_io_priv(_adapter *padapter, void (*set_intf_ops)(struct _io_ops *pops))
+int rtw_init_io_priv(_adapter *padapter, void (*set_intf_ops)(_adapter *padapter,struct _io_ops *pops))
 {
 	struct io_priv	*piopriv = &padapter->iopriv;
 	struct intf_hdl *pintf = &piopriv->intf;
@@ -378,8 +382,8 @@ int rtw_init_io_priv(_adapter *padapter, void (*set_intf_ops)(struct _io_ops *po
 	piopriv->padapter = padapter;
 	pintf->padapter = padapter;
 	pintf->pintf_dev = adapter_to_dvobj(padapter);
-
-	set_intf_ops(&pintf->io_ops);
+		
+	set_intf_ops(padapter,&pintf->io_ops);	
 
 	return _SUCCESS;
 }
@@ -413,11 +417,11 @@ void rtw_reset_continual_io_error(struct dvobj_priv *dvobj)
 #ifdef DBG_IO
 
 u16 read_sniff_ranges[][2] = {
-	//{0x550, 0x551},
+	//{0x520, 0x523},
 }; 
 
 u16 write_sniff_ranges[][2] = {
-	//{0x550, 0x551},
+	//{0x520, 0x523},
 	//{0x4c, 0x4c},
 }; 
 

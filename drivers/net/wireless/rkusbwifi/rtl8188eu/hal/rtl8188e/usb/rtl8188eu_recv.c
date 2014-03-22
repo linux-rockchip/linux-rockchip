@@ -18,26 +18,8 @@
  *
  ******************************************************************************/
 #define _RTL8188EU_RECV_C_
-#include <drv_conf.h>
-#include <osdep_service.h>
+
 #include <drv_types.h>
-#include <recv_osdep.h>
-#include <mlme_osdep.h>
-#include <ip.h>
-#include <if_ether.h>
-#include <ethernet.h>
-
-#include <usb_ops.h>
-
-#if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
-
-#error "Shall be Linux or Windows, but not both!\n"
-
-#endif
-
-#include <wifi.h>
-#include <circ_buf.h>
-
 #include <rtl8188e_hal.h>
 
 

@@ -19,11 +19,7 @@
  ******************************************************************************/
 #define _RTW_IOCTL_QUERY_C_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
-#include <rtw_ioctl_query.h>
-#include <wifi.h>
 
 
 #ifdef PLATFORM_WINDOWS

@@ -20,9 +20,6 @@
 #ifndef __RTW_IOCTL_SET_H_
 #define __RTW_IOCTL_SET_H_
 
-#include <drv_conf.h>
-#include <drv_types.h>
-
 
 typedef u8 NDIS_802_11_PMKID_VALUE[16];
 
@@ -73,6 +70,7 @@ u16 rtw_get_cur_max_rate(_adapter *adapter);
 int rtw_set_scan_mode(_adapter *adapter, RT_SCAN_TYPE scan_mode);
 int rtw_set_channel_plan(_adapter *adapter, u8 channel_plan);
 int rtw_set_country(_adapter *adapter, const char *country_code);
+int rtw_set_band(_adapter *adapter, enum _BAND band);
 
 #endif
 

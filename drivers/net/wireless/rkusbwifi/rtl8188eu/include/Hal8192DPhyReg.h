@@ -1117,11 +1117,6 @@
 #define		bMaskOFDM_D		0xffc00000
 #define		bMaskCCK			0x3f3f3f3f
 
-//for PutRFRegsetting & GetRFRegSetting BitMask
-//#define		bMask12Bits               	0xfffff	// RF Reg mask bits
-//#define		bMask20Bits               	0xfffff	// RF Reg mask bits T65 RF
-#define 		bRFRegOffsetMask		0xfffff
-//#define 		bRFRegOffsetMask		0xfff	
 
 //MAC0 will wirte PHY1
 #define	MAC0_ACCESS_PHY1	0x4000

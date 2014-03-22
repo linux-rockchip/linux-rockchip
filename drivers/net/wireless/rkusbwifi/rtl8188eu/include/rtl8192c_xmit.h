@@ -68,7 +68,7 @@
 #define QSLT_BE							0x0
 #define QSLT_VI							0x5//0x4
 #define QSLT_VO							0x7//0x6
-#define QSLT_BEACON						0x10
+#define QSLT_BEACON					0x10
 #define QSLT_HIGH						0x11
 #define QSLT_MGNT						0x12
 #define QSLT_CMD						0x13
@@ -120,10 +120,6 @@ void handle_txrpt_ccx_8192c(_adapter *adapter, void *buf);
 
 #ifdef CONFIG_USB_HCI
 
-#ifdef CONFIG_USB_TX_AGGREGATION
-#define MAX_TX_AGG_PACKET_NUMBER 0xFF
-#endif
-
 s32	rtl8192cu_init_xmit_priv(_adapter * padapter);
 
 void	rtl8192cu_free_xmit_priv(_adapter * padapter);
@@ -135,6 +131,8 @@ s32 rtl8192cu_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 s32 rtl8192cu_mgnt_xmit(_adapter *padapter, struct xmit_frame *pmgntframe);
 
 s32 rtl8192cu_hal_xmit(_adapter *padapter, struct xmit_frame *pxmitframe);
+
+s32	 rtl8192cu_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe);
 
 #ifdef CONFIG_HOSTAPD_MLME
 s32 rtl8192cu_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt);
@@ -154,6 +152,9 @@ void	rtl8192ce_xmitframe_resume(_adapter *padapter);
 s32	rtl8192ce_mgnt_xmit(_adapter *padapter, struct xmit_frame *pmgntframe);
 
 s32	rtl8192ce_hal_xmit(_adapter *padapter, struct xmit_frame *pxmitframe);
+
+s32	 rtl8192ce_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe);
+
 
 #ifdef CONFIG_HOSTAPD_MLME
 s32	rtl8192ce_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt);

@@ -21,10 +21,6 @@
 #define __SDIO_OSINTF_H__
 
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
-
 
 u8 sd_hal_bus_init(PADAPTER padapter);
 u8 sd_hal_bus_deinit(PADAPTER padapter);

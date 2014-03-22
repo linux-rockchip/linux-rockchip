@@ -19,8 +19,8 @@
 ******************************************************************************/
 
 #if (RTL8188E_SUPPORT == 1)
-#ifndef __INC_BB_8188E_HW_IMG_H
-#define __INC_BB_8188E_HW_IMG_H
+#ifndef __INC_MP_BB_HW_IMG_8188E_H
+#define __INC_MP_BB_HW_IMG_8188E_H
 
 //static BOOLEAN CheckCondition(const u4Byte Condition, const u4Byte Hex);
 
@@ -29,31 +29,34 @@
 ******************************************************************************/
 
 HAL_STATUS
-ODM_ReadAndConfig_AGC_TAB_1T_8188E(
+ODM_ReadAndConfig_MP_8188E_AGC_TAB_1T( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
+
 /******************************************************************************
 *                           AGC_TAB_1T_ICUT.TXT
 ******************************************************************************/
 
-void
-ODM_ReadAndConfig_AGC_TAB_1T_ICUT_8188E( // TC: Test Chip, MP: MP Chip
+HAL_STATUS
+ODM_ReadAndConfig_MP_8188E_AGC_TAB_1T_ICUT( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
+
 /******************************************************************************
 *                           PHY_REG_1T.TXT
 ******************************************************************************/
 
 HAL_STATUS
-ODM_ReadAndConfig_PHY_REG_1T_8188E(
+ODM_ReadAndConfig_MP_8188E_PHY_REG_1T( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
+
 /******************************************************************************
 *                           PHY_REG_1T_ICUT.TXT
 ******************************************************************************/
 
-void
-ODM_ReadAndConfig_PHY_REG_1T_ICUT_8188E( // TC: Test Chip, MP: MP Chip
+HAL_STATUS
+ODM_ReadAndConfig_MP_8188E_PHY_REG_1T_ICUT( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
 
@@ -62,7 +65,7 @@ ODM_ReadAndConfig_PHY_REG_1T_ICUT_8188E( // TC: Test Chip, MP: MP Chip
 ******************************************************************************/
 
 void
-ODM_ReadAndConfig_PHY_REG_PG_8188E(
+ODM_ReadAndConfig_MP_8188E_PHY_REG_PG( // TC: Test Chip, MP: MP Chip
 	IN   PDM_ODM_T  pDM_Odm
 );
 

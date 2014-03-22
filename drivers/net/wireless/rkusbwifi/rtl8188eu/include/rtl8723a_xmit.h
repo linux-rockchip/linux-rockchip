@@ -161,7 +161,8 @@ typedef struct txdesc_8723a
 	u32 mcsg5_max_len:4;
 	u32 mcsg6_max_len:4;
 	u32 mcs15_sgi_max_len:4;
-}TXDESC, *PTXDESC;
+}TXDESC_8723A, *PTXDESC_8723A;
+
 
 #define txdesc_set_ccx_sw_8723a(txdesc, value) \
 	do { \
@@ -226,13 +227,11 @@ s32 rtl8723as_mgnt_xmit(PADAPTER padapter, struct xmit_frame *pmgntframe);
 s32	rtl8723as_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe);
 s32 rtl8723as_xmit_buf_handler(PADAPTER padapter);
 thread_return rtl8723as_xmit_thread(thread_context context);
-#define hal_xmit_handler rtl8723as_xmit_buf_handler
 #endif
 
 #ifdef CONFIG_USB_HCI
 s32	rtl8723au_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe);
 s32 rtl8723au_xmit_buf_handler(PADAPTER padapter);
-#define hal_xmit_handler rtl8723au_xmit_buf_handler
 #endif
 #endif
 

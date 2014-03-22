@@ -116,15 +116,8 @@ void Hal_mpt_SwitchRfSetting(PADAPTER pAdapter)
 	u1Byte				ChannelToSw = pmp->channel;
 	ULONG				ulRateIdx = pmp->rateidx;
 	ULONG				ulbandwidth = pmp->bandwidth;
-	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(pAdapter);
-	
-#if 0
-	// <20120525, Kordan> Dynamic mechanism for APK, asked by Dennis.
-		pmp->MptCtx.backup0x52_RF_A = (u1Byte)PHY_QueryRFReg(pAdapter, RF_PATH_A, RF_0x52, 0x000F0);
-		pmp->MptCtx.backup0x52_RF_B = (u1Byte)PHY_QueryRFReg(pAdapter, RF_PATH_B, RF_0x52, 0x000F0);
-		PHY_SetRFReg(pAdapter, RF_PATH_A, RF_0x52, 0x000F0, 0xD);
-		PHY_SetRFReg(pAdapter, RF_PATH_B, RF_0x52, 0x000F0, 0xD);
-#else
+	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(pAdapter);	
+
 	// <20120525, Kordan> Dynamic mechanism for APK, asked by Dennis.
 	if (IS_HARDWARE_TYPE_8188ES(pAdapter) && (1 <= ChannelToSw && ChannelToSw <= 11) &&
 		(ulRateIdx == MPT_RATE_MCS0 || ulRateIdx == MPT_RATE_1M || ulRateIdx == MPT_RATE_6M))
@@ -139,7 +132,6 @@ void Hal_mpt_SwitchRfSetting(PADAPTER pAdapter)
 		PHY_SetRFReg(pAdapter, ODM_RF_PATH_A, RF_0x52, 0x000F0, pmp->MptCtx.backup0x52_RF_A);
 		PHY_SetRFReg(pAdapter, ODM_RF_PATH_B, RF_0x52, 0x000F0, pmp->MptCtx.backup0x52_RF_B);
 	}
-#endif	
 
 	return ;
 }
@@ -229,7 +221,7 @@ void Hal_MPT_CCKTxPowerAdjust(PADAPTER Adapter, BOOLEAN bInCH14)
 void Hal_MPT_CCKTxPowerAdjustbyIndex(PADAPTER pAdapter, BOOLEAN beven)
 {
 	s32		TempCCk;
-	u8		CCK_index, CCK_index_old;
+	u8		CCK_index, CCK_index_old=0;
 	u8		Action = 0;	//0: no action, 1: even->odd, 2:odd->even
 	u8		TimeOut = 100;
 	s32		i = 0;
@@ -294,10 +286,18 @@ void Hal_MPT_CCKTxPowerAdjustbyIndex(PADAPTER pAdapter, BOOLEAN beven)
 			}
 		}
 
-		if (Action == 1)
+		if (Action == 1) {
+			if (CCK_index_old == 0)
+				CCK_index_old = 1;
 			CCK_index = CCK_index_old - 1;
-		else
+		} else {
 			CCK_index = CCK_index_old + 1;
+		}
+
+		if (CCK_index == CCK_TABLE_SIZE) {
+			CCK_index = CCK_TABLE_SIZE -1;
+			RT_TRACE(_module_mp_, _drv_info_, ("CCK_index == CCK_TABLE_SIZE\n"));
+		}
 
 //		RTPRINT(FINIT, INIT_TxPower,("MPT_CCKTxPowerAdjustbyIndex: new CCK_index=0x%x\n",
 //			 CCK_index));
@@ -362,7 +362,7 @@ void Hal_SetChannel(PADAPTER pAdapter)
 	for (eRFPath = 0; eRFPath < pHalData->NumTotalRFPath; eRFPath++)
 	{
       		if(IS_HARDWARE_TYPE_8192D(pAdapter))
-			_write_rfreg(pAdapter, (RF_RADIO_PATH_E)eRFPath, ODM_CHANNEL, 0xFF, channel);
+			_write_rfreg(pAdapter, eRFPath, ODM_CHANNEL, 0xFF, channel);
 		else
 			_write_rfreg(pAdapter, eRFPath, ODM_CHANNEL, 0x3FF, channel);
 	}
@@ -1045,13 +1045,13 @@ void Hal_SetCCKContinuousTx(PADAPTER pAdapter, u8 bStart)
 		write_bbreg(pAdapter, rCCK0_System, bCCKBBMode, 0x2);	//transmit mode
 		write_bbreg(pAdapter, rCCK0_System, bCCKScramble, bEnable);	//turn on scramble setting
 
-
+#ifdef CONFIG_RTL8192C
 		// Patch for CCK 11M waveform
 		if (cckrate == MPT_RATE_1M)
 			write_bbreg(pAdapter, 0xA71, BIT(6), bDisable);
 		else
 			write_bbreg(pAdapter, 0xA71, BIT(6), bEnable);
-
+#endif
 		//for dynamic set Power index.
 		write_bbreg(pAdapter, rFPGA0_XA_HSSIParameter1, bMaskDWord, 0x01000500);
 		write_bbreg(pAdapter, rFPGA0_XB_HSSIParameter1, bMaskDWord, 0x01000500);

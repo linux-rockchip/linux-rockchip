@@ -98,7 +98,6 @@
 
 #define		rFPGA0_XA_RFInterfaceOE		0x860	// RF Channel switch
 #define		rFPGA0_XB_RFInterfaceOE		0x864
-
 #define		rFPGA0_XAB_RFInterfaceSW		0x870	// RF Interface Software Control
 #define		rFPGA0_XCD_RFInterfaceSW		0x874
 
@@ -163,6 +162,7 @@
 #define		rPdp_AntA      					0xb00  
 #define		rPdp_AntA_4    				0xb04
 #define		rConfig_Pmpd_AntA 			0xb28
+#define		rConfig_ram64x16				0xb2c
 #define		rConfig_AntA 					0xb68
 #define		rConfig_AntB 					0xb6c
 #define		rPdp_AntB 					0xb70
@@ -249,7 +249,8 @@
 #define		rOFDM1_CFOTracking			0xd2c
 #define		rOFDM1_TRxMesaure1			0xd34
 #define		rOFDM1_IntfDet				0xd3c
-#define		rOFDM1_csi_fix_mask			0xd40
+#define		rOFDM1_csi_fix_mask1				0xd40
+#define		rOFDM1_csi_fix_mask2				0xd44
 #define		rOFDM1_PseudoNoiseStateAB	0xd50
 #define		rOFDM1_PseudoNoiseStateCD	0xd54
 #define		rOFDM1_RxPseudoNoiseWgt		0xd58
@@ -1063,10 +1064,7 @@
 #define 		bMaskOFDM_D			0xffc00000
 #define		bMaskCCK				0x3f3f3f3f
 
-//for PutRFRegsetting & GetRFRegSetting BitMask
-//#define		bMask12Bits               0xfffff	// RF Reg mask bits
-//#define		bMask20Bits               0xfffff	// RF Reg mask bits T65 RF
-#define 		bRFRegOffsetMask			0xfffff		
+
   		
 #define		bEnable                   0x1	// Useless
 #define		bDisable                  0x0

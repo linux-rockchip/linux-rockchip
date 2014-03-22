@@ -70,40 +70,43 @@
 //
 //-----------------------------------------------------------------------------
 //BB Functions
-#define ODM_COMP_DIG					BIT0	
-#define ODM_COMP_RA_MASK				BIT1	
+#define ODM_COMP_DIG				BIT0	
+#define ODM_COMP_RA_MASK			BIT1	
 #define ODM_COMP_DYNAMIC_TXPWR		BIT2
 #define ODM_COMP_FA_CNT				BIT3
 #define ODM_COMP_RSSI_MONITOR		BIT4
 #define ODM_COMP_CCK_PD				BIT5
-#define ODM_COMP_ANT_DIV				BIT6
+#define ODM_COMP_ANT_DIV			BIT6
 #define ODM_COMP_PWR_SAVE			BIT7
 #define ODM_COMP_PWR_TRAIN			BIT8
 #define ODM_COMP_RATE_ADAPTIVE		BIT9
-#define ODM_COMP_PATH_DIV				BIT10
-#define ODM_COMP_PSD					BIT11
+#define ODM_COMP_PATH_DIV			BIT10
+#define ODM_COMP_PSD				BIT11
 #define ODM_COMP_DYNAMIC_PRICCA		BIT12
 #define ODM_COMP_RXHP				BIT13			
+#define ODM_COMP_MP					BIT14
+#define ODM_COMP_DYNAMIC_ATC			BIT15
 //MAC Functions
 #define ODM_COMP_EDCA_TURBO			BIT16
 #define ODM_COMP_EARLY_MODE			BIT17
 //RF Functions
 #define ODM_COMP_TX_PWR_TRACK		BIT24
 #define ODM_COMP_RX_GAIN_TRACK		BIT25
-#define ODM_COMP_CALIBRATION			BIT26
+#define ODM_COMP_CALIBRATION		BIT26
 //Common Functions
 #define ODM_COMP_COMMON				BIT30
-#define ODM_COMP_INIT					BIT31
+#define ODM_COMP_INIT				BIT31
 
 /*------------------------Export Marco Definition---------------------------*/
-#if (DM_ODM_SUPPORT_TYPE == ODM_MP)
-#define RT_PRINTK				DbgPrint
+#if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
+	#define RT_PRINTK				DbgPrint
 #elif (DM_ODM_SUPPORT_TYPE == ODM_CE)
 	#define DbgPrint	printk
 	#define RT_PRINTK(fmt, args...)	DbgPrint( "%s(): " fmt, __FUNCTION__, ## args);
+	#define	RT_DISP(dbgtype, dbgflag, printstr)
 #else
 	#define DbgPrint	panic_printk
-#define RT_PRINTK(fmt, args...)	DbgPrint( "%s(): " fmt, __FUNCTION__, ## args);
+	#define RT_PRINTK(fmt, args...)	DbgPrint( "%s(): " fmt, __FUNCTION__, ## args);
 #endif
 
 #ifndef ASSERT
@@ -112,20 +115,8 @@
 
 #if DBG
 #define ODM_RT_TRACE(pDM_Odm, comp, level, fmt)									\
-		if(((comp) & pDM_Odm->DebugComponents) && (level <= pDM_Odm->DebugLevel))	\
+		if(((comp) & pDM_Odm->DebugComponents) && (level <= pDM_Odm->DebugLevel || level == ODM_DBG_SERIOUS))	\
 		{																			\
-			if(pDM_Odm->SupportICType == ODM_RTL8192C)								\
-				DbgPrint("[ODM-92C] ");												\
-			else if(pDM_Odm->SupportICType == ODM_RTL8192D)							\
-				DbgPrint("[ODM-92D] ");												\
-			else if(pDM_Odm->SupportICType == ODM_RTL8723A)							\
-				DbgPrint("[ODM-8723A] ");												\
-			else if(pDM_Odm->SupportICType == ODM_RTL8188E)							\
-				DbgPrint("[ODM-8188E] ");												\
-			else if(pDM_Odm->SupportICType == ODM_RTL8812)							\
-				DbgPrint("[ODM-8812] ");												\
-			else if(pDM_Odm->SupportICType == ODM_RTL8821)							\
-				DbgPrint("[ODM-8821] ");												\
 			RT_PRINTK fmt;															\
 		}
 
@@ -146,13 +137,13 @@
 #define ODM_dbg_exit() { DbgPrint("<== %s\n", __FUNCTION__); }
 #define ODM_dbg_trace(str) { DbgPrint("%s:%s\n", __FUNCTION__, str); }
 
-#define ODM_PRINT_ADDR(pDM_Odm, comp, level, title_str, ptr)						\
+#define ODM_PRINT_ADDR(pDM_Odm, comp, level, title_str, ptr)							\
 			if(((comp) & pDM_Odm->DebugComponents) && (level <= pDM_Odm->DebugLevel))	\
 			{																		\
 				int __i;																\
 				pu1Byte	__ptr = (pu1Byte)ptr;											\
 				DbgPrint("[ODM] ");													\
-				DbgPrint(title_str);												\
+				DbgPrint(title_str);													\
 				DbgPrint(" ");														\
 				for( __i=0; __i<6; __i++ )												\
 					DbgPrint("%02X%s", __ptr[__i], (__i==5)?"":"-");						\
@@ -668,7 +659,7 @@ typedef enum tag_DBGP_Flag_Type_Definition
 
 
 /*------------------------Export Marco Definition---------------------------*/
-#if (DM_ODM_SUPPORT_TYPE != ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE != ODM_WIN)
 #define RT_PRINTK(fmt, args...)    printk( "%s(): " fmt, __FUNCTION__, ## args);
 
 #if DBG
@@ -801,7 +792,7 @@ typedef enum tag_DBGP_Flag_Type_Definition
 
 
 
-#endif	// #if (DM_ODM_SUPPORT_TYPE != ODM_MP)
+#endif	// #if (DM_ODM_SUPPORT_TYPE != ODM_WIN)
 
 #define		DEBUG_PRINT				1
 
@@ -809,7 +800,7 @@ typedef enum tag_DBGP_Flag_Type_Definition
 
 //#if (RT_PLATFORM==PLATFORM_WINDOWS) 
 #if (DEBUG_PRINT == 1) && DBG
-#define	RTPRINT(dbgtype, dbgflag, printstr)\
+#define	RT_DISP(dbgtype, dbgflag, printstr)\
 {\
 	if (DBGP_Type[dbgtype] & dbgflag)\
 	{\
@@ -817,7 +808,7 @@ typedef enum tag_DBGP_Flag_Type_Definition
 	}\
 }
 
-#define	RTPRINT_ADDR(dbgtype, dbgflag, printstr, _Ptr)\
+#define	RT_DISP_ADDR(dbgtype, dbgflag, printstr, _Ptr)\
 {\
 	if (DBGP_Type[dbgtype] & dbgflag)\
 	{\
@@ -831,7 +822,7 @@ typedef enum tag_DBGP_Flag_Type_Definition
 	}\
 }
 
-#define RTPRINT_DATA(dbgtype, dbgflag, _TitleString, _HexData, _HexDataLen)\
+#define RT_DISP_DATA(dbgtype, dbgflag, _TitleString, _HexData, _HexDataLen)\
 {\
 	if (DBGP_Type[dbgtype] & dbgflag)\
 	{\
@@ -846,8 +837,6 @@ typedef enum tag_DBGP_Flag_Type_Definition
 		DbgPrint("\n");							\
 	}\
 }
-#define FuncEntry        FunctionIn(COMP_FUNC)
-#define FuncExit          FunctionOut(COMP_FUNC)
 
 #define FunctionIn(_comp)		ODM_RT_TRACE(pDM_Odm,(_comp), DBG_LOUD, ("==========> %s\n",  __FUNCTION__))
 #define FunctionOut(_comp)		ODM_RT_TRACE(pDM_Odm,(_comp), DBG_LOUD, ("<========== %s\n",  __FUNCTION__))
@@ -855,12 +844,10 @@ typedef enum tag_DBGP_Flag_Type_Definition
 
 #else
 
-#define	DBGP(dbgtype, dbgflag, printstr)
-#define	RTPRINT(dbgtype, dbgflag, printstr)
-#define	RTPRINT_ADDR(dbgtype, dbgflag, printstr, _Ptr)
-#define RTPRINT_DATA(dbgtype, dbgflag, _TitleString, _HexData, _HexDataLen)
-#define FuncEntry       
-#define FuncExit          
+#define	RT_DISP(dbgtype, dbgflag, printstr)
+#define	RT_DISP_ADDR(dbgtype, dbgflag, printstr, _Ptr)
+#define   RT_DISP_DATA(dbgtype, dbgflag, _TitleString, _HexData, _HexDataLen)
+
 #define FunctionIn(_comp)
 #define FunctionOut(_comp)
 #endif

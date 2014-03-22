@@ -21,10 +21,6 @@
 #ifndef __RTW_BT_MP_H
 #define __RTW_BT_MP_H
 
-#include <osdep_service.h>
-#include <drv_types.h>
-#include <rtw_mp.h>
-
 
 #if(MP_DRIVER == 1)
 
@@ -134,7 +130,7 @@ typedef enum _BT_CTRL_STATUS{
 typedef enum _BT_CTRL_OPCODE_UPPER{
 	BT_UP_OP_BT_READY										= 0x00, 
 	BT_UP_OP_BT_SET_MODE									= 0x01,
-	BT_UP_OP_BT_SET_TX_RX_PARAMETER 					= 0x02,
+	BT_UP_OP_BT_SET_TX_RX_PARAMETER 						= 0x02,
 	BT_UP_OP_BT_SET_GENERAL 								= 0x03,
 	BT_UP_OP_BT_GET_GENERAL 								= 0x04,
 	BT_UP_OP_BT_TEST_CTRL									= 0x05,
@@ -261,6 +257,7 @@ typedef struct _BT_EXT_C2H{
 	u1Byte	buf[100];
 }BT_EXT_C2H, *PBT_EXT_C2H;
 
+
 typedef enum _BT_OPCODE_STATUS{
 	BT_OP_STATUS_SUCCESS									= 0x00, // Success
 	BT_OP_STATUS_VERSION_MISMATCH							= 0x01,	
@@ -270,21 +267,22 @@ typedef enum _BT_OPCODE_STATUS{
 }BT_OPCODE_STATUS,*PBT_OPCODE_STATUS;
 
 
+
 //OP codes definition between driver and bt fw
 typedef enum _BT_CTRL_OPCODE_LOWER{
-	BT_LO_OP_GET_BT_VERSION										= 0x00, 
+	BT_LO_OP_GET_BT_VERSION 									= 0x00, 
 	BT_LO_OP_RESET												= 0x01,
 	BT_LO_OP_TEST_CTRL											= 0x02,
 	BT_LO_OP_SET_BT_MODE										= 0x03,
 	BT_LO_OP_SET_CHNL_TX_GAIN									= 0x04,
 	BT_LO_OP_SET_PKT_TYPE_LEN									= 0x05,
 	BT_LO_OP_SET_PKT_CNT_L_PL_TYPE								= 0x06,
-	BT_LO_OP_SET_PKT_CNT_H_PKT_INTV								= 0x07,
-	BT_LO_OP_SET_PKT_HEADER										= 0x08,
+	BT_LO_OP_SET_PKT_CNT_H_PKT_INTV 							= 0x07,
+	BT_LO_OP_SET_PKT_HEADER 									= 0x08,
 	BT_LO_OP_SET_WHITENCOEFF									= 0x09,
 	BT_LO_OP_SET_BD_ADDR_L										= 0x0a,
 	BT_LO_OP_SET_BD_ADDR_H										= 0x0b,
-	BT_LO_OP_WRITE_REG_ADDR										= 0x0c,
+	BT_LO_OP_WRITE_REG_ADDR 									= 0x0c,
 	BT_LO_OP_WRITE_REG_VALUE									= 0x0d,
 	BT_LO_OP_GET_BT_STATUS										= 0x0e,
 	BT_LO_OP_GET_BD_ADDR_L										= 0x0f,
@@ -311,6 +309,9 @@ typedef enum _BT_CTRL_OPCODE_LOWER{
 	BT_LO_OP_ENABLE_CFO_TRACKING								= 0x24,
 	BT_LO_OP_MAX
 }BT_CTRL_OPCODE_LOWER,*PBT_CTRL_OPCODE_LOWER;
+
+
+
 
 #endif  /* #if(MP_DRIVER == 1) */
 

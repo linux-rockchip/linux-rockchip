@@ -20,9 +20,7 @@
 #ifndef __RTW_IOL_H_
 #define __RTW_IOL_H_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
+
 struct xmit_frame	*rtw_IOL_accquire_xmit_frame(ADAPTER *adapter);
 int rtw_IOL_append_cmds(struct xmit_frame *xmit_frame, u8 *IOL_cmds, u32 cmd_len);
 int rtw_IOL_append_LLT_cmd(struct xmit_frame *xmit_frame, u8 page_boundary);

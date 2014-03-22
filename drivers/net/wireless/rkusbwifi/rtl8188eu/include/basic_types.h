@@ -20,8 +20,6 @@
 #ifndef __BASIC_TYPES_H__
 #define __BASIC_TYPES_H__
 
-#include <drv_conf.h>
-
 
 #define SUCCESS	0
 #define FAIL	(-1)
@@ -170,7 +168,7 @@
 //
 // Byte Swapping routine.
 //
-#define EF1Byte	
+#define EF1Byte	(u8)
 #define EF2Byte 	le16_to_cpu
 #define EF4Byte	le32_to_cpu
 
@@ -312,20 +310,32 @@
 			( (((u8)__Value) & BIT_LEN_MASK_8(__BitLen)) << (__BitOffset) ) \
 		);
 
-//pclint
+
+#define LE_BITS_CLEARED_TO_2BYTE_16BIT(__pStart, __BitOffset, __BitLen) \
+	( \
+		LE_P2BYTE_TO_HOST_2BYTE(__pStart) \
+	)
+
+#define SET_BITS_TO_LE_2BYTE_16BIT(__pStart, __BitOffset, __BitLen, __Value) \
+	*((u16 *)(__pStart)) = \
+		EF2Byte( \
+			LE_BITS_CLEARED_TO_2BYTE_16BIT(__pStart, __BitOffset, __BitLen) \
+			| \
+			( (u16)__Value) \
+		);
+
 #define LE_BITS_CLEARED_TO_1BYTE_8BIT(__pStart, __BitOffset, __BitLen) \
 	( \
 		LE_P1BYTE_TO_HOST_1BYTE(__pStart) \
 	)
 
-//pclint
 #define SET_BITS_TO_LE_1BYTE_8BIT(__pStart, __BitOffset, __BitLen, __Value) \
 { \
-	*((pu1Byte)(__pStart)) = \
+	*((u8 *)(__pStart)) = \
 		EF1Byte( \
 			LE_BITS_CLEARED_TO_1BYTE_8BIT(__pStart, __BitOffset, __BitLen) \
 			| \
-			((u1Byte)__Value) \
+			((u8)__Value) \
 		); \
 }
 
@@ -333,6 +343,12 @@
 #define N_BYTE_ALIGMENT(__Value, __Aligment) ((__Aligment == 1) ? (__Value) : (((__Value + __Aligment - 1) / __Aligment) * __Aligment))
 
 typedef unsigned char	BOOLEAN,*PBOOLEAN;
+
+#define TEST_FLAG(__Flag,__testFlag)		(((__Flag) & (__testFlag)) != 0)
+#define SET_FLAG(__Flag, __setFlag)			((__Flag) |= __setFlag)
+#define CLEAR_FLAG(__Flag, __clearFlag)		((__Flag) &= ~(__clearFlag))
+#define CLEAR_FLAGS(__Flag)					((__Flag) = 0)
+#define TEST_FLAGS(__Flag, __testFlags)		(((__Flag) & (__testFlags)) == (__testFlags))
 
 #endif //__BASIC_TYPES_H__
 

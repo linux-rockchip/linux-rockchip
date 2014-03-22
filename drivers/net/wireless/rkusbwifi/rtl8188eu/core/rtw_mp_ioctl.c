@@ -19,14 +19,9 @@
  ******************************************************************************/
 #define _RTW_MP_IOCTL_C_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
-#include <mlme_osdep.h>
-
-//#include <rtw_mp.h>
 #include <rtw_mp_ioctl.h>
-
+#include "../hal/OUTSRC/odm_precomp.h"
 
 //****************  oid_rtl_seg_81_85   section start ****************
 NDIS_STATUS oid_rt_wireless_mode_hdl(struct oid_par_priv *poid_par_priv)
@@ -404,8 +399,8 @@ _func_enter_;
 	bandwidth = *((u32*)poid_par_priv->information_buf);//4
 	channel_offset = HAL_PRIME_CHNL_OFFSET_DONT_CARE;
 
-	if (bandwidth != HT_CHANNEL_WIDTH_40)
-		bandwidth = HT_CHANNEL_WIDTH_20;
+	if (bandwidth != CHANNEL_WIDTH_40)
+		bandwidth = CHANNEL_WIDTH_20;
 	padapter->mppriv.bandwidth = (u8)bandwidth;
 	padapter->mppriv.prime_channel_offset = (u8)channel_offset;
 
@@ -2007,7 +2002,6 @@ NDIS_STATUS oid_rt_pro_dele_sta_info_hdl(struct oid_par_priv *poid_par_priv)
 }
 //------------------------------------------------------------------------------
 #if 0
-#include <sdio_osintf.h>
 static u32 mp_query_drv_var(_adapter *padapter, u8 offset, u32 var)
 {
 #ifdef CONFIG_SDIO_HCI

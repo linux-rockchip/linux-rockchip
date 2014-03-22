@@ -23,7 +23,7 @@
 
 #include "odm_types.h"
 
-#if (DM_ODM_SUPPORT_TYPE == ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
 #include "Precomp.h"		// We need to include mp_precomp.h due to batch file setting.
 
 #else
@@ -72,13 +72,14 @@
 	#endif	
 	
 #elif (DM_ODM_SUPPORT_TYPE ==ODM_CE)
-	#include <drv_conf.h>
-	#include <osdep_service.h>
-	#include <drv_types.h>
-	#include <rtw_byteorder.h>
-	#include <hal_intf.h>	
-		
-#elif (DM_ODM_SUPPORT_TYPE == ODM_MP)
+	//#include <drv_conf.h>
+	//#include <basic_types.h>
+	//#include <osdep_service.h>
+	//#include <drv_types.h>
+	//#include <rtw_byteorder.h>
+	//#include <hal_intf.h>
+#define BEAMFORMING_SUPPORT 0		
+#elif (DM_ODM_SUPPORT_TYPE == ODM_WIN)
 	#include "Mp_Precomp.h"
 	#define	ODM_ENDIAN_TYPE				ODM_ENDIAN_LITTLE
 #endif
@@ -102,27 +103,36 @@
 	#if(RTL8192CE_SUPPORT ==1)
 	#include "rtl8192c/Hal8192CEFWImg_CE.h"
 	#include "rtl8192c/Hal8192CEPHYImg_CE.h"
-	#include "rtl8192c/Hal8192CEMACImg_CE.h"	
-	#elif(RTL8192CU_SUPPORT ==1)
+	#include "rtl8192c/Hal8192CEMACImg_CE.h"
+	#endif
+	
+	#if(RTL8192CU_SUPPORT ==1)
 	#include "rtl8192c/Hal8192CUFWImg_CE.h"
 	#include "rtl8192c/Hal8192CUPHYImg_CE.h"
 	#include "rtl8192c/Hal8192CUMACImg_CE.h"
-	#elif(RTL8192DE_SUPPORT ==1)
+	#endif
+	
+	#if(RTL8192DE_SUPPORT ==1)
 	#include "rtl8192d/Hal8192DEFWImg_CE.h"
 	#include "rtl8192d/Hal8192DEPHYImg_CE.h"
 	#include "rtl8192d/Hal8192DEMACImg_CE.h"	
-	#elif(RTL8192DU_SUPPORT ==1)
+	#endif
+	
+	#if(RTL8192DU_SUPPORT ==1)
 	#include "rtl8192d/Hal8192DUFWImg_CE.h"
 	#include "rtl8192d/Hal8192DUPHYImg_CE.h"
-	#include "rtl8192d/Hal8192DUMACImg_CE.h"	
-	#elif(RTL8723AS_SUPPORT==1)
-	#include "rtl8723a/Hal8723SHWImg_CE.h"
-	#elif(RTL8723AU_SUPPORT==1)
-	#include "rtl8723a/Hal8723UHWImg_CE.h"	 
-	#elif(RTL8188E_SUPPORT==1)
-	#include "rtl8188e/Hal8188EFWImg_CE.h"	
+	#include "rtl8192d/Hal8192DUMACImg_CE.h"
 	#endif
-#elif (DM_ODM_SUPPORT_TYPE == ODM_MP)
+	
+	#if(RTL8723AS_SUPPORT==1)
+	#include "rtl8723a/Hal8723SHWImg_CE.h"
+	#endif
+	
+	#if(RTL8723AU_SUPPORT==1)
+	#include "rtl8723a/Hal8723UHWImg_CE.h"	
+	#endif	
+	
+#elif (DM_ODM_SUPPORT_TYPE == ODM_WIN)
 
 #endif
 
@@ -134,6 +144,7 @@
 #include "odm_debug.h"
 #include "odm_RegDefine11AC.h"
 #include "odm_RegDefine11N.h"
+#include "odm_AntDiv.h"
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_AP)
 #if (RTL8192C_SUPPORT==1)
@@ -147,25 +158,52 @@
 	#include "rtl8192c/HalDMOutSrc8192C_ADSL.h"
 
 #elif (DM_ODM_SUPPORT_TYPE == ODM_CE)
+	//#include "hal_com.h"
 	#include "HalPhyRf.h"
 	#if (RTL8192C_SUPPORT==1) 
-		#ifdef CONFIG_INTEL_PROXIM
-		#include "../proxim/intel_proxim.h"	
-		#endif	
-		#include  "rtl8192c/HalDMOutSrc8192C_CE.h"
-		#include <rtl8192c_hal.h>
-	#elif (RTL8192D_SUPPORT==1)
-		#include  "rtl8192d/HalDMOutSrc8192D_CE.h"
-		#include  "rtl8192d_hal.h"
-	#elif (RTL8723A_SUPPORT==1)
+	#ifdef CONFIG_INTEL_PROXIM
+	#include "../proxim/intel_proxim.h"	
+	#endif
+	#include  "rtl8192c/HalDMOutSrc8192C_CE.h"
+	#include <rtl8192c_hal.h>
+	#endif
+	
+	#if (RTL8192D_SUPPORT==1)
+	#include  "rtl8192d/HalDMOutSrc8192D_CE.h"
+	#include  "rtl8192d_hal.h"
+	#endif
+	
+	#if (RTL8723A_SUPPORT==1)
 		#include "rtl8192c/HalDMOutSrc8192C_CE.h" //for IQK,LCK,Power-tracking
-		#include "rtl8723a_hal.h"  
-	#elif (RTL8188E_SUPPORT==1)		
+		#include "rtl8723a_hal.h"
+	#endif
+	
+	#if (RTL8188E_SUPPORT==1)
 		#include "rtl8188e/HalPhyRf_8188e.h"//for IQK,LCK,Power-tracking
 		#include "rtl8188e/Hal8188ERateAdaptive.h"//for  RA,Power training
 		#include "rtl8188e_hal.h"  	
 	#endif
+	
+	#if (RTL8192E_SUPPORT==1)
+		#include "rtl8192e/HalPhyRf_8192e.h"//for IQK,LCK,Power-tracking		
+		#include "rtl8192e_hal.h"  			
+	#endif
 
+	#if (RTL8812A_SUPPORT==1)
+		#include "rtl8812a/HalPhyRf_8812A.h"//for IQK,LCK,Power-tracking
+		#include "rtl8812a_hal.h"
+	#endif
+
+	#if (RTL8821A_SUPPORT==1)
+		#include "rtl8821a/HalPhyRf_8821A.h"//for IQK,LCK,Power-tracking
+		#include "rtl8812a/HalPhyRf_8812A.h"//for IQK,LCK,Power-tracking
+		#include "rtl8812a_hal.h"		
+	#endif
+
+	#if (RTL8723B_SUPPORT==1)
+		#include "rtl8723b/HalPhyRf_8723B.h"//for IQK,LCK,Power-tracking
+		#include "rtl8723b_hal.h"
+	#endif
 #endif
 
 #include "odm_interface.h"
@@ -196,26 +234,73 @@
 #include "rtl8188e/HalHWImg8188E_MAC.h"
 #include "rtl8188e/HalHWImg8188E_RF.h"
 #include "rtl8188e/HalHWImg8188E_BB.h"
+#include "rtl8188e/HalHWImg8188E_FW.h"
 #include "rtl8188e/Hal8188EReg.h"
 
 #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
 #include "rtl8188e/HalPhyRf_8188e.h"
 #endif
 
-#if (RTL8188E_FOR_TEST_CHIP >= 1) 
+#if (TESTCHIP_SUPPORT == 1) 
 #include "rtl8188e/HalHWImg8188E_TestChip_MAC.h"
 #include "rtl8188e/HalHWImg8188E_TestChip_RF.h"
 #include "rtl8188e/HalHWImg8188E_TestChip_BB.h"
 #endif
 
-#ifdef CONFIG_WOWLAN
-#if (RTL8188E_SUPPORT==1)
-#include "rtl8188e/HalHWImg8188E_FW.h"
-#endif
-#endif //CONFIG_WOWLAN
 
 #include "rtl8188e/odm_RegConfig8188E.h"
 #include "rtl8188e/odm_RTL8188E.h"
+#endif
+
+#if (RTL8192E_SUPPORT==1) 
+#include "rtl8192e/HalHWImg8192E_MAC.h"
+#include "rtl8192e/HalHWImg8192E_RF.h"
+#include "rtl8192e/HalHWImg8192E_BB.h"
+#include "rtl8192e/HalHWImg8192E_FW.h"
+#include "rtl8192e/Hal8192EReg.h"
+#include "rtl8192e/odm_RegConfig8192E.h"
+#include "rtl8192e/odm_RTL8192E.h"
+#endif
+
+#if (RTL8723B_SUPPORT==1) 
+#include "rtl8723b/HalHWImg8723B_MAC.h"
+#include "rtl8723b/HalHWImg8723B_RF.h"
+#include "rtl8723b/HalHWImg8723B_BB.h"
+#include "rtl8723b/HalHWImg8723B_FW.h"
+#include "rtl8723b/HalHWImg8723B_MP.h"
+#include "rtl8723b/Hal8723BReg.h"
+#include "rtl8723b/odm_RTL8723B.h"
+#include "rtl8723b/odm_RegConfig8723B.h"
+#endif
+
+#if (RTL8812A_SUPPORT==1) 
+#include "rtl8812a/HalHWImg8812A_MAC.h"
+#include "rtl8812a/HalHWImg8812A_RF.h"
+#include "rtl8812a/HalHWImg8812A_BB.h"
+#include "rtl8812a/HalHWImg8812A_FW.h"
+#include "rtl8812a/odm_RegConfig8812A.h"
+#include "rtl8812a/odm_RTL8812A.h"
+#if (TESTCHIP_SUPPORT == 1) 
+#include "rtl8812a/HalHWImg8812A_TestChip_MAC.h"
+#include "rtl8812a/HalHWImg8812A_TestChip_RF.h"
+#include "rtl8812a/HalHWImg8812A_TestChip_BB.h"
+#endif
+#endif
+
+
+#if (RTL8821A_SUPPORT==1) 
+#include "rtl8821a/HalHWImg8821A_MAC.h"
+#include "rtl8821a/HalHWImg8821A_RF.h"
+#include "rtl8821a/HalHWImg8821A_BB.h"
+#include "rtl8821a/HalHWImg8821A_FW.h"
+#include "rtl8821a/odm_RegConfig8821A.h"
+#include "rtl8821a/odm_RTL8821A.h"
+#if (TESTCHIP_SUPPORT == 1) 
+#include "rtl8821a/HalHWImg8821A_TestChip_MAC.h"
+#include "rtl8821a/HalHWImg8821A_TestChip_RF.h"
+#include "rtl8821a/HalHWImg8821A_TestChip_BB.h"
+#include "rtl8821a/HalHWImg8821A_TestChip_FW.h"
+#endif
 #endif
 
 #endif	// __ODM_PRECOMP_H__

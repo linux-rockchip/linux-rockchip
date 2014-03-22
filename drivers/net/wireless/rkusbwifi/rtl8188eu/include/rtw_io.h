@@ -21,35 +21,6 @@
 #ifndef _RTW_IO_H_
 #define _RTW_IO_H_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <osdep_intf.h>
-
-#ifdef PLATFORM_LINUX
-#include <asm/byteorder.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,26))
-#include <asm/semaphore.h>
-#else
-#include <linux/semaphore.h>
-#endif
-#include <linux/list.h>
-//#include <linux/smp_lock.h>
-#include <linux/spinlock.h>
-#include <asm/atomic.h>
-
-#ifdef CONFIG_USB_HCI
-#include <linux/usb.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,21))
-#include <linux/usb_ch9.h>
-#else
-#include <linux/usb/ch9.h>
-#endif
-
-#endif //CONFIG_USB_HCI
-
-#endif //PLATFORM_LINUX
-
-
 #define NUM_IOREQ		8
 
 #ifdef PLATFORM_WINDOWS
@@ -152,6 +123,10 @@ struct _io_ops
 
 		void (*_read_port_cancel)(struct intf_hdl *pintfhdl);
 		void (*_write_port_cancel)(struct intf_hdl *pintfhdl);
+
+#ifdef CONFIG_SDIO_HCI
+		u8 (*_sd_f0_read8)(struct intf_hdl *pintfhdl, u32 addr);
+#endif
 		
 };
 
@@ -391,6 +366,8 @@ extern int _rtw_write16(_adapter *adapter, u32 addr, u16 val);
 extern int _rtw_write32(_adapter *adapter, u32 addr, u32 val);
 extern int _rtw_writeN(_adapter *adapter, u32 addr, u32 length, u8 *pdata);
 
+extern u8 _rtw_sd_f0_read8(_adapter *adapter, u32 addr);
+
 extern int _rtw_write8_async(_adapter *adapter, u32 addr, u8 val);
 extern int _rtw_write16_async(_adapter *adapter, u32 addr, u16 val);
 extern int _rtw_write32_async(_adapter *adapter, u32 addr, u32 val);
@@ -456,6 +433,8 @@ extern int dbg_rtw_writeN(_adapter *adapter, u32 addr ,u32 length , u8 *data, co
 #define rtw_write_port_cancel(adapter) _rtw_write_port_cancel((adapter))
 #endif //DBG_IO
 
+#define rtw_sd_f0_read8(adapter, addr) _rtw_sd_f0_read8((adapter), (addr))
+
 extern void rtw_write_scsi(_adapter *adapter, u32 cnt, u8 *pmem);
 
 //ioreq 
@@ -488,7 +467,7 @@ extern void async_write_mem(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem);
 extern void async_write_port(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem);
 
 
-int rtw_init_io_priv(_adapter *padapter, void (*set_intf_ops)(struct _io_ops *pops));
+int rtw_init_io_priv(_adapter *padapter, void (*set_intf_ops)(_adapter *padapter,struct _io_ops *pops));
 
 
 extern uint alloc_io_queue(_adapter *adapter);

@@ -20,8 +20,7 @@
 #ifndef	__ODM_RTL8188E_H__
 #define __ODM_RTL8188E_H__
 
-#define	MAIN_ANT	0
-#define	AUX_ANT	1
+
 #define	MAIN_ANT_CG_TRX	1
 #define	AUX_ANT_CG_TRX	0
 #define	MAIN_ANT_CGCS_RX	0
@@ -31,25 +30,11 @@ VOID
 ODM_DIG_LowerBound_88E(
 	IN		PDM_ODM_T		pDM_Odm
 );
-#if ( !(DM_ODM_SUPPORT_TYPE == ODM_CE))
-VOID
-odm_FastAntTrainingInit(
-	IN		PDM_ODM_T		pDM_Odm
-);
-#endif
 
-VOID
-ODM_AntennaDiversityInit_88E(
-	IN		PDM_ODM_T		pDM_Odm
-);
 
-VOID
-ODM_AntennaDiversity_88E
-(
-	IN		PDM_ODM_T		pDM_Odm
-);
 
-#if (DM_ODM_SUPPORT_TYPE & (ODM_MP|ODM_CE))
+
+#if (DM_ODM_SUPPORT_TYPE & (ODM_WIN|ODM_CE))
 VOID
 ODM_SetTxAntByTxInfo_88E(
 	IN		PDM_ODM_T		pDM_Odm,
@@ -63,36 +48,6 @@ ODM_SetTxAntByTxInfo_88E(
 );
 #endif
 
-VOID
-ODM_UpdateRxIdleAnt_88E(
-	IN PDM_ODM_T pDM_Odm, 
-	IN u1Byte Ant
-);
-
-VOID
-ODM_AntselStatistics_88E(
-	IN		PDM_ODM_T		pDM_Odm,
-	IN		u1Byte			antsel_tr_mux,
-	IN		u4Byte			MacId,
-	IN		u1Byte			RxPWDBAll
-);
-
-#if ( !(DM_ODM_SUPPORT_TYPE == ODM_CE))
-VOID
-odm_FastAntTraining(
-	IN		PDM_ODM_T		pDM_Odm
-);
-
-VOID
-odm_FastAntTrainingCallback(
-	IN		PDM_ODM_T		pDM_Odm
-);
-
-VOID
-odm_FastAntTrainingWorkItemCallback(
-	IN		PDM_ODM_T		pDM_Odm
-);
-#endif
 VOID
 odm_PrimaryCCA_Init(
 	IN		PDM_ODM_T		pDM_Odm);

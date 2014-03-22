@@ -42,6 +42,13 @@
 //
 #define	BIT_FA_RESET_8188E			BIT0
 
+#define	REG_DBI_WDATA_8188			0x0348	// DBI Write Data
+#define	REG_DBI_RDATA_8188			0x034C	// DBI Read Data
+#define	REG_DBI_ADDR_8188			0x0350	// DBI Address
+#define	REG_DBI_FLAG_8188			0x0352	// DBI Read/Write Flag
+#define	REG_MDIO_WDATA_8188E		0x0354	// MDIO for Write PCIE PHY
+#define	REG_MDIO_RDATA_8188E		0x0356	// MDIO for Reads PCIE PHY
+#define	REG_MDIO_CTL_8188E			0x0358	// MDIO for Control
 
 #endif
 

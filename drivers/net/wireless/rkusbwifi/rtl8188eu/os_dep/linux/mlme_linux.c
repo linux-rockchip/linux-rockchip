@@ -21,10 +21,7 @@
 
 #define _MLME_OSDEP_C_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
-#include <mlme_osdep.h>
 
 
 #ifdef RTK_DMP_PLATFORM
@@ -94,12 +91,21 @@ void _rtw_scan_timeout_handler (void *FunctionContext)
 void _dynamic_check_timer_handlder (void *FunctionContext)
 {
 	_adapter *adapter = (_adapter *)FunctionContext;
-/* remove for MP power tracking DM.
-#if (MP_DRIVER == 1)	
-if (adapter->registrypriv.mp_mode == 1)
-	return;
+
+#if (MP_DRIVER == 1)
+	if (adapter->registrypriv.mp_mode == 1 && adapter->mppriv.mp_dm ==0) //for MP ODM dynamic Tx power tracking
+	{
+		//DBG_871X("_dynamic_check_timer_handlder mp_dm =0 return \n");
+		_set_timer(&adapter->mlmepriv.dynamic_chk_timer, 2000);
+		return;
+	}
 #endif
-*/
+
+#ifdef CONFIG_CONCURRENT_MODE
+	if(adapter->pbuddy_adapter)
+		rtw_dynamic_check_timer_handlder(adapter->pbuddy_adapter);
+#endif //CONFIG_CONCURRENT_MODE
+
 	rtw_dynamic_check_timer_handlder(adapter);
 	
 	_set_timer(&adapter->mlmepriv.dynamic_chk_timer, 2000);
@@ -113,16 +119,6 @@ void _rtw_set_scan_deny_timer_hdl(void *FunctionContext)
 }
 #endif
 
-#ifdef CONFIG_DETECT_C2H_BY_POLLING
-void _rtw_event_polling_timer_hdl(void *FunctionContext)
-{
-	_adapter *adapter = (_adapter *)FunctionContext;
-
-	rtw_event_polling_timer_hdl(adapter);
-	
-	_set_timer(&adapter->mlmepriv.event_polling_timer, 200);
-}
-#endif
 
 void rtw_init_mlme_timer(_adapter *padapter)
 {
@@ -138,18 +134,11 @@ void rtw_init_mlme_timer(_adapter *padapter)
 	_init_timer(&(pmlmepriv->set_scan_deny_timer), padapter->pnetdev, _rtw_set_scan_deny_timer_hdl, padapter);
 	#endif
 
-#ifdef CONFIG_DETECT_C2H_BY_POLLING
-	_init_timer(&(pmlmepriv->event_polling_timer), padapter->pnetdev, _rtw_event_polling_timer_hdl, padapter);
-#endif
-
 #ifdef RTK_DMP_PLATFORM
 	_init_workitem(&(pmlmepriv->Linkup_workitem), Linkup_workitem_callback, padapter);
 	_init_workitem(&(pmlmepriv->Linkdown_workitem), Linkdown_workitem_callback, padapter);
 #endif
-#if defined(CONFIG_CHECK_BT_HANG) && defined(CONFIG_BT_COEXIST)
-	if (padapter->HalFunc.hal_init_checkbthang_workqueue)
-		padapter->HalFunc.hal_init_checkbthang_workqueue(padapter);
-#endif	
+
 }
 
 extern void rtw_indicate_wx_assoc_event(_adapter *padapter);
@@ -188,7 +177,7 @@ extern void indicate_wx_scan_complete_event(_adapter *padapter);
 void rtw_os_indicate_scan_done( _adapter *padapter, bool aborted)
 {
 #ifdef CONFIG_IOCTL_CFG80211
-	rtw_cfg80211_indicate_scan_done(wdev_to_priv(padapter->rtw_wdev), aborted);
+	rtw_cfg80211_indicate_scan_done(padapter, aborted);
 #endif
 	indicate_wx_scan_complete_event(padapter);
 }

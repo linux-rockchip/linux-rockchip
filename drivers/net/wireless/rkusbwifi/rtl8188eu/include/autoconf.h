@@ -18,12 +18,9 @@
  *
  ******************************************************************************/
 //***** temporarily flag *******
+#define CONFIG_SINGLE_IMG
 
 //#define CONFIG_DISABLE_ODM
-//#define CONFIG_ATMEL_RC_PATCH
-
-#define CONFIG_ODM_REFRESH_RAMASK
-#define CONFIG_PHY_SETTING_WITH_ODM
 //for FPGA VERIFICATION config
 #define RTL8188E_FPGA_TRUE_PHY_VERIFICATION 0
 
@@ -36,8 +33,6 @@
 #define DRV_NAME "rtl8188eu"
 
 #define CONFIG_USB_HCI	
-
-#define CONFIG_RTL8188E	
 
 #define PLATFORM_LINUX	
 
@@ -115,7 +110,9 @@
 	#define CONFIG_CONCURRENT_MODE 
 	#ifdef CONFIG_CONCURRENT_MODE
 		//#define CONFIG_HWPORT_SWAP				//Port0->Sec , Port1 -> Pri
-		//#define CONFIG_STA_MODE_SCAN_UNDER_AP_MODE
+		#define CONFIG_RUNTIME_PORT_SWITCH
+		//#define DBG_RUNTIME_PORT_SWITCH
+		#define CONFIG_STA_MODE_SCAN_UNDER_AP_MODE
 		#define CONFIG_TSF_RESET_OFFLOAD 			// For 2 PORT TSF SYNC.
 	#endif
 
@@ -155,7 +152,9 @@
 
 	#define CONFIG_P2P_PS
 	#define CONFIG_P2P_IPS
-	#define P2P_OP_CHECK_SOCIAL_CH
+	#define CONFIG_P2P_OP_CHK_SOCIAL_CH
+	#define CONFIG_CFG80211_ONECHANNEL_UNDER_CONCURRENT  //replace CONFIG_P2P_CHK_INVITE_CH_LIST flag
+	#define CONFIG_P2P_INVITE_IOT
 #endif
 
 //	Added by Kurt 20110511
@@ -254,7 +253,7 @@
 #define RTL8188E_RX_PACKET_INCLUDE_CRC	0
 
 #define SUPPORTED_BLOCK_IO
-#define CONFIG_REGULATORY_CTRL
+
 
 //#define CONFIG_ONLY_ONE_OUT_EP_TO_LOW	0
 
@@ -340,7 +339,20 @@
 #define RTL8188EU_SUPPORT				1
 #define RTL8188ES_SUPPORT				0
 #define RTL8188E_SUPPORT				(RTL8188EE_SUPPORT|RTL8188EU_SUPPORT|RTL8188ES_SUPPORT)
-#define RTL8188E_FOR_TEST_CHIP			0
+#define TESTCHIP_SUPPORT				0
+
+#define RTL8812E_SUPPORT				0
+#define RTL8812AU_SUPPORT				0
+#define RTL8812A_SUPPORT				(RTL8812E_SUPPORT|RTL8812AU_SUPPORT)
+
+#define RTL8821A_SUPPORT				0
+
+#define RTL8723B_SUPPORT				0
+
+#define RTL8192E_SUPPORT				0
+
+#define RTL8813A_SUPPORT				0
+
 //#if (RTL8188E_SUPPORT==1)
 #define RATE_ADAPTIVE_SUPPORT 			1
 #define POWER_TRAINING_ACTIVE			1
@@ -367,11 +379,11 @@
 //#define CONFIG_DEBUG /* DBG_871X, etc... */
 //#define CONFIG_DEBUG_RTL871X /* RT_TRACE, RT_PRINT_DATA, _func_enter_, _func_exit_ */
 
-//#define CONFIG_PROC_DEBUG
+#define CONFIG_PROC_DEBUG
 
-//#define DBG_CONFIG_ERROR_DETECT
+#define DBG_CONFIG_ERROR_DETECT
 //#define DBG_CONFIG_ERROR_DETECT_INT
-//#define DBG_CONFIG_ERROR_RESET
+#define DBG_CONFIG_ERROR_RESET
 
 //#define DBG_IO
 //#define DBG_DELAY_OS
@@ -382,8 +394,6 @@
 //#define DBG_XMIT_BUF
 //#define DBG_XMIT_BUF_EXT
 //#define DBG_TX_DROP_FRAME
-
-//#define DBG_TRX_STA_PKTS
 
 //#define DBG_RX_DROP_FRAME
 //#define DBG_RX_SEQ

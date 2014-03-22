@@ -23,18 +23,18 @@
 //
 // Define Different SW team support
 //
-#define	ODM_AP		 	0x01	 //BIT0 
+#define	ODM_AP		 	0x01	//BIT0 
 #define	ODM_ADSL	 	0x02	//BIT1
 #define	ODM_CE		 	0x04	//BIT2
-#define	ODM_MP		 	0x08	//BIT3
+#define	ODM_WIN		 	0x08	//BIT3
 
 #define	DM_ODM_SUPPORT_TYPE			ODM_CE
 
 // Deifne HW endian support
 #define	ODM_ENDIAN_BIG	0
-#define	ODM_ENDIAN_LITTLE	1	
+#define	ODM_ENDIAN_LITTLE	1
 
-#if (DM_ODM_SUPPORT_TYPE != ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE != ODM_WIN)
 #define 	RT_PCI_INTERFACE				1
 #define 	RT_USB_INTERFACE				2
 #define 	RT_SDIO_INTERFACE				3
@@ -51,11 +51,8 @@ typedef enum _HAL_STATUS{
 	RT_STATUS_OS_API_FAILED,*/
 }HAL_STATUS,*PHAL_STATUS;
 
-#if (DM_ODM_SUPPORT_TYPE == ODM_CE)
-typedef enum _RT_SPINLOCK_TYPE{
-	RT_TEMP =1,
-}RT_SPINLOCK_TYPE;
-#elif( (DM_ODM_SUPPORT_TYPE == ODM_AP) ||(DM_ODM_SUPPORT_TYPE == ODM_ADSL))
+
+#if( (DM_ODM_SUPPORT_TYPE == ODM_AP) ||(DM_ODM_SUPPORT_TYPE == ODM_ADSL) || (DM_ODM_SUPPORT_TYPE == ODM_CE))
 
 #define		VISTA_USB_RX_REVISE			0
 
@@ -80,8 +77,6 @@ typedef enum _RT_SPINLOCK_TYPE{
 #endif
 	//Shall we define Ndis 6.2 SpinLock Here ?
 	RT_PORT_SPINLOCK=16,
-	RT_VNIC_SPINLOCK=17,
-	RT_HVL_SPINLOCK=18,	
 	RT_H2C_SPINLOCK = 20, // For H2C cmd. Added by tynli. 2009.11.09.
 
 	RT_BTData_SPINLOCK=25,
@@ -97,18 +92,24 @@ typedef enum _RT_SPINLOCK_TYPE{
 	RT_AWB_SPINLOCK = 32,
 	RT_FW_PS_SPINLOCK = 33,
 	RT_HW_TIMER_SPIN_LOCK = 34,
-	RT_MPT_WI_SPINLOCK = 35
+	RT_MPT_WI_SPINLOCK = 35,
+	RT_P2P_SPIN_LOCK = 36,	// Protect P2P context
+	RT_DBG_SPIN_LOCK = 37,
+	RT_IQK_SPINLOCK = 38,
+	RT_PENDED_OID_SPINLOCK = 39,
+	RT_CHNLLIST_SPINLOCK = 40,	
+	RT_INDIC_SPINLOCK = 41,	//protect indication	
 }RT_SPINLOCK_TYPE;
 
 #endif
 
 
-#if (DM_ODM_SUPPORT_TYPE == ODM_MP)
+#if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
 	#define	STA_INFO_T			RT_WLAN_STA
 	#define	PSTA_INFO_T			PRT_WLAN_STA
 
 //    typedef unsigned long		u4Byte,*pu4Byte;
-	#define CONFIG_HW_ANTENNA_DIVERSITY 
+#define CONFIG_HW_ANTENNA_DIVERSITY 
 #define CONFIG_SW_ANTENNA_DIVERSITY 
 
 #elif (DM_ODM_SUPPORT_TYPE == ODM_AP)
@@ -117,6 +118,18 @@ typedef enum _RT_SPINLOCK_TYPE{
 	#define ADSL_AP_BUILD_WORKAROUND
 	#define AP_BUILD_WORKAROUND
 	//
+#ifdef CONFIG_ANT_SWITCH
+	#define CONFIG_HW_ANTENNA_DIVERSITY 
+	#if ( defined(CONFIG_NO_2G_DIVERSITY) && defined(CONFIG_NO_5G_DIVERSITY) )
+		#define CONFIG_NOT_SUPPORT_ANTDIV 
+	#elif( !defined(CONFIG_NO_2G_DIVERSITY) && defined(CONFIG_NO_5G_DIVERSITY) )
+		#define CONFIG_2G_SUPPORT_ANTDIV
+	#elif( defined(CONFIG_NO_2G_DIVERSITY) && !defined(CONFIG_NO_5G_DIVERSITY) )
+		#define CONFIG_5G_SUPPORT_ANTDIV
+	#elif( !defined(CONFIG_NO_2G_DIVERSITY) && !defined(CONFIG_NO_5G_DIVERSITY) )
+		#define CONFIG_2G5G_SUPPORT_ANTDIV 
+	#endif
+#endif
 
 	#ifdef AP_BUILD_WORKAROUND
 	#include "../typedef.h"
@@ -136,10 +149,10 @@ typedef enum _RT_SPINLOCK_TYPE{
 	typedef struct rtl8192cd_priv	*prtl8192cd_priv;
 	typedef struct stat_info		STA_INFO_T,*PSTA_INFO_T;
 	typedef struct timer_list		RT_TIMER, *PRT_TIMER;
-	typedef  void *					RT_TIMER_CALL_BACK;
-	
-	#define 	DEV_BUS_TYPE  		RT_PCI_INTERFACE
-	
+	typedef  void *				RT_TIMER_CALL_BACK;
+
+	#define DEV_BUS_TYPE		RT_PCI_INTERFACE
+
 	#define _TRUE				1
 	#define _FALSE				0
 	
@@ -150,28 +163,28 @@ typedef enum _RT_SPINLOCK_TYPE{
 	#define ADSL_BUILD_WORKAROUND
 	//
 
-	typedef unsigned char		BOOLEAN,*PBOOLEAN;
-	typedef unsigned char		u1Byte,*pu1Byte;
-	typedef unsigned short		u2Byte,*pu2Byte;
+	typedef unsigned char			BOOLEAN,*PBOOLEAN;
+	typedef unsigned char			u1Byte,*pu1Byte;
+	typedef unsigned short			u2Byte,*pu2Byte;
 	typedef unsigned int			u4Byte,*pu4Byte;
-	typedef unsigned long long	u8Byte,*pu8Byte;
-	typedef char				s1Byte,*ps1Byte;
-	typedef short				s2Byte,*ps2Byte;
-	typedef long				s4Byte,*ps4Byte;
-	typedef long long			s8Byte,*ps8Byte;
+	typedef unsigned long long		u8Byte,*pu8Byte;
+	typedef char					s1Byte,*ps1Byte;
+	typedef short					s2Byte,*ps2Byte;
+	typedef long					s4Byte,*ps4Byte;
+	typedef long long				s8Byte,*ps8Byte;
 
 	typedef struct rtl8192cd_priv	*prtl8192cd_priv;
 	typedef struct stat_info		STA_INFO_T,*PSTA_INFO_T;
 	typedef struct timer_list		RT_TIMER, *PRT_TIMER;
 	typedef  void *				RT_TIMER_CALL_BACK;
 	
-	#define DEV_BUS_TYPE  	RT_PCI_INTERFACE
-	
+	#define DEV_BUS_TYPE		RT_PCI_INTERFACE
+
 	#define _TRUE				1
 	#define _FALSE				0
 
 #elif (DM_ODM_SUPPORT_TYPE == ODM_CE)
-	#include <basic_types.h>
+	#include <drv_types.h>
 
 #if 0
 	typedef u8					u1Byte, *pu1Byte;
@@ -184,28 +197,28 @@ typedef enum _RT_SPINLOCK_TYPE{
 	typedef s64					s8Byte,*ps8Byte;
 #else
 	#define u1Byte 		u8
-	#define pu1Byte 		u8*	
+	#define	pu1Byte 	u8*	
 
 	#define u2Byte 		u16
-	#define pu2Byte 		u16*		
+	#define	pu2Byte 	u16*		
 
 	#define u4Byte 		u32
-	#define pu4Byte 		u32*	
+	#define	pu4Byte 	u32*	
 
 	#define u8Byte 		u64
-	#define pu8Byte 		u64*
+	#define	pu8Byte 	u64*
 
 	#define s1Byte 		s8
-	#define ps1Byte 		s8*	
+	#define	ps1Byte 	s8*	
 
 	#define s2Byte 		s16
-	#define ps2Byte 		s16*	
+	#define	ps2Byte 	s16*	
 
 	#define s4Byte 		s32
-	#define ps4Byte 		s32*	
+	#define	ps4Byte 	s32*	
 
 	#define s8Byte 		s64
-	#define ps8Byte 		s64*	
+	#define	ps8Byte 	s64*	
 	
 #endif
 	#ifdef CONFIG_USB_HCI
@@ -214,7 +227,7 @@ typedef enum _RT_SPINLOCK_TYPE{
 		#define DEV_BUS_TYPE  	RT_PCI_INTERFACE
 	#elif defined(CONFIG_SDIO_HCI)
 		#define DEV_BUS_TYPE  	RT_SDIO_INTERFACE
-        #elif defined(CONFIG_GSPI_HCI)
+	#elif defined(CONFIG_GSPI_HCI)
 		#define DEV_BUS_TYPE  	RT_SDIO_INTERFACE
 	#endif
 	
@@ -234,17 +247,17 @@ typedef enum _RT_SPINLOCK_TYPE{
 
 	#define TRUE 	_TRUE	
 	#define FALSE	_FALSE
-	
+
 
 	#define SET_TX_DESC_ANTSEL_A_88E(__pTxDesc, __Value) SET_BITS_TO_LE_4BYTE(__pTxDesc+8, 24, 1, __Value)
 	#define SET_TX_DESC_ANTSEL_B_88E(__pTxDesc, __Value) SET_BITS_TO_LE_4BYTE(__pTxDesc+8, 25, 1, __Value)
 	#define SET_TX_DESC_ANTSEL_C_88E(__pTxDesc, __Value) SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 29, 1, __Value)
 
 	//define useless flag to avoid compile warning
-	#define	USE_WORKITEM 			0
-	#define 	FOR_BRAZIL_PRETEST	0
-	#define	BT_30_SUPPORT			0
+	#define	USE_WORKITEM 0
+	#define 	FOR_BRAZIL_PRETEST 0
 	#define   FPGA_TWO_MAC_VERIFICATION	0
+	#define	RTL8881A_SUPPORT	0
 #endif
 
 

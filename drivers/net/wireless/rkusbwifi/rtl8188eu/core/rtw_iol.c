@@ -18,7 +18,7 @@
  *
  ******************************************************************************/
 
-#include<rtw_iol.h>
+#include <drv_types.h>
 
 #ifdef CONFIG_IOL
 struct xmit_frame	*rtw_IOL_accquire_xmit_frame(ADAPTER *adapter)
@@ -96,32 +96,19 @@ int rtw_IOL_append_cmds(struct xmit_frame *xmit_frame, u8 *IOL_cmds, u32 cmd_len
 	
 	return _SUCCESS;
 }
+
 bool rtw_IOL_applied(ADAPTER *adapter)
 {	
 	if(1 == adapter->registrypriv.fw_iol)
 		return _TRUE;
 
 #ifdef CONFIG_USB_HCI
-	if((2 == adapter->registrypriv.fw_iol) && (!adapter_to_dvobj(adapter)->ishighspeed))
+	if((2 == adapter->registrypriv.fw_iol) && (IS_FULL_SPEED_USB(adapter)))
 		return _TRUE;
 #endif
 
 	return _FALSE;
 }
-/*
-bool rtw_IOL_applied(ADAPTER *adapter)
-{
-	if(adapter->registrypriv.fw_iol)
-		return _TRUE;
-
-#ifdef CONFIG_USB_HCI
-	if(!adapter_to_dvobj(adapter)->ishighspeed)
-		return _TRUE;
-#endif
-
-	return _FALSE;
-}
-*/
 
 int rtw_IOL_exec_cmds_sync(ADAPTER *adapter, struct xmit_frame *xmit_frame, u32 max_wating_ms, u32 bndy_cnt)
 {

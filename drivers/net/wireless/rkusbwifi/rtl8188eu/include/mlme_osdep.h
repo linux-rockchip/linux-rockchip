@@ -20,9 +20,6 @@
 #ifndef	__MLME_OSDEP_H_
 #define __MLME_OSDEP_H_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
 
 #if defined(PLATFORM_WINDOWS) || defined(PLATFORM_MPIXEL)
 extern int time_after(u32 now, u32 old);

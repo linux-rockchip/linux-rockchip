@@ -24,12 +24,13 @@
 
 #include "odm_precomp.h"
 
+
 VOID 
 ODM_InitDebugSetting(
 	IN		PDM_ODM_T		pDM_Odm
 	)
 {
-pDM_Odm->DebugLevel				= 	ODM_DBG_TRACE;
+pDM_Odm->DebugLevel				= 	ODM_DBG_LOUD;
 
 pDM_Odm->DebugComponents			= 
 \
@@ -48,17 +49,20 @@ pDM_Odm->DebugComponents			=
 //									ODM_COMP_PATH_DIV				|
 //									ODM_COMP_DYNAMIC_PRICCA		|
 //									ODM_COMP_RXHP					|
+//									ODM_COMP_MP 					|
+//									ODM_COMP_DYNAMIC_ATC		|
 
 //MAC Functions
 //									ODM_COMP_EDCA_TURBO			|
 //									ODM_COMP_EARLY_MODE			|
 //RF Functions
-//									ODM_COMP_TX_PWR_TRACK			|
+//									ODM_COMP_TX_PWR_TRACK		|
 //									ODM_COMP_RX_GAIN_TRACK		|
 //									ODM_COMP_CALIBRATION			|
 //Common
 //									ODM_COMP_COMMON				|
 //									ODM_COMP_INIT					|
+//									ODM_COMP_PSD					|
 #endif
 									0;
 }
@@ -254,8 +258,6 @@ u8Byte GlobalDebugComponents	= 	\
 
 
 #else
-#define FuncEntry
-#define FuncExit
 u8Byte GlobalDebugComponents	= 0;
 #endif
 

@@ -18,7 +18,9 @@
  *
  ******************************************************************************/
 
-#include<rtw_sreset.h>
+#include <drv_types.h>
+#include <hal_data.h>
+#include <rtw_sreset.h>
 
 void sreset_init_value(_adapter *padapter)
 {
@@ -39,7 +41,6 @@ void sreset_reset_value(_adapter *padapter)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
 
-	//psrtpriv->silent_reset_inprogress = _FALSE;
 	psrtpriv->Wifi_Error_Status = WIFI_STATUS_SUCCESS;
 	psrtpriv->last_tx_time =0;
 	psrtpriv->last_tx_complete_time =0;
@@ -213,6 +214,8 @@ void sreset_restore_network_station(_adapter *padapter)
 		#endif
 	}
 
+	rtw_hal_set_hwreg(padapter, HW_VAR_DO_IQK, NULL);
+
 	set_channel_bwmode(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
 
 	//disable dynamic functions, such as high power, DIG
@@ -279,7 +282,7 @@ void sreset_stop_adapter(_adapter *padapter)
 
 	if (check_fwstate(pmlmepriv, _FW_UNDER_LINKING))
 	{
-		rtw_set_roaming(padapter, 0);
+		rtw_set_to_roam(padapter, 0);
 		_rtw_join_timeout_handler(padapter);
 	}
 
@@ -321,11 +324,18 @@ void sreset_reset(_adapter *padapter)
 	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
 	_irqL irqL;
 	u32 start = rtw_get_current_time();
+	struct dvobj_priv *psdpriv = padapter->dvobj;
+	struct debug_priv *pdbgpriv = &psdpriv->drv_dbg;
 
 	DBG_871X("%s\n", __FUNCTION__);
 
 	psrtpriv->Wifi_Error_Status = WIFI_STATUS_SUCCESS;
 
+	
+#ifdef CONFIG_POWER_SAVING
+	rtw_set_ps_mode(padapter, PS_MODE_ACTIVE, 0, 0, "SRESET");
+#endif
+	
 	_enter_pwrlock(&pwrpriv->lock);
 
 	psrtpriv->silent_reset_inprogress = _TRUE;
@@ -351,6 +361,7 @@ void sreset_reset(_adapter *padapter)
 	_exit_pwrlock(&pwrpriv->lock);
 
 	DBG_871X("%s done in %d ms\n", __FUNCTION__, rtw_get_passing_time_ms(start));
+	pdbgpriv->dbg_sreset_cnt++;
 #endif
 }
 

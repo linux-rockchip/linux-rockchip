@@ -20,17 +20,27 @@
 #ifndef __DRV_TYPES_SDIO_H__
 #define __DRV_TYPES_SDIO_H__
 
-#include <drv_conf.h>
-#include <basic_types.h>
-
 // SDIO Header Files
 #ifdef PLATFORM_LINUX
-#include <linux/mmc/sdio_func.h>
+	#include <linux/mmc/sdio_func.h> 
+	#include <linux/mmc/sdio_ids.h>
+
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN) || defined(CONFIG_PLATFORM_SPRD)
+	#include <linux/mmc/host.h>
+	#include <linux/mmc/card.h>
 #endif
+
+#ifdef CONFIG_PLATFORM_SPRD
+	#include <linux/gpio.h>
+	#include <custom_gpio.h>
+#endif // CONFIG_PLATFORM_SPRD
+#endif
+
 #ifdef PLATFORM_OS_XP
 #include <wdm.h>
 #include <ntddsd.h>
 #endif
+
 #ifdef PLATFORM_OS_CE
 #include <sdcardddk.h>
 #endif

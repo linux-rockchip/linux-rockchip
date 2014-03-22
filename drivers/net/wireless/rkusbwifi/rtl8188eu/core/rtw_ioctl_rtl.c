@@ -19,18 +19,9 @@
  ******************************************************************************/
 #define  _RTW_IOCTL_RTL_C_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
-#include <wlan_bssdef.h>
-#include <wifi.h>
-#include <rtw_ioctl.h>
-#include <rtw_ioctl_set.h>
-#include <rtw_ioctl_query.h>
-#include <rtw_ioctl_rtl.h>
-#include <mp_custom_oid.h>
+
 #ifdef CONFIG_MP_INCLUDED
-#include <rtw_mp.h>
 #include <rtw_mp_ioctl.h>
 #endif
 

@@ -24,13 +24,6 @@
 
 #define TX_RPT1_PKT_LEN 8
 
-typedef enum _RX_PACKET_TYPE{
-	NORMAL_RX,//Normal rx packet
-	TX_REPORT1,//CCX
-	TX_REPORT2,//TX RPT
-	HIS_REPORT,// USB HISR RPT
-}RX_PACKET_TYPE, *PRX_PACKET_TYPE;
-
 typedef struct rxreport_8188e
 {
 	//Offset 0

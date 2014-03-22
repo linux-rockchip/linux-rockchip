@@ -21,36 +21,40 @@
 #ifndef __HAL_PHY_RF_8188E_H__
 #define __HAL_PHY_RF_8188E_H__
 
-
 /*--------------------------Define Parameters-------------------------------*/
 #define	IQK_DELAY_TIME_88E		10		//ms
 #define	index_mapping_NUM_88E	15
 #define AVG_THERMAL_NUM_88E	4
 
-typedef enum _PWRTRACK_CONTROL_METHOD {
-	BBSWING,
-	TXAGC
-} PWRTRACK_METHOD;
+#include "../HalPhyRf.h"
 
+void ConfigureTxpowerTrack_8188E(
+	PTXPWRTRACK_CFG	pConfig
+	);
 
 VOID
-ODM_TxPwrTrackAdjust88E(
+GetDeltaSwingTable_8188E(
+	IN 	PDM_ODM_T			pDM_Odm,
+	OUT pu1Byte 			*TemperatureUP_A,
+	OUT pu1Byte 			*TemperatureDOWN_A,
+	OUT pu1Byte 			*TemperatureUP_B,
+	OUT pu1Byte 			*TemperatureDOWN_B	
+	);
+
+void DoIQK_8188E(
 	PDM_ODM_T	pDM_Odm,
-	u1Byte		Type,				// 0 = OFDM, 1 = CCK
-	pu1Byte		pDirection,			// 1 = +(increase) 2 = -(decrease)
-	pu4Byte		pOutWriteVal		// Tx tracking CCK/OFDM BB swing index adjust
+	u1Byte 		DeltaThermalIndex,
+	u1Byte		ThermalValue,	
+	u1Byte 		Threshold
 	);
-
 
 VOID
-odm_TXPowerTrackingCallback_ThermalMeter_8188E(
-#if (DM_ODM_SUPPORT_TYPE & ODM_AP)
-	IN PDM_ODM_T		pDM_Odm
-#else
-	IN PADAPTER	Adapter
-#endif
+ODM_TxPwrTrackSetPwr88E(
+	PDM_ODM_T			pDM_Odm,
+	PWRTRACK_METHOD 	Method,
+	u1Byte 				RFPath,
+	u1Byte 				ChannelMappedIndex
 	);
-
 
 //1 7.	IQK
 
@@ -61,7 +65,7 @@ PHY_IQCalibrate_8188E(
 #else
 	IN PADAPTER	Adapter,
 #endif
-							IN	BOOLEAN 	bReCovery);
+	IN	BOOLEAN 	bReCovery);
 
 
 //
@@ -69,11 +73,7 @@ PHY_IQCalibrate_8188E(
 //
 void	
 PHY_LCCalibrate_8188E(
-#if (DM_ODM_SUPPORT_TYPE & ODM_AP)
 	IN PDM_ODM_T		pDM_Odm
-#else
-	IN	PADAPTER	pAdapter
-#endif
 );
 
 //
@@ -137,5 +137,5 @@ _PHY_PathAStandBy(
 	);
 
 								
-#endif	// #ifndef __HAL_PHY_RF_8188E_H__
+#endif	// #ifndef __HAL_PHY_RF_8188E_H__								
 

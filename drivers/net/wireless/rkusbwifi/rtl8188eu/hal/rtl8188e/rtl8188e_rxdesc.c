@@ -19,8 +19,6 @@
  ******************************************************************************/
 #define _RTL8188E_REDESC_C_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
 #include <rtl8188e_hal.h>
 
@@ -175,6 +173,10 @@ void rtl8188e_process_phy_info(_adapter *padapter, void *prframe)
 	// Check EVM
 	//
 	process_link_qual(padapter,  precvframe);
+	#ifdef DBG_RX_SIGNAL_DISPLAY_RAW_DATA
+	rtw_store_phy_info( padapter,prframe);
+	#endif
+	
 
 }
 
@@ -227,8 +229,7 @@ void update_recvframe_attrib_88e(
 		pattrib->mfrag = (u8)((report.rxdw1 >> 27) & 0x1);//(u8)prxreport->mf;
 		pattrib->mdata = (u8)((report.rxdw1 >> 26) & 0x1);//(u8)prxreport->md;
 
-		pattrib->mcs_rate = (u8)(report.rxdw3 & 0x3f);//(u8)prxreport->rxmcs;
-		pattrib->rxht = (u8)((report.rxdw3 >> 6) & 0x1);//(u8)prxreport->rxht;
+		pattrib->data_rate = (u8)(report.rxdw3 & 0x3f);//(u8)prxreport->rxmcs;
 		
 		pattrib->icv_err = (u8)((report.rxdw0 >> 15) & 0x1);//(u8)prxreport->icverr;
 		pattrib->shift_sz = (u8)((report.rxdw0 >> 24) & 0x3);
@@ -273,7 +274,7 @@ void update_recvframe_phyinfo_88e(
 	PODM_PHY_INFO_T 	pPHYInfo  = (PODM_PHY_INFO_T)(&pattrib->phy_info);
 	u8					*wlanhdr;
 	ODM_PACKET_INFO_T	pkt_info;
-	u8 *sa;
+	u8 *sa = NULL;
 	struct sta_priv *pstapriv;
 	struct sta_info *psta;
 	//_irqL		irqL;
@@ -288,10 +289,11 @@ void update_recvframe_phyinfo_88e(
 		!pattrib->icv_err && !pattrib->crc_err &&
 		_rtw_memcmp(get_hdr_bssid(wlanhdr), get_bssid(&padapter->mlmepriv), ETH_ALEN));
 
-	pkt_info.bPacketToSelf = pkt_info.bPacketMatchBSSID && (_rtw_memcmp(get_da(wlanhdr), myid(&padapter->eeprompriv), ETH_ALEN));
+	pkt_info.bPacketToSelf = pkt_info.bPacketMatchBSSID && (_rtw_memcmp(get_ra(wlanhdr), myid(&padapter->eeprompriv), ETH_ALEN));
 
 	pkt_info.bPacketBeacon = pkt_info.bPacketMatchBSSID && (GetFrameSubType(wlanhdr) == WIFI_BEACON);
 
+/*
 	if(pkt_info.bPacketBeacon){
 		if(check_fwstate(&padapter->mlmepriv, WIFI_STATION_STATE) == _TRUE){				
 			sa = padapter->mlmepriv.cur_network.network.MacAddress;
@@ -303,11 +305,16 @@ void update_recvframe_phyinfo_88e(
 			#endif
 		}
 		else
-			sa = get_sa(wlanhdr);
+		{
+			//to do Ad-hoc
+			sa = NULL;
+		}
 	}
-	else{
-		sa = get_sa(wlanhdr);
+	else{	
+		sa = get_sa(wlanhdr);		
 	}	
+*/	
+	sa = get_ta(wlanhdr);	
 	
 	pstapriv = &padapter->stapriv;
 	pkt_info.StationID = 0xFF;
@@ -317,7 +324,7 @@ void update_recvframe_phyinfo_88e(
 		pkt_info.StationID = psta->mac_id;		
 		//DBG_8192C("%s ==> StationID(%d)\n",__FUNCTION__,pkt_info.StationID);
 	}			
-	pkt_info.Rate = pattrib->mcs_rate;	
+	pkt_info.DataRate = pattrib->data_rate;	
 	//rtl8188e_query_rx_phy_status(precvframe, pphy_status);
 
 	//_enter_critical_bh(&pHalData->odm_stainfo_lock, &irqL);	

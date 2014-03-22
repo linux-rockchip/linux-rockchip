@@ -81,7 +81,7 @@ typedef enum _RTL8188E_H2C_CMD_ID
 #endif
 
 	//Class 
-	 H2C_RESET_TSF				=0xc0,
+	 //H2C_RESET_TSF				=0xc0,
 }RTL8188E_H2C_CMD_ID;
 	
 #endif
@@ -112,14 +112,15 @@ struct H2C_SS_RFOFF_PARAM{
 }__attribute__ ((packed));
 
 
-typedef struct JOINBSSRPT_PARM{
+typedef struct JOINBSSRPT_PARM_88E{
 	u8 OpMode;	// RT_MEDIA_STATUS
 #ifdef CONFIG_WOWLAN
 	u8 MacID;       // MACID
 #endif //CONFIG_WOWLAN
-}JOINBSSRPT_PARM, *PJOINBSSRPT_PARM;
+}JOINBSSRPT_PARM_88E, *PJOINBSSRPT_PARM_88E;
 
-typedef struct _RSVDPAGE_LOC {
+/* move to hal_com_h2c.h
+typedef struct _RSVDPAGE_LOC_88E {
 	u8 LocProbeRsp;
 	u8 LocPsPoll;
 	u8 LocNullData;
@@ -133,31 +134,16 @@ typedef struct _RSVDPAGE_LOC {
 	u8 LocGTKInfo;
 	u8 LocProbeReq;
 	u8 LocNetList;
-#endif //CONFIG_WOWLAN
-} RSVDPAGE_LOC, *PRSVDPAGE_LOC;
-
-struct P2P_PS_Offload_t {
-	u8 Offload_En:1;
-	u8 role:1; // 1: Owner, 0: Client
-	u8 CTWindow_En:1;
-	u8 NoA0_En:1;
-	u8 NoA1_En:1;
-	u8 AllStaSleep:1; // Only valid in Owner
-	u8 discovery:1;
-	u8 rsvd:1;
-};
-
-struct P2P_PS_CTWPeriod_t {
-	u8 CTWPeriod;	//TU
-};
-
+#endif //CONFIG_WOWLAN	
+} RSVDPAGE_LOC_88E, *PRSVDPAGE_LOC_88E;
+*/
 
 // host message to firmware cmd
 void rtl8188e_set_FwPwrMode_cmd(PADAPTER padapter, u8 Mode);
 void rtl8188e_set_FwJoinBssReport_cmd(PADAPTER padapter, u8 mstatus);
 u8 rtl8188e_set_rssi_cmd(PADAPTER padapter, u8 *param);
 u8 rtl8188e_set_raid_cmd(PADAPTER padapter, u32 mask);
-void rtl8188e_Add_RateATid(PADAPTER padapter, u32 bitmap, u8 arg, u8 rssi_level);
+void rtl8188e_Add_RateATid(PADAPTER padapter, u32 bitmap, u8* arg, u8 rssi_level);
 //u8 rtl8192c_set_FwSelectSuspend_cmd(PADAPTER padapter, u8 bfwpoll, u16 period);
 
 
@@ -173,8 +159,8 @@ void rtl8188e_set_FwMediaStatus_cmd(PADAPTER padapter, u16 mstatus_rpt );
 int reset_tsf(PADAPTER Adapter, u8 reset_port );
 #endif	// CONFIG_TSF_RESET_OFFLOAD
 
-#define H2C_8188E_RSVDPAGE_LOC_LEN      5
-#define H2C_8188E_AOAC_RSVDPAGE_LOC_LEN 7
+//#define H2C_8188E_RSVDPAGE_LOC_LEN      5
+//#define H2C_8188E_AOAC_RSVDPAGE_LOC_LEN 7
 
 #ifdef CONFIG_WOWLAN
 typedef struct _SETWOWLAN_PARM{
@@ -186,29 +172,31 @@ typedef struct _SETWOWLAN_PARM{
 }SETWOWLAN_PARM, *PSETWOWLAN_PARM;
 
 typedef struct _SETAOAC_GLOBAL_INFO{
-	u8		pairwiseEncAlg;
-	u8		groupEncAlg;
+        u8              pairwiseEncAlg;
+        u8              groupEncAlg;
 }SETAOAC_GLOBAL_INFO, *PSETAOAC_GLOBAL_INFO;
 
-#define eqMacAddr(a,b)		( ((a)[0]==(b)[0] && (a)[1]==(b)[1] && (a)[2]==(b)[2] && (a)[3]==(b)[3] && (a)[4]==(b)[4] && (a)[5]==(b)[5]) ? 1:0 )
-#define cpMacAddr(des,src)	((des)[0]=(src)[0],(des)[1]=(src)[1],(des)[2]=(src)[2],(des)[3]=(src)[3],(des)[4]=(src)[4],(des)[5]=(src)[5])
-#define cpIpAddr(des,src)	((des)[0]=(src)[0],(des)[1]=(src)[1],(des)[2]=(src)[2],(des)[3]=(src)[3])
+/* move to hal_com_h2c.h
+#define eqMacAddr(a,b)						( ((a)[0]==(b)[0] && (a)[1]==(b)[1] && (a)[2]==(b)[2] && (a)[3]==(b)[3] && (a)[4]==(b)[4] && (a)[5]==(b)[5]) ? 1:0 )
+#define cpMacAddr(des,src)					((des)[0]=(src)[0],(des)[1]=(src)[1],(des)[2]=(src)[2],(des)[3]=(src)[3],(des)[4]=(src)[4],(des)[5]=(src)[5])
+#define cpIpAddr(des,src)					((des)[0]=(src)[0],(des)[1]=(src)[1],(des)[2]=(src)[2],(des)[3]=(src)[3])
 
 //
 // ARP packet
 //
 // LLC Header
-#define GET_ARP_PKT_LLC_TYPE(__pHeader)						ReadEF2Byte( ((u8*)(__pHeader)) + 6)
+#define GET_ARP_PKT_LLC_TYPE(__pHeader) 					ReadEF2Byte( ((u8*)(__pHeader)) + 6)
 
 //ARP element
-#define GET_ARP_PKT_OPERATION(__pHeader)					ReadEF2Byte( ((u8*)(__pHeader)) + 6)
-#define GET_ARP_PKT_SENDER_MAC_ADDR(__pHeader, _val)		cpMacAddr((u8*)(_val), ((u8*)(__pHeader))+8)
-#define GET_ARP_PKT_SENDER_IP_ADDR(__pHeader, _val)			cpIpAddr((u8*)(_val), ((u8*)(__pHeader))+14)
-#define GET_ARP_PKT_TARGET_MAC_ADDR(__pHeader, _val)		cpMacAddr((u8*)(_val), ((u8*)(__pHeader))+18)
-#define SET_ARP_PKT_HW(__pHeader, __Value)					WriteEF2Byte( ((u8*)(__pHeader)) + 0, __Value)
-#define SET_ARP_PKT_PROTOCOL(__pHeader, __Value)			WriteEF2Byte( ((u8*)(__pHeader)) + 2, __Value)
-#define SET_ARP_PKT_HW_ADDR_LEN(__pHeader, __Value)			WriteEF1Byte( ((u8*)(__pHeader)) + 4, __Value)
-#define SET_ARP_PKT_PROTOCOL_ADDR_LEN(__pHeader, __Value)	WriteEF1Byte( ((u8*)(__pHeader)) + 5, __Value)
+#define GET_ARP_PKT_OPERATION(__pHeader) 					ReadEF2Byte( ((u8*)(__pHeader)) + 6)
+#define GET_ARP_PKT_SENDER_MAC_ADDR(__pHeader, _val) 		cpMacAddr((u8*)(_val), ((u8*)(__pHeader))+8)
+#define GET_ARP_PKT_SENDER_IP_ADDR(__pHeader, _val) 		cpIpAddr((u8*)(_val), ((u8*)(__pHeader))+14)
+#define GET_ARP_PKT_TARGET_MAC_ADDR(__pHeader, _val) 		cpMacAddr((u8*)(_val), ((u8*)(__pHeader))+18)
+
+#define SET_ARP_PKT_HW(__pHeader, __Value)  				WriteEF2Byte( ((u8*)(__pHeader)) + 0, __Value)
+#define SET_ARP_PKT_PROTOCOL(__pHeader, __Value)  			WriteEF2Byte( ((u8*)(__pHeader)) + 2, __Value)
+#define SET_ARP_PKT_HW_ADDR_LEN(__pHeader, __Value)  		WriteEF1Byte( ((u8*)(__pHeader)) + 4, __Value)
+#define SET_ARP_PKT_PROTOCOL_ADDR_LEN(__pHeader, __Value)  	WriteEF1Byte( ((u8*)(__pHeader)) + 5, __Value)
 #define SET_ARP_PKT_OPERATION(__pHeader, __Value) 			WriteEF2Byte( ((u8*)(__pHeader)) + 6, __Value)
 #define SET_ARP_PKT_SENDER_MAC_ADDR(__pHeader, _val) 		cpMacAddr(((u8*)(__pHeader))+8, (u8*)(_val))
 #define SET_ARP_PKT_SENDER_IP_ADDR(__pHeader, _val) 		cpIpAddr(((u8*)(__pHeader))+14, (u8*)(_val))
@@ -236,23 +224,26 @@ typedef struct _SETAOAC_GLOBAL_INFO{
 #define FW_WOW_FW_UNICAST_EN			BIT(7)
 
 #define FW_ADOPT_USER					BIT(1)
+*/
 void rtl8188es_set_wowlan_cmd(_adapter* padapter, u8 enable);
 void SetFwRelatedForWoWLAN8188ES(_adapter* padapter, u8 bHostIsGoingtoSleep);
+
 #endif//CONFIG_WOWLAN
 
 //---------------------------------------------------------------------------------------------------------//
 //----------------------------------    H2C CMD CONTENT    --------------------------------------------------//
 //---------------------------------------------------------------------------------------------------------//
+//
+/* move to hal_com_h2c.h
 //_RSVDPAGE_LOC_CMD_0x00
-#define SET_8188E_H2CCMD_RSVDPAGE_LOC_PROBE_RSP(__pH2CCmd, __Value)		SET_BITS_TO_LE_1BYTE(__pH2CCmd, 0, 8, __Value)
-#define SET_8188E_H2CCMD_RSVDPAGE_LOC_PSPOLL(__pH2CCmd, __Value)		SET_BITS_TO_LE_1BYTE((__pH2CCmd)+1, 0, 8, __Value)
-#define SET_8188E_H2CCMD_RSVDPAGE_LOC_NULL_DATA(__pH2CCmd, __Value)		SET_BITS_TO_LE_1BYTE((__pH2CCmd)+2, 0, 8, __Value)
-#define SET_8188E_H2CCMD_RSVDPAGE_LOC_QOS_NULL_DATA(__pH2CCmd, __Value)	SET_BITS_TO_LE_1BYTE((__pH2CCmd)+3, 0, 8, __Value)
-
+#define SET_8188E_H2CCMD_RSVDPAGE_LOC_PROBE_RSP(__pH2CCmd, __Value)     SET_BITS_TO_LE_1BYTE(__pH2CCmd, 0, 8, __Value)
+#define SET_8188E_H2CCMD_RSVDPAGE_LOC_PSPOLL(__pH2CCmd, __Value)            SET_BITS_TO_LE_1BYTE((__pH2CCmd)+1, 0, 8, __Value)
+#define SET_8188E_H2CCMD_RSVDPAGE_LOC_NULL_DATA(__pH2CCmd, __Value)     SET_BITS_TO_LE_1BYTE((__pH2CCmd)+2, 0, 8, __Value)
+#define SET_8188E_H2CCMD_RSVDPAGE_LOC_QOS_NULL_DATA(__pH2CCmd, __Value)     SET_BITS_TO_LE_1BYTE((__pH2CCmd)+3, 0, 8, __Value)
 // AOAC_RSVDPAGE_LOC_0x83
-#define SET_8188E_H2CCMD_AOAC_RSVDPAGE_LOC_REMOTE_WAKE_CTRL_INFO(__pH2CCmd, __Value)	SET_BITS_TO_LE_1BYTE((__pH2CCmd), 0, 8, __Value)
-#define SET_8188E_H2CCMD_AOAC_RSVDPAGE_LOC_ARP_RSP(__pH2CCmd, __Value)					SET_BITS_TO_LE_1BYTE((__pH2CCmd)+1, 0, 8, __Value)
-
+#define SET_8188E_H2CCMD_AOAC_RSVDPAGE_LOC_REMOTE_WAKE_CTRL_INFO(__pH2CCmd, __Value)        SET_BITS_TO_LE_1BYTE((__pH2CCmd), 0, 8, __Value)
+#define SET_8188E_H2CCMD_AOAC_RSVDPAGE_LOC_ARP_RSP(__pH2CCmd, __Value)                  SET_BITS_TO_LE_1BYTE((__pH2CCmd)+1, 0, 8, __Value)
+*/
 #endif//__RTL8188E_CMD_H__
 
 

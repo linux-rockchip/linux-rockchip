@@ -19,7 +19,7 @@
  ******************************************************************************/
 #define _RTL8188E_SRESET_C_
 
-#include <rtl8188e_sreset.h>
+//#include <rtl8188e_sreset.h>
 #include <rtl8188e_hal.h>
 
 #ifdef DBG_CONFIG_ERROR_DETECT
@@ -58,7 +58,7 @@ void rtl8188e_sreset_xmit_status_check(_adapter *padapter)
 					u32 ability;
 
 					//padapter->Wifi_Error_Status = WIFI_TX_HANG;
-					rtw_hal_get_def_var(padapter, HAL_DEF_DBG_DM_FUNC, &ability);
+					rtw_hal_get_hwreg(padapter, HW_VAR_DM_FLAG, (u8*)&ability);
 
 					DBG_871X("%s tx hang %s\n", __FUNCTION__,
 						(ability & ODM_BB_ADAPTIVITY)? "ODM_BB_ADAPTIVITY" : "");

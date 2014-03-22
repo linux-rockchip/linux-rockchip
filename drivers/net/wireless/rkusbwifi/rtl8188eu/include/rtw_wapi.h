@@ -1,13 +1,6 @@
 #ifndef __INC_WAPI_H
 #define __INC_WAPI_H
 
-#include <linux/kernel.h>
-#include <linux/list.h>
-#include <drv_conf.h>
-#include <osdep_service.h>
-#include <drv_types.h>
-#include <wlan_bssdef.h>
-//#include "rtl819x_Qos.h"
 
 #define CONFIG_WAPI_SW_SMS4
 #define WAPI_DEBUG

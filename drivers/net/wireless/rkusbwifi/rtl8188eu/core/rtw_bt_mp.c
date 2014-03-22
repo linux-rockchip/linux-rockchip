@@ -19,45 +19,63 @@
  ******************************************************************************/
 
 
-#include "rtw_bt_mp.h"
 #include <drv_types.h>
-#include <rtl8723a_hal.h>
+#include <rtw_bt_mp.h>
 
 #ifdef CONFIG_RTL8723A
+#include <rtl8723a_hal.h>
+#elif defined(CONFIG_RTL8723B)
+#include <rtl8723b_hal.h>
+#endif
 
+#if defined(CONFIG_RTL8723A) || defined(CONFIG_RTL8723B) || defined(CONFIG_RTL8821A)
 void MPh2c_timeout_handle(void *FunctionContext)
 {
-	_adapter *pAdapter = (_adapter *)FunctionContext;
-	PMPT_CONTEXT		pMptCtx=&pAdapter->mppriv.MptCtx;
+	PADAPTER pAdapter;
+	PMPT_CONTEXT pMptCtx;
+
 
 	DBG_8192C("[MPT], MPh2c_timeout_handle \n");
 
-	pMptCtx->bMPh2c_timeout=_TRUE;
-	
-	_rtw_up_sema(&pMptCtx->MPh2c_Sema);
-	
-	//_cancel_timer_ex( &pMptCtx->MPh2c_timeout_timer);
-	
-	return;
+	pAdapter = (PADAPTER)FunctionContext;
+	pMptCtx = &pAdapter->mppriv.MptCtx;
+
+	pMptCtx->bMPh2c_timeout = _TRUE;
+
+	if ((_FALSE == pMptCtx->MptH2cRspEvent)
+		|| ((_TRUE == pMptCtx->MptH2cRspEvent)
+			&& (_FALSE == pMptCtx->MptBtC2hEvent)))
+	{
+		_rtw_up_sema(&pMptCtx->MPh2c_Sema);
+	}
 }
-u32 WaitC2Hevent( PADAPTER pAdapter,BOOLEAN *C2H_event ,u32 delay_time)
+
+u32 WaitC2Hevent(PADAPTER pAdapter, u8 *C2H_event, u32 delay_time)
 {
 	PMPT_CONTEXT		pMptCtx=&(pAdapter->mppriv.MptCtx);
 	pMptCtx->bMPh2c_timeout=_FALSE;
-	DBG_8192C("WaitC2Hevent _set_timer \n");
+	
+	if( pAdapter->registrypriv.mp_mode == 0 )
+	{
+		DBG_8192C("[MPT], Error!! WaitC2Hevent mp_mode == 0!!\n");
+		return _FALSE;
+	}
+
 	_set_timer( &pMptCtx->MPh2c_timeout_timer, delay_time );
 	
 	_rtw_down_sema(&pMptCtx->MPh2c_Sema);
 
-	if( pMptCtx->bMPh2c_timeout == _TRUE )
+	if (pMptCtx->bMPh2c_timeout == _TRUE)
 	{
-		C2H_event =_FALSE;
-		DBG_8192C("WaitC2Hevent bMPh2c_timeout _TRUE \n");
+		*C2H_event = _FALSE;
+		
 		return _FALSE;
 	}
+
+	// for safty, cancel timer here again
+	_cancel_timer_ex(&pMptCtx->MPh2c_timeout_timer);
 	
 	return _TRUE;
-	
 }
 
 BT_CTRL_STATUS
@@ -89,7 +107,9 @@ mptbt_CheckC2hFrame(
 	return c2hStatus;
 }
 
+#if defined(CONFIG_RTL8723A)
 extern s32 FillH2CCmd(PADAPTER padapter, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer);
+#endif
 
 BT_CTRL_STATUS
 mptbt_SendH2c(
@@ -115,16 +135,24 @@ mptbt_SendH2c(
 		for(i=0; i<BT_H2C_MAX_RETRY; i++)
 		{
 			DBG_8192C("[MPT], Send H2C command to wifi!!!\n");
+
+			pMptCtx->MptH2cRspEvent = _FALSE;
+			pMptCtx->MptBtC2hEvent = _FALSE;
+
+#if defined(CONFIG_RTL8723A)
 			FillH2CCmd(Adapter, 70, h2cCmdLen, (pu1Byte)pH2c);
+#elif defined(CONFIG_RTL8723B)
+			rtl8723b_set_FwBtMpOper_cmd(Adapter, pH2c->opCode, pH2c->opCodeVer, pH2c->reqNum, pH2c->buf);
+#endif
 			pMptCtx->h2cReqNum++;
 			pMptCtx->h2cReqNum %= 16;
 
-			if(WaitC2Hevent(Adapter, &pMptCtx->MptH2cRspEvent, 200))
+			if(WaitC2Hevent(Adapter, &pMptCtx->MptH2cRspEvent, 100))
 			{
 				DBG_8192C("[MPT], Received WiFi MptH2cRspEvent!!!\n");
-				if(WaitC2Hevent(Adapter, &pMptCtx->MptBtC2hEvent, 800))
+				if(WaitC2Hevent(Adapter, &pMptCtx->MptBtC2hEvent, 400))
 				{
-					DBG_8192C("[MPT], Received BT MptBtC2hEvent!!!\n");
+					DBG_8192C("[MPT], Received MptBtC2hEvent!!!\n");
 					break;
 				}
 				else
@@ -206,6 +234,12 @@ mptbt_BtFwOpCodeProcess(
 	BT_CTRL_STATUS	h2cStatus=BT_STATUS_H2C_SUCCESS, c2hStatus=BT_STATUS_C2H_SUCCESS;
 	BT_CTRL_STATUS	retStatus=BT_STATUS_H2C_BT_NO_RSP;
 
+	if( Adapter->registrypriv.mp_mode == 0 )
+	{
+		DBG_8192C("[MPT], Error!! mptbt_BtFwOpCodeProces mp_mode == 0!!\n");
+		return _FALSE;
+	}
+
 	pH2c->opCode = btFwOpCode;
 	pH2c->opCodeVer = opCodeVer;
 	pH2c->reqNum = pMptCtx->h2cReqNum;
@@ -217,13 +251,9 @@ mptbt_BtFwOpCodeProcess(
 	DBG_8192C("[MPT], pH2c->opCodeVer=%d\n", pH2c->opCodeVer);
 	DBG_8192C("[MPT], pH2c->reqNum=%d\n", pH2c->reqNum);
 	DBG_8192C("[MPT], h2c parameter length=%d\n", h2cParaLen);
-	if(h2cParaLen)
+	for (i=0; i<h2cParaLen; i++)
 	{
-		DBG_8192C("[MPT], parameters(hex): \n");
-		for(i=0;i<h2cParaLen;i++)
-		{
-			DBG_8192C(" 0x%x \n", pH2c->buf[i]);
-		}
+		DBG_8192C("[MPT], parameter[%d]=0x%02x\n", i, pH2c->buf[i]);
 	}
 
 	h2cStatus = mptbt_SendH2c(Adapter, pH2c, h2cParaLen+2);
@@ -499,48 +529,64 @@ MPTBT_FwC2hBtMpCtrl(
 	
 	if(Adapter->bBTFWReady == _FALSE || Adapter->registrypriv.mp_mode == 0 )
 	{	
-		DBG_8192C("[MPT], %s,bBTFWReady == _FALSE\n",__func__);
+		DBG_8192C("Ignore C2H BT MP Info since not in MP mode \n");
 		return;
 	}
-	//cancel_timeout for h2c handle
-	_cancel_timer_ex( &pMptCtx->MPh2c_timeout_timer);
-
-	DBG_8192C("[MPT], MPTBT_FwC2hBtMpCtrl(), hex: \n");
-	for(i=0;i<=length;i++)
+	if( length > 32 || length < 3 )
 	{
-		//DBG_8192C("[MPT], MPTBT_FwC2hBtMpCtrl(), hex: \n",tmpBuf[i], length);
-		DBG_8192C(" 0x%x ",tmpBuf[i]);
+		DBG_8192C("\n [MPT], pExtC2h->buf hex: length=%d > 32 || < 3\n",length);
+		return;
 	}
-	DBG_8192C("\n [MPT], pExtC2h->extendId=0x%x\n", pExtC2h->extendId);
+
+	//cancel_timeout for h2c handle
+	_cancel_timer_ex(&pMptCtx->MPh2c_timeout_timer);
+
+	for (i=0; i<length; i++)
+	{
+		DBG_8192C("[MPT], %s, buf[%d]=0x%02x ", __FUNCTION__, i, tmpBuf[i]);
+	}
+	DBG_8192C("[MPT], pExtC2h->extendId=0x%x\n", pExtC2h->extendId);
 	
 	switch(pExtC2h->extendId)
 	{
 		case EXT_C2H_WIFI_FW_ACTIVE_RSP:
 			DBG_8192C("[MPT], EXT_C2H_WIFI_FW_ACTIVE_RSP\n");
+#if 0
 			DBG_8192C("[MPT], pExtC2h->buf hex: \n");
-			if( length > 32 || length < 3 )
-					break ;
-			for(i=0;i<=(length-3);i++)
-				DBG_8192C(" 0x%x ",pExtC2h->buf[i]);
-				//PlatformSetEvent(&pMptCtx->MptH2cRspEvent);
-				pMptCtx->MptH2cRspEvent=_TRUE;
+			for (i=0; i<(length-3); i++)
+			{
+				DBG_8192C(" 0x%x ", pExtC2h->buf[i]);
+			}
+#endif
+			if ((_FALSE == pMptCtx->bMPh2c_timeout)
+				&& (_FALSE == pMptCtx->MptH2cRspEvent))
+			{
+				pMptCtx->MptH2cRspEvent = _TRUE;
 				_rtw_up_sema(&pMptCtx->MPh2c_Sema);
+			}
 			break;
+
 		case EXT_C2H_TRIG_BY_BT_FW:
 			DBG_8192C("[MPT], EXT_C2H_TRIG_BY_BT_FW\n");
-				//PlatformMoveMemory(&pMptCtx->c2hBuf[0], tmpBuf, length);
 			_rtw_memcpy(&pMptCtx->c2hBuf[0], tmpBuf, length);
 			DBG_8192C("[MPT], pExtC2h->statusCode=0x%x\n", pExtC2h->statusCode);
 			DBG_8192C("[MPT], pExtC2h->retLen=0x%x\n", pExtC2h->retLen);
 			DBG_8192C("[MPT], pExtC2h->opCodeVer=0x%x\n", pExtC2h->opCodeVer);
 			DBG_8192C("[MPT], pExtC2h->reqNum=0x%x\n", pExtC2h->reqNum);
-			DBG_8192C("[MPT], pExtC2h->buf hex: \n");
-			for(i=0;i<=(length-3);i++)
-				DBG_8192C(" 0x%x ",pExtC2h->buf[0]);
-				//PlatformSetEvent(&pMptCtx->MptBtC2hEvent);
-				pMptCtx->MptBtC2hEvent=_TRUE;
+			for (i=0; i<(length-3); i++)
+			{
+				DBG_8192C("[MPT], pExtC2h->buf[%d]=0x%02x\n", i, pExtC2h->buf[i]);
+			}
+
+			if ((_FALSE == pMptCtx->bMPh2c_timeout)
+				&& (_TRUE == pMptCtx->MptH2cRspEvent)
+				&& (_FALSE == pMptCtx->MptBtC2hEvent))
+			{
+				pMptCtx->MptBtC2hEvent = _TRUE;
 				_rtw_up_sema(&pMptCtx->MPh2c_Sema);
+			}
 			break;
+
 		default:
 			DBG_8192C("[MPT], EXT_C2H Target not found,pExtC2h->extendId =%d ,pExtC2h->reqNum=%d\n",pExtC2h->extendId,pExtC2h->reqNum);
 			break;
@@ -609,7 +655,7 @@ mptbt_BtGetGeneral(
 				regType = pBtReq->pParamStart[1];
 				pu4Tmp = (pu4Byte)&pBtReq->pParamStart[2];
 				regAddr = *pu4Tmp;
-				DBG_8192C("[MPT], BT_GGET_REG regType=0x%x, regAddr=0x%x!!\n", 
+				DBG_8192C("[MPT], BT_GGET_REG regType=0x%02x, regAddr=0x%08x!!\n",
 					regType, regAddr);
 				if(regType >= BT_REG_MAX)
 				{
@@ -688,7 +734,7 @@ mptbt_BtGetGeneral(
 
 		pu2Tmp = (pu2Byte)&pExtC2h->buf[0];
 		regValue = *pu2Tmp;
-		DBG_8192C("[MPT], read reg regType=0x%x, regAddr=0x%x, regValue=0x%x\n", 
+		DBG_8192C("[MPT], read reg regType=0x%02x, regAddr=0x%08x, regValue=0x%04x\n", 
 			regType, regAddr, regValue);
 		
 		pu4Tmp = (pu4Byte)&pBtRsp->pParamStart[0];
@@ -1664,8 +1710,9 @@ mptbt_BtControlProcess(
 	PBT_H2C 		pH2c=(PBT_H2C)&H2C_Parameter[0];
 	PMPT_CONTEXT	pMptCtx=&(Adapter->mppriv.MptCtx);
 	PBT_REQ_CMD 	pBtReq=(PBT_REQ_CMD)pInBuf;
-	PBT_RSP_CMD 	pBtRsp=(PBT_RSP_CMD)&pMptCtx->mptOutBuf[0];
+	PBT_RSP_CMD 	pBtRsp;
 	u1Byte			i;
+
 
 	DBG_8192C("[MPT], mptbt_BtControlProcess()=========>\n");
 
@@ -1677,14 +1724,14 @@ mptbt_BtControlProcess(
 		//DBG_8192C("[MPT], parameters(hex):0x%x %d \n",&pBtReq->pParamStart[0], pBtReq->paraLength);
 	}
 
-	// The following we should maintain the User OP codes sent by upper layer
-
-	pBtRsp->status = BT_STATUS_SUCCESS;
+	_rtw_memset((void*)pMptCtx->mptOutBuf, 0, 100);
 	pMptCtx->mptOutLen = 4; //length of (BT_RSP_CMD.status+BT_RSP_CMD.paraLength)
+
+	pBtRsp = (PBT_RSP_CMD)pMptCtx->mptOutBuf;
+	pBtRsp->status = BT_STATUS_SUCCESS;
 	pBtRsp->paraLength = 0x0;
-	
-	_rtw_memset((PVOID)&pMptCtx->mptOutBuf[0], '\0',100);
-	
+
+	// The following we should maintain the User OP codes sent by upper layer
 	switch(pBtReq->OpCode)
 	{
 		case BT_UP_OP_BT_READY:
@@ -1722,13 +1769,10 @@ mptbt_BtControlProcess(
 			break;
 	}
 
-	DBG_8192C("pBtRsp->paraLength =%d \n",pBtRsp->paraLength);
-
 	pMptCtx->mptOutLen += pBtRsp->paraLength;
 
-	DBG_8192C("\n [MPT], OUT to DLL pMptCtx->mptOutLen=%d ,pBtRsp->paraLength =%d ",pMptCtx->mptOutLen,pBtRsp->paraLength);
-		
-	DBG_8192C("\n [MPT], mptbt_BtControlProcess()<=========\n");
+	DBG_8192C("[MPT], pMptCtx->mptOutLen=%d, pBtRsp->paraLength=%d\n", pMptCtx->mptOutLen, pBtRsp->paraLength);
+	DBG_8192C("[MPT], mptbt_BtControlProcess()<=========\n");
 }
 
 #endif

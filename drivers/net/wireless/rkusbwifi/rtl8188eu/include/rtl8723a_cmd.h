@@ -89,32 +89,18 @@ struct H2C_SS_RFOFF_PARAM{
 }__attribute__ ((packed));
 
 
-typedef struct JOINBSSRPT_PARM{
+typedef struct JOINBSSRPT_PARM_8723A{
 	u8 OpMode;	// RT_MEDIA_STATUS
-}JOINBSSRPT_PARM, *PJOINBSSRPT_PARM;
+}JOINBSSRPT_PARM_8723A, *PJOINBSSRPT_PARM_8723A;
 
-typedef struct _RSVDPAGE_LOC {
+typedef struct _RSVDPAGE_LOC_8723A {
 	u8 LocProbeRsp;
 	u8 LocPsPoll;
 	u8 LocNullData;
 	u8 LocQosNull;
 	u8 LocBTQosNull;
-} RSVDPAGE_LOC, *PRSVDPAGE_LOC;
+} RSVDPAGE_LOC_8723A, *PRSVDPAGE_LOC_8723A;
 
-struct P2P_PS_Offload_t {
-	u8 Offload_En:1;
-	u8 role:1; // 1: Owner, 0: Client
-	u8 CTWindow_En:1;
-	u8 NoA0_En:1;
-	u8 NoA1_En:1;
-	u8 AllStaSleep:1; // Only valid in Owner
-	u8 discovery:1;
-	u8 rsvd:1;
-};
-
-struct P2P_PS_CTWPeriod_t {
-	u8 CTWPeriod;	//TU
-};
 
 
 typedef struct _B_TYPE_TDMA_PARM
@@ -205,9 +191,9 @@ void rtl8723a_set_BTCoex_AP_mode_FwRsvdPkt_cmd(PADAPTER padapter);
 #endif
 u8 rtl8192c_set_rssi_cmd(PADAPTER padapter, u8 *param);
 //u8 rtl8723a_set_rssi_cmd(PADAPTER padapter, u8 *param);
-u8 rtl8192c_set_raid_cmd(PADAPTER padapter, u32 mask, u8 arg);
+void rtl8192c_set_raid_cmd(PADAPTER padapter, u32 mask, u8* arg);
 //u8 rtl8723a_set_raid_cmd(PADAPTER padapter, u32 mask, u8 arg);
-void rtl8192c_Add_RateATid(PADAPTER padapter, u32 bitmap, u8 arg, u8 rssi_level);
+void rtl8192c_Add_RateATid(PADAPTER padapter, u32 bitmap, u8* arg, u8 rssi_level);
 //void rtl8723a_Add_RateATid(PADAPTER padapter, u32 bitmap, u8 arg);
 u8 rtl8192c_set_FwSelectSuspend_cmd(PADAPTER padapter, u8 bfwpoll, u16 period);
 //u8 rtl8723a_set_FwSelectSuspend_cmd(PADAPTER padapter, u8 bfwpoll, u16 period);
@@ -219,11 +205,11 @@ void rtl8192c_set_p2p_ps_offload_cmd(PADAPTER padapter, u8 p2p_ps_state);
 
 void CheckFwRsvdPageContent(PADAPTER padapter);
 
-void rtl8723a_set_FwMediaStatus_cmd(PADAPTER padapter, u16 mstatus_rpt );
-
 #endif
 
 #ifdef CONFIG_TSF_RESET_OFFLOAD
 u8 rtl8723c_reset_tsf(_adapter *padapter, u8 reset_port);
 #endif	// CONFIG_TSF_RESET_OFFLOAD
+
+s32 FillH2CCmd(PADAPTER padapter, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer);
 

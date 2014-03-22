@@ -19,11 +19,7 @@
  ******************************************************************************/
 #define _RTW_RF_C_
 
-#include <drv_conf.h>
-#include <osdep_service.h>
 #include <drv_types.h>
-#include <recv_osdep.h>
-#include <xmit_osdep.h>
 
 
 struct ch_freq {
