@@ -436,7 +436,7 @@ static int wifi_driver_insmod = 0;
 static ssize_t wifi_driver_write(struct class *cls, struct class_attribute *attr, const char *_buf, size_t _count)
 {
     int enable = 0, ret = 0;
-
+#ifndef CONFIG_MTK_COMBO_MT66XX
     down(&driver_sem);
     enable = simple_strtol(_buf, NULL, 10);
     //printk("%s: enable = %d\n", __func__, enable);
@@ -455,6 +455,7 @@ static ssize_t wifi_driver_write(struct class *cls, struct class_attribute *attr
     }
 
     up(&driver_sem);
+#endif	
     //printk("%s: ret = %d\n", __func__, ret);
     return _count;
 }
