@@ -1210,7 +1210,7 @@ typedef UINT_32             KAL_WAKE_LOCK_T, *P_KAL_WAKE_LOCK_T;
 
 #define P2P_ERROR_LOGFUNC(_Fmt...) xlog_printk(ANDROID_LOG_ERROR, XLOG_TAG, _Fmt) 
 #define P2P_WARN_LOGFUNC(_Fmt...)  xlog_printk(ANDROID_LOG_WARN, XLOG_TAG, _Fmt) 
-#define P2P_INFO_LOGFUNC(_Fmt...)  xlog_printk(ANDROID_LOG_INFO, XLOG_TAG, _Fmt) 
+#define P2P_INFO_LOGFUNC(_Fmt...)  //xlog_printk(ANDROID_LOG_INFO, XLOG_TAG, _Fmt) 
 #define P2P_STATE_LOGFUNC(_Fmt...)
 #define P2P_EVENT_LOGFUNC(_Fmt...)
 #define P2P_TRACE_LOGFUNC(_Fmt...)
@@ -1228,10 +1228,10 @@ typedef UINT_32             KAL_WAKE_LOCK_T, *P_KAL_WAKE_LOCK_T;
 
 #define QM_ERROR_LOGFUNC(_Fmt...) xlog_printk(ANDROID_LOG_ERROR, XLOG_TAG, _Fmt)
 #define QM_WARN_LOGFUNC(_Fmt...)  xlog_printk(ANDROID_LOG_WARN, XLOG_TAG, _Fmt)
-#define QM_INFO_LOGFUNC(_Fmt...)  xlog_printk(ANDROID_LOG_INFO, XLOG_TAG, _Fmt)
+#define QM_INFO_LOGFUNC(_Fmt...)  //xlog_printk(ANDROID_LOG_INFO, XLOG_TAG, _Fmt)
 #define QM_STATE_LOGFUNC(_Fmt...)
 #define QM_EVENT_LOGFUNC(_Fmt...)
-#define QM_TRACE_LOGFUNC(_Fmt...) xlog_printk(ANDROID_LOG_DEBUG, XLOG_TAG, _Fmt)
+#define QM_TRACE_LOGFUNC(_Fmt...) //xlog_printk(ANDROID_LOG_DEBUG, XLOG_TAG, _Fmt)
 #define QM_LOUD_LOGFUNC(_Fmt...)
 #define QM_TEMP_LOGFUNC(_Fmt...)
 
@@ -1409,18 +1409,18 @@ typedef UINT_32             KAL_WAKE_LOCK_T, *P_KAL_WAKE_LOCK_T;
 #define INIT_ERROR_LOGFUNC(_Fmt...) kalPrint(_Fmt)
 #define INIT_WARN_LOGFUNC(_Fmt...) kalPrint(_Fmt)
 #define INIT_INFO_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define INIT_STATE_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define INIT_EVENT_LOGFUNC(_Fmt...) kalPrint(_Fmt)
+#define INIT_STATE_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
+#define INIT_EVENT_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
 #define INIT_TRACE_LOGFUNC(_Fmt...)
 #define INIT_LOUD_LOGFUNC(_Fmt...)
 #define INIT_TEMP_LOGFUNC(_Fmt...)
 
 #define AAA_ERROR_LOGFUNC(_Fmt...) kalPrint(_Fmt)
 #define AAA_WARN_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define AAA_INFO_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define AAA_STATE_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define AAA_EVENT_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define AAA_TRACE_LOGFUNC(_Fmt...) kalPrint(_Fmt)
+#define AAA_INFO_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
+#define AAA_STATE_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
+#define AAA_EVENT_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
+#define AAA_TRACE_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
 #define AAA_LOUD_LOGFUNC(_Fmt...)
 #define AAA_TEMP_LOGFUNC(_Fmt...)
 
@@ -1507,7 +1507,7 @@ typedef UINT_32             KAL_WAKE_LOCK_T, *P_KAL_WAKE_LOCK_T;
 
 #define CNM_ERROR_LOGFUNC(_Fmt...) kalPrint(_Fmt)
 #define CNM_WARN_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define CNM_INFO_LOGFUNC(_Fmt...) kalPrint(_Fmt)
+#define CNM_INFO_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
 #define CNM_STATE_LOGFUNC(_Fmt...)
 #define CNM_EVENT_LOGFUNC(_Fmt...)
 #define CNM_TRACE_LOGFUNC(_Fmt...)
@@ -1561,10 +1561,10 @@ typedef UINT_32             KAL_WAKE_LOCK_T, *P_KAL_WAKE_LOCK_T;
 
 #define QM_ERROR_LOGFUNC(_Fmt...) kalPrint(_Fmt)
 #define QM_WARN_LOGFUNC(_Fmt...) kalPrint(_Fmt)
-#define QM_INFO_LOGFUNC(_Fmt...) kalPrint(_Fmt)
+#define QM_INFO_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
 #define QM_STATE_LOGFUNC(_Fmt...)
 #define QM_EVENT_LOGFUNC(_Fmt...)
-#define QM_TRACE_LOGFUNC(_Fmt...) kalPrint(_Fmt)
+#define QM_TRACE_LOGFUNC(_Fmt...) //kalPrint(_Fmt)
 #define QM_LOUD_LOGFUNC(_Fmt...)
 #define QM_TEMP_LOGFUNC(_Fmt...)
 
