@@ -151,9 +151,21 @@ choice
 		bool "AP6210"
 		depends on RKWIFI && WLAN_80211
 
+	config AP6234
+		bool "AP6234"
+		depends on RKWIFI
+
 	config AP6330
 		bool "AP6330"
 		depends on RKWIFI && WLAN_80211
+
+	config AP6335
+		bool "AP6335"
+		depends on RKWIFI
+
+	config AP6441
+		bool "AP6441"
+		depends on RKWIFI
 
 	config AP6476
 		bool "AP6476"
