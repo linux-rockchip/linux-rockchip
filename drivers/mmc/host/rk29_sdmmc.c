@@ -4037,6 +4037,9 @@ static int rk29_sdmmc_shutdown(struct platform_device *pdev)
         return 0;
         
     mmc =   platform_get_drvdata(pdev); 
+	if(mmc == NULL)
+		return 0;
+
 	host = mmc_priv(mmc);
 	printk("rk29_sdmmc_shutdown!\n");
 
@@ -4177,6 +4180,9 @@ static int rk29_sdmmc_suspend(struct platform_device *pdev, pm_message_t state)
         return 0;
         
     mmc =   platform_get_drvdata(pdev); 
+	if(mmc == NULL)
+			return 0;
+
 	host = mmc_priv(mmc);
 	
     if(host && host->pdev && (RK29_CTRL_SDMMC_ID == host->host_dev_id) )
@@ -4248,6 +4254,9 @@ static int rk29_sdmmc_resume(struct platform_device *pdev)
         return 0;
         
     mmc =   platform_get_drvdata(pdev); 
+	if(mmc == NULL)
+	       return 0;
+
 	host = mmc_priv(mmc);
 
     if(host && host->pdev && (RK29_CTRL_SDMMC_ID == host->host_dev_id) )
