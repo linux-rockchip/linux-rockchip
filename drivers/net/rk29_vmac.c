@@ -55,7 +55,29 @@
 #include "rk29_vmac.h"
 #include "eth_mac/eth_mac.h"
 
+#ifdef CONFIG_RK_PHY_REG_SYS
+#include <linux/sysfs.h>
+#include <linux/uaccess.h>
+int vmac_create_sysfs(struct vmac_priv *ap);
+#endif
+
 static struct wake_lock idlelock; /* add by lyx @ 20110302 */
+
+static struct class *vmac_class = NULL;
+static CLASS_ATTR(exist, 0664, NULL, NULL);
+
+int rk29_vmac_sysif_init(void)
+{
+	int ret;
+
+	vmac_class = class_create(THIS_MODULE, "vmac");
+	ret = class_create_file(vmac_class, &class_attr_exist);
+	if(ret) {
+	    printk("%s: Fail to creat class\n",__func__);
+	    return ret;
+	}
+	return 0;
+}
 
 /* Register access macros */
 #define vmac_writel(port, value, reg)	\
@@ -1627,6 +1649,8 @@ static int __devinit vmac_probe(struct platform_device *pdev)
 	//power gpio init, phy power off default for power reduce
 	if (pdata && pdata->rmii_io_init)
 		pdata->rmii_io_init();
+
+	rk29_vmac_sysif_init();
 
 	return 0;
 
