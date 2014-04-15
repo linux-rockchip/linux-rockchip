@@ -34,6 +34,7 @@ snd-soc-wm8994-objs := rk29_wm8994.o
 ##$_rbox_$_modify_$_zhengyang
 snd-soc-hdmi-objs := rockchip-hdmi-card.o
 snd-soc-rk610-objs := rk29_jetta_codec.o
+snd-soc-rk616-objs := rk_rk616.o
 snd-soc-aic3262-objs := rk29_aic3262.o
 snd-soc-rk2928-objs := rk2928-card.o
 ##$_rbox_$_modify_$_huangzhibao_begin$_20120505
@@ -58,6 +59,7 @@ obj-$(CONFIG_SND_RK_SOC_HDMI) += snd-soc-hdmi.o
 ##$_rbox_$_modify_$_zhengyang_end$_20120704
 obj-$(CONFIG_SND_RK29_SOC_RK610) += snd-soc-rk610.o
 ##$_rbox_$_modify_$_huangzhibao_begin$_20120505
+obj-$(CONFIG_SND_RK_SOC_RK616) += snd-soc-rk616.o
 obj-$(CONFIG_SND_RK_SOC_SPDIF) += snd-soc-rk_spdif.o
 ##$_rbox_$_modify_$_huangzhibao_end$_20120505
 obj-$(CONFIG_SND_RK_SOC_RK2928) += snd-soc-rk2928.o

@@ -12,7 +12,7 @@ static const struct hdmi_video_timing hdmi_mode [] = {
 	{ {	"1920x1080p@60Hz",	60,			1920,	1080,	148500000,	148,	88,		36,		4,		44,		5,		FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,			0,		0	},	16,  	1,		OUT_P888	},		
 };
 
-static int hdmi_set_info(struct rk29fb_screen *screen, unsigned int vic)
+int hdmi_set_info(struct rk29fb_screen *screen, unsigned int vic)
 {
     int i;
     struct fb_videomode *mode;
@@ -53,6 +53,10 @@ static int hdmi_set_info(struct rk29fb_screen *screen, unsigned int vic)
 	screen->vsync_len = mode->vsync_len;
 
 	/* Pin polarity */
+#ifdef CONFIG_HDMI_RK616
+        screen->pin_hsync = 0; 
+        screen->pin_vsync = 0;
+#else
 	if(FB_SYNC_HOR_HIGH_ACT & mode->sync)
 		screen->pin_hsync = 1;
 	else
@@ -61,6 +65,7 @@ static int hdmi_set_info(struct rk29fb_screen *screen, unsigned int vic)
 		screen->pin_vsync = 1;
 	else
 		screen->pin_vsync = 0;
+#endif      
 	screen->pin_den = 0;
 	screen->pin_dclk = 1;
 
@@ -437,7 +442,7 @@ int hdmi_ouputmode_select(struct hdmi *hdmi, int edid_ok)
 		hdmi->autoset = 0;
 	}
 	if(head->next == head) {
-		dev_info(hdmi->dev, "warning: no CEA video mode parsed from EDID !!!!");
+		dev_info(hdmi->dev, "warning: no CEA video mode parsed from EDID !!!!\n");
 		// If EDID get error, list all system supported mode.
 		// If output mode is set to DVI and EDID is ok, check
 		// the output timing.

@@ -63,7 +63,14 @@ static int rk30_rmii_io_deinit(void)
 
 static int rk30_rmii_power_control(int enable)
 {
-	ldo_33 = regulator_get(NULL, "act_ldo5"); 
+#if defined (CONFIG_REGULATOR_ACT8846)
+		if(pmic_is_act8846())
+				ldo_33 = regulator_get(NULL, "act_ldo5"); 
+#endif
+#if defined (CONFIG_MFD_RK808)
+		if(pmic_is_rk808())
+				ldo_33 = regulator_get(NULL, "rk_ldo2"); 
+#endif  	
 
 	if (ldo_33 == NULL || IS_ERR(ldo_33)){
 		printk("get rmii ldo failed!\n");

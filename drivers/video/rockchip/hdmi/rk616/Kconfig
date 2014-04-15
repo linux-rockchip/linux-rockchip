@@ -1,0 +1,5 @@
+config  HDMI_RK616
+        bool "RK616 HDMI support"
+        depends on LCDC_RK3188 && RK_HDMI
+        help
+           Support rk3028a hdmi if you say y here

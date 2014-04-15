@@ -44,12 +44,13 @@ Y	TX11   	G7		G1		GND		GND
 */
 
 typedef enum _SCREEN_TYPE {
-    SCREEN_NULL = 0,
-    SCREEN_RGB,
-    SCREEN_LVDS,
+	SCREEN_NULL = 0,
+	SCREEN_RGB,
+	SCREEN_LVDS,
 	SCREEN_MCU,
-    SCREEN_TVOUT,
-    SCREEN_HDMI,
+	SCREEN_TVOUT,
+	SCREEN_HDMI,
+	SCREEN_MIPI,
 } SCREEN_TYPE;
 
 typedef enum _REFRESH_STAGE {
@@ -108,7 +109,7 @@ struct rk29lcd_info {
 typedef struct rk29fb_screen {
 	/* screen type & hardware connect format & out face */
 	u16 type;
-	u16 hw_format;
+	u16 lvds_format;  //lvds data format
 	u16 face;
 	u8 lcdc_id;    //which output interface the screeen connect to
 	u8 screen_id; //screen number
@@ -122,6 +123,7 @@ typedef struct rk29fb_screen {
 	u32 mode;
 	/* Timing */
 	u32 pixclock;
+	u32 fps;
 	u16 left_margin;
 	u16 right_margin;
 	u16 hsync_len;
@@ -130,6 +132,7 @@ typedef struct rk29fb_screen {
 	u16 vsync_len;
 	u8  ft;	//the time need to display one frame,in ms
 	int *dsp_lut; //display lut 
+	struct rk29fb_screen *ext_screen;
 #if defined(CONFIG_HDMI_DUAL_DISP) || defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF)
     /* Scaler mode Timing */
 	u32 s_pixclock;
@@ -144,6 +147,15 @@ typedef struct rk29fb_screen {
 	bool s_den_inv;
 	bool s_hv_sync_inv;
 	bool s_clk_inv;
+#endif
+
+#if defined(CONFIG_MFD_RK616)
+	u32 pll_cfg_val;  //bellow are for jettaB
+	u32 frac;
+	u16 scl_vst;
+	u16 scl_hst;
+	u16 vif_vst;
+	u16 vif_hst;
 #endif
 	u8 hdmi_resolution;
 	    /* mcu need */
@@ -165,6 +177,13 @@ typedef struct rk29fb_screen {
 	u8 swap_rb;
 	u8 swap_delta;
 	u8 swap_dumy;
+	
+#if defined(CONFIG_MIPI_DSI)
+	/* MIPI DSI */
+	u8 dsi_lane;
+	u8 dsi_video_mode;
+	u32 hs_tx_clk;
+#endif
 
 	int xpos;  //horizontal display start position on the sceen ,then can be changed by application
 	int ypos;

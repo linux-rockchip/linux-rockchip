@@ -88,11 +88,11 @@ static int rockchip_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
             break;
 	}
 	DBG("Enter:%s, %d, rate=%d\n",__FUNCTION__,__LINE__,params_rate(params));
-	#if defined (CONFIG_SND_RK29_CODEC_SOC_MASTER) 	
+	#if defined (CONFIG_SND_RK29_CODEC_SOC_MASTER) && !defined(CONFIG_RK616_USE_MCLK_12M)	
 		snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, 0);
 	#endif	
 	
-	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE)
+	#if defined (CONFIG_SND_RK29_CODEC_SOC_SLAVE) && !defined(CONFIG_RK616_USE_MCLK_12M)
 
 		div_bclk = 63;
 		div_mclk = pll_out/(params_rate(params)*64) - 1;

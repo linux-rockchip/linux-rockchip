@@ -9,4 +9,5 @@ obj-$(CONFIG_HDMI_RK30) += rk30/
 obj-$(CONFIG_HDMI_RK2928) += rk2928/
 obj-$(CONFIG_SII902XA) += sii902xa/
 obj-$(CONFIG_IT66121) += it66121/
+obj-$(CONFIG_HDMI_RK616) += rk616/
 obj-$(CONFIG_RK_HDMI_GPIO_CEC) += softcec/
