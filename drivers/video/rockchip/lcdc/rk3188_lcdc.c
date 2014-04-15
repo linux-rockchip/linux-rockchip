@@ -1050,6 +1050,8 @@ static int rk3188_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 		dev_drv->screen0->standby(1);
 	if(dev_drv->screen_ctr_info->io_disable)
 		dev_drv->screen_ctr_info->io_disable();
+	dev_drv->suspend_flag = 1;
+	flush_kthread_worker(&dev_drv->update_regs_worker);
 
 	spin_lock(&lcdc_dev->reg_lock);
 	lcdc_dev->standby = 1;
@@ -1097,7 +1099,7 @@ static int rk3188_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 #endif
 	if(dev_drv->screen_ctr_info->io_enable) 		//power on
 		dev_drv->screen_ctr_info->io_enable();
-	
+	dev_drv->suspend_flag = 0;
 
 	if(lcdc_dev->atv_layer_cnt) //only resume the lcdc that need to use
 	{
@@ -1510,6 +1512,32 @@ int rk3188_lcdc_poll_vblank(struct rk_lcdc_device_driver * dev_drv)
 	return ret;
 }
 
+static int rk3188_lcdc_get_dsp_addr(struct rk_lcdc_device_driver *dev_drv,unsigned int *dsp_addr)
+{
+	int timeout;
+	unsigned long flags;
+
+	struct rk3188_lcdc_device *lcdc_dev = 
+				container_of(dev_drv,struct rk3188_lcdc_device,driver);    
+
+	spin_lock_irqsave(&dev_drv->cpl_lock,flags);
+	init_completion(&dev_drv->frame_done);
+	spin_unlock_irqrestore(&dev_drv->cpl_lock,flags);
+	timeout = wait_for_completion_timeout(&dev_drv->frame_done,msecs_to_jiffies(dev_drv->cur_screen->ft+5));
+	if(!timeout&&(!dev_drv->frame_done.done))
+	{
+		printk(KERN_ERR "wait for new frame start time out!\n");
+		return -ETIMEDOUT;
+	}
+	
+	if(lcdc_dev->clk_on){
+		dsp_addr[0] = lcdc_readl(lcdc_dev, WIN0_YRGB_MST0);
+		dsp_addr[1] = lcdc_readl(lcdc_dev, WIN1_MST);
+	}
+	return 0;
+}
+
+
 static struct layer_par lcdc_layer[] = {
 	[0] = {
 		.name  		= "win0",
@@ -1549,6 +1577,7 @@ static struct rk_lcdc_device_driver lcdc_driver = {
 	.dpi_open               = rk3188_lcdc_dpi_open,
 	.dpi_layer_sel          = rk3188_lcdc_dpi_layer_sel,
 	.dpi_status          	= rk3188_lcdc_dpi_status,
+	.get_dsp_addr		= rk3188_lcdc_get_dsp_addr,
 };
 
 static irqreturn_t rk3188_lcdc_isr(int irq, void *dev_id)
@@ -1562,7 +1591,7 @@ static irqreturn_t rk3188_lcdc_isr(int irq, void *dev_id)
 	{
 		timestamp = ktime_get();
 		lcdc_msk_reg(lcdc_dev, INT_STATUS, m_FS_INT_CLEAR,v_FS_INT_CLEAR(1));
-		if(lcdc_dev->driver.wait_fs)  //three buffer ,no need to wait for sync
+		//if(lcdc_dev->driver.wait_fs)  //three buffer ,no need to wait for sync
 		{
 			spin_lock(&(lcdc_dev->driver.cpl_lock));
 			complete(&(lcdc_dev->driver.frame_done));

@@ -23,9 +23,12 @@
 #include<asm/atomic.h>
 #include<mach/board.h>
 #include<linux/rk_screen.h>
+#include <linux/sw_sync.h>
+#include <linux/file.h>
+#include <linux/kthread.h>
 
 #define RK30_MAX_LCDC_SUPPORT	4
-#define RK30_MAX_LAYER_SUPPORT	4
+#define RK30_MAX_LAYER_SUPPORT	16  //  4
 #define RK_MAX_FB_SUPPORT       8
 
 
@@ -60,6 +63,9 @@
 #define RK_FBIOSET_VSYNC_ENABLE		0x4629
 #define RK_FBIOPUT_NUM_BUFFERS 		0x4625
 #define RK_FBIOPUT_COLOR_KEY_CFG	0x4626
+#define RK_FBIOGET_DSP_ADDR     	0x4630
+#define RK_FBIOGET_LIST_STAT   		0X4631
+
 
 
 /**rk fb events**/
@@ -244,6 +250,23 @@ struct layer_par {
 	u32 reserved;
 };
 
+struct rk_fb_win_config_data {
+	int	rel_fence_fd[4];
+	int     acq_fence_fd[RK30_MAX_LAYER_SUPPORT];//max support 16 laye  rRK30_MAX_LAYER_SUPPORT=16
+	int     wait_fs;
+	u8    	fence_begin;
+	int     ret_fence_fd;
+
+};
+
+struct rk_fb_dma_buf_data {
+	struct sync_fence *acq_fence;
+};
+
+struct rk_reg_data{
+	struct list_head list; 
+	struct rk_fb_dma_buf_data dma_buf_data[RK30_MAX_LAYER_SUPPORT];
+};
 
 struct rk_lcdc_device_driver{
 	char name[6];
@@ -271,6 +294,15 @@ struct rk_lcdc_device_driver{
 	int first_frame ;
 	struct rk_fb_vsync	 vsync_info;
 	int wait_fs;				//wait for new frame start in kernel
+	struct rk_fb_win_config_data win_data;
+	struct sw_sync_timeline *timeline;
+	int			timeline_max;
+	int			suspend_flag;
+	struct list_head	update_regs_list;
+	struct mutex		update_regs_list_lock;
+	struct kthread_worker	update_regs_worker;
+	struct task_struct	*update_regs_thread;
+	struct kthread_work	update_regs_work;
 	
 	struct rk29fb_info *screen_ctr_info;
 	int (*open)(struct rk_lcdc_device_driver *dev_drv,int layer_id,bool open);
@@ -298,6 +330,7 @@ struct rk_lcdc_device_driver{
 	int (*dpi_open)(struct rk_lcdc_device_driver *dev_drv,bool open);
 	int (*dpi_layer_sel)(struct rk_lcdc_device_driver *dev_drv,int layer_id);
 	int (*dpi_status)(struct rk_lcdc_device_driver *dev_drv);
+	unsigned int (*get_dsp_addr)(struct rk_lcdc_device_driver * dev_drv,unsigned int *dsp_addr);
 	
 };
 
@@ -330,6 +363,9 @@ extern int rk_fb_disp_scale(u8 scale_x, u8 scale_y,u8 lcdc_id);
 extern int rkfb_create_sysfs(struct fb_info *fbi);
 extern char * get_format_string(enum data_format,char *fmt);
 extern int support_uboot_display(void);
+extern void rk_fd_fence_wait(struct rk_lcdc_device_driver *dev_drv, struct sync_fence *fence);
+extern void rk_fb_free_dma_buf(struct rk_fb_dma_buf_data *dma_buf_data);
+
 static int inline rk_fb_calc_fps(rk_screen *screen,u32 pixclock)
 {
 	int x, y;

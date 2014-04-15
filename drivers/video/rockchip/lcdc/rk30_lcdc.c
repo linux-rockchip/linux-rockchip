@@ -1369,6 +1369,32 @@ static int rk30_set_dsp_lut(struct rk_lcdc_device_driver *dev_drv,int *lut)
 
 	return ret;
 }
+
+static int rk30_lcdc_get_dsp_addr(struct rk_lcdc_device_driver *dev_drv,unsigned int *dsp_addr)
+{
+       int timeout;
+       unsigned long flags;
+
+       struct rk30_lcdc_device *lcdc_dev = 
+                               container_of(dev_drv,struct rk30_lcdc_device,driver);    
+
+       spin_lock_irqsave(&dev_drv->cpl_lock,flags);
+       init_completion(&dev_drv->frame_done);
+       spin_unlock_irqrestore(&dev_drv->cpl_lock,flags);
+       timeout = wait_for_completion_timeout(&dev_drv->frame_done,msecs_to_jiffies(dev_drv->cur_screen->ft+5));
+       if(!timeout&&(!dev_drv->frame_done.done))
+       {
+               printk(KERN_ERR "wait for new frame start time out!\n");
+               return -ETIMEDOUT;
+       }
+       
+       if(lcdc_dev->clk_on){
+               dsp_addr[0] = lcdc_readl(lcdc_dev, WIN0_YRGB_MST0);
+               dsp_addr[1] = lcdc_readl(lcdc_dev, WIN1_YRGB_MST);
+       }
+       return 0;
+}
+
 int rk30_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 {
 	struct rk30_lcdc_device *lcdc_dev = container_of(dev_drv,struct rk30_lcdc_device,driver);
@@ -1378,7 +1404,8 @@ int rk30_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 		dev_drv->screen0->standby(1);
 	if(dev_drv->screen_ctr_info->io_disable)
 		dev_drv->screen_ctr_info->io_disable();
-	
+	dev_drv->suspend_flag = 1;
+        flush_kthread_worker(&dev_drv->update_regs_worker);
 	spin_lock(&lcdc_dev->reg_lock);
 	if(likely(lcdc_dev->clk_on))
 	{
@@ -1408,7 +1435,7 @@ int rk30_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 
 	if(dev_drv->screen_ctr_info->io_enable) 		//power on
 		dev_drv->screen_ctr_info->io_enable();
-		
+	dev_drv->suspend_flag = 0;	
 	if(lcdc_dev->atv_layer_cnt)
 	{
 		rk30_lcdc_clk_enable(lcdc_dev);
@@ -1454,7 +1481,7 @@ static irqreturn_t rk30_lcdc_isr(int irq, void *dev_id)
 	//lcdc_cfg_done(lcdc_dev);
 	//lcdc_msk_reg(lcdc_dev, INT_STATUS, m_LINE_FLAG_INT_CLEAR, v_LINE_FLAG_INT_CLEAR(1));
  
-	if(lcdc_dev->driver.num_buf < 3)  //three buffer ,no need to wait for sync
+	//if(lcdc_dev->driver.num_buf < 3)  //three buffer ,no need to wait for sync
 	{
 		spin_lock(&(lcdc_dev->driver.cpl_lock));
 		complete(&(lcdc_dev->driver.frame_done));
@@ -1506,6 +1533,7 @@ static struct rk_lcdc_device_driver lcdc_driver = {
 	.fb_layer_remap         = rk30_fb_layer_remap,
 	.set_dsp_lut            = rk30_set_dsp_lut,
 	.read_dsp_lut           = rk30_read_dsp_lut,
+	.get_dsp_addr           = rk30_lcdc_get_dsp_addr,
 };
 #ifdef CONFIG_PM
 static int rk30_lcdc_suspend(struct platform_device *pdev, pm_message_t state)

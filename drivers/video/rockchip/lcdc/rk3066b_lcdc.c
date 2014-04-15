@@ -1050,6 +1050,30 @@ static void rk3066b_lcdc_reg_dump(struct rk3066b_lcdc_device *lcdc_dev)
 	}
 	
 }
+static int rk3066b_lcdc_get_dsp_addr(struct rk_lcdc_device_driver *dev_drv,unsigned int *dsp_addr)
+{
+       int timeout;
+       unsigned long flags;
+
+       struct rk3066b_lcdc_device *lcdc_dev = 
+                               container_of(dev_drv,struct rk3066b_lcdc_device,driver);    
+
+       spin_lock_irqsave(&dev_drv->cpl_lock,flags);
+       init_completion(&dev_drv->frame_done);
+       spin_unlock_irqrestore(&dev_drv->cpl_lock,flags);
+       timeout = wait_for_completion_timeout(&dev_drv->frame_done,msecs_to_jiffies(dev_drv->cur_screen->ft+5));
+       if(!timeout&&(!dev_drv->frame_done.done))
+       {
+               printk(KERN_ERR "wait for new frame start time out!\n");
+               return -ETIMEDOUT;
+       }
+       
+       if(lcdc_dev->clk_on){
+               dsp_addr[0] = LcdRdReg(lcdc_dev, WIN0_YRGB_MST);
+               dsp_addr[1] = LcdRdReg(lcdc_dev, WIN1_YRGB_MST);
+       }
+       return 0;
+}
 
 int rk3066b_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 {
@@ -1059,7 +1083,8 @@ int rk3066b_lcdc_early_suspend(struct rk_lcdc_device_driver *dev_drv)
 		dev_drv->screen0->standby(1);
 	if(dev_drv->screen_ctr_info->io_disable)
 		dev_drv->screen_ctr_info->io_disable();
-	
+	dev_drv->suspend_flag = 1;
+        flush_kthread_worker(&dev_drv->update_regs_worker);
 	spin_lock(&lcdc_dev->reg_lock);
 	if(likely(lcdc_dev->clk_on))
 	{
@@ -1090,7 +1115,7 @@ int rk3066b_lcdc_early_resume(struct rk_lcdc_device_driver *dev_drv)
 
 	if(dev_drv->screen_ctr_info->io_enable) 		//power on
 		dev_drv->screen_ctr_info->io_enable();
-	
+	dev_drv->suspend_flag = 0;
 	if(lcdc_dev->atv_layer_cnt) //only resume the lcdc that need to use
 	{
 	
@@ -1186,8 +1211,8 @@ static irqreturn_t rk3066b_lcdc_isr(int irq, void *dev_id)
 #endif
 	//LcdMskReg(lcdc_dev, INT_STATUS, m_LINE_FLAG_INT_CLEAR, v_LINE_FLAG_INT_CLEAR(1));
 
-#if 0
-	if(lcdc_dev->driver.num_buf < 3)  //three buffer ,no need to wait for sync
+#if 1
+	//if(lcdc_dev->driver.num_buf < 3)  //three buffer ,no need to wait for sync
 	{
 		spin_lock(&(lcdc_dev->driver.cpl_lock));
 		complete(&(lcdc_dev->driver.frame_done));
@@ -1299,6 +1324,7 @@ static struct rk_lcdc_device_driver lcdc_driver = {
 	.fb_layer_remap         = rk3066b_fb_layer_remap,
 	.set_dsp_lut            = rk3066b_set_dsp_lut,
 	.poll_vblank		= rk3066b_lcdc_poll_vblank,
+	.get_dsp_addr           = rk3066b_lcdc_get_dsp_addr,
 };
 #ifdef CONFIG_PM
 static int rk3066b_lcdc_suspend(struct platform_device *pdev, pm_message_t state)
