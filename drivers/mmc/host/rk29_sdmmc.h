@@ -386,7 +386,7 @@ static struct sdmmc_reg rk_sdmmc_regs[] =
 ** As the following example.
 ** added by xbw at 2013-05-08
 */
-#if defined(CONFIG_MTK_COMBO_DRIVER_VERSION_JB2) || defined(CONFIG_ESP8089)
+#if defined(CONFIG_MTK_COMBO_DRIVER_VERSION_JB2) || defined(CONFIG_ESP8089) || defined(CONFIG_RTL8723BS)
 #define RK_SDMMC_USE_SDIO_SUSPEND_RESUME    1
 #else
 #define RK_SDMMC_USE_SDIO_SUSPEND_RESUME    0
