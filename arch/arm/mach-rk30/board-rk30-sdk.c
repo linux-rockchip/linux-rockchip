@@ -73,12 +73,30 @@
 #include "../../../drivers/staging/android/timed_gpio.h"
 #endif
 
-#if defined(CONFIG_MT6620)
+#if defined(CONFIG_CT36X_TS)
+#include <linux/ct36x.h>
+#endif
+
+/* Android Parameter */
+static int ap_mdm = 0;
+module_param(ap_mdm, int, 0644);
+static int ap_has_alsa = 0;
+module_param(ap_has_alsa, int, 0644);
+static int ap_data_only = 2;
+module_param(ap_data_only, int, 0644);
+static int ap_has_earphone = 0;
+module_param(ap_has_earphone, int, 0644);
+
+#if defined(CONFIG_MT6620) && !defined(CONFIG_MTK_COMBO_MT66XX)
 #include <linux/gps.h>
 #endif
 
 #if defined(CONFIG_DP501)   //for display port transmitter dp501
 #include<linux/dp501.h>
+#endif
+
+#if defined(CONFIG_MTK_COMBO_MT66XX)
+#include <linux/combo_mt66xx.h>
 #endif
 
 #include "board-rk30-sdk-camera.c"
@@ -1498,7 +1516,7 @@ static struct platform_device *devices[] __initdata = {
 	&rk29sdk_wifi_device,
 #endif
 
-#if defined(CONFIG_MT6620)
+#if defined(CONFIG_MT6620) && !defined(CONFIG_MTK_COMBO_MT66XX)
     &mt3326_device_gps,
 #endif   
 

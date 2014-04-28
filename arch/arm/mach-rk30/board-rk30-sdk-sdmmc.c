@@ -258,146 +258,20 @@
             #define USE_SDMMC_CONTROLLER_FOR_WIFI 1
         
             #if defined(CONFIG_MACH_RK30_PHONE_PAD)     // define the gpio for MT6620 in RK30_PHONE_PAD project.
-                #define COMBO_MODULE_MT6620_CDT    0  //- 1--use Cdtech chip; 0--unuse CDT chip
-                //power, PMU_EN
-                #define RK30SDK_WIFI_GPIO_POWER_N                   RK30_PIN3_PC7            
-                #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE        GPIO_HIGH        
-                #define RK30SDK_WIFI_GPIO_POWER_PIN_NAME            GPIO3C7_SDMMC1WRITEPRT_NAME
-                #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FGPIO         GPIO3C_GPIO3C7
-                #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FMUX          GPIO3C_SDMMC1_WRITE_PRT
-                //reset, DAIRST,SYSRST_B
-                #define RK30SDK_WIFI_GPIO_RESET_N                   RK30_PIN3_PD1
-                #define RK30SDK_WIFI_GPIO_RESET_ENABLE_VALUE        GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME            GPIO3D1_SDMMC1BACKENDPWR_NAME
-                #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FGPIO         GPIO3D_GPIO3D1
-                #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FMUX          GPIO3D_SDMMC1_BACKEND_PWR
-                //VDDIO
-                //#define RK30SDK_WIFI_GPIO_VCCIO_WL                 RK30_PIN6_PB4
-                //#define RK30SDK_WIFI_GPIO_VCCIO_WL_ENABLE_VALUE    GPIO_HIGH       
-                //WIFI_INT_B
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B                RK30_PIN4_PD2
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_ENABLE_VALUE   GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_PIN_NAME       GPIO4D2_SMCDATA10_TRACEDATA10_NAME
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FGPIO    GPIO4D_GPIO4D2
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FMUX     GPIO4D_SMC_DATA10
-                //BGF_INT_B
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B                 RK30_PIN6_PA7
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B_ENABLE_VALUE    GPIO_HIGH 
-                //#define RK30SDK_WIFI_GPIO_BGF_INT_B_PIN_NAME            GPIO3C6_SDMMC1DETECTN_NAME
-                //#define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FGPIO         GPIO3C_GPIO3C6
-                //#define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FMUX          GPIO3C_SDMMC1_DETECT_N
-                //GPS_SYNC
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC                  RK30_PIN3_PD0
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_ENABLE_VALUE     GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_PIN_NAME         GPIO3D0_SDMMC1PWREN_NAME
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FGPIO      GPIO3D_GPIO3D0
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FMUX       GPIO3D_SDMMC1_PWR_EN
                 
             #elif defined(CONFIG_MACH_RK3066_M8000R)     // define the gpio for MT6620 in CONFIG_MACH_RK3066_M8000R project.
-                #define COMBO_MODULE_MT6620_CDT    1  //- 1--use Cdtech chip; 0--unuse CDT chip
-                //power, PMU_EN
-                #define RK30SDK_WIFI_GPIO_POWER_N                   RK30_PIN3_PC7            
-                #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE        GPIO_HIGH        
-                #define RK30SDK_WIFI_GPIO_POWER_PIN_NAME            GPIO3C7_SDMMC1WRITEPRT_NAME
-                #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FGPIO         GPIO3C_GPIO3C7
-                #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FMUX          GPIO3C_SDMMC1_WRITE_PRT
-                //reset, DAIRST,SYSRST_B
-                #define RK30SDK_WIFI_GPIO_RESET_N                   RK30_PIN3_PD1
-                #define RK30SDK_WIFI_GPIO_RESET_ENABLE_VALUE        GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME            GPIO3D1_SDMMC1BACKENDPWR_NAME
-                #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FGPIO         GPIO3D_GPIO3D1
-                #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FMUX          GPIO3D_SDMMC1_BACKEND_PWR
-                //VDDIO
-                #define RK30SDK_WIFI_GPIO_VCCIO_WL                  RK30_PIN0_PD2
-                #define RK30SDK_WIFI_GPIO_VCCIO_WL_ENABLE_VALUE     GPIO_HIGH
-                #define RK30SDK_WIFI_GPIO_VCCIO_WL_PIN_NAME         GPIO0D2_I2S22CHLRCKRX_SMCOEN_NAME
-                #define RK30SDK_WIFI_GPIO_VCCIO_WL_IOMUX_FGPIO      GPIO0D_GPIO0D2
-                #define RK30SDK_WIFI_GPIO_VCCIO_WL_IOMUX_FMUX       GPIO0D_I2S2_2CH_LRCK_RX
-                //WIFI_INT_B
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B                RK30_PIN3_PD2
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_ENABLE_VALUE   GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_PIN_NAME       GPIO3D2_SDMMC1INTN_NAME
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FGPIO    GPIO3D_GPIO3D2
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FMUX     GPIO3D_SDMMC1_INT_N
-                //BGF_INT_B
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B                 RK30_PIN6_PA7
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B_ENABLE_VALUE    GPIO_HIGH 
-                //#define RK30SDK_WIFI_GPIO_BGF_INT_B_PIN_NAME        GPIO3C6_SDMMC1DETECTN_NAME
-                //#define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FGPIO     GPIO3C_GPIO3C6
-               // #define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FMUX      GPIO3C_SDMMC1_DETECT_N
-                //GPS_SYNC
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC                  RK30_PIN3_PD0
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_ENABLE_VALUE     GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_PIN_NAME         GPIO3D0_SDMMC1PWREN_NAME
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FGPIO      GPIO3D_GPIO3D0
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FMUX       GPIO3D_SDMMC1_PWR_EN
 
-                #if COMBO_MODULE_MT6620_CDT
-                //ANTSEL2
-                //#define RK30SDK_WIFI_GPIO_ANTSEL2                   RK30_PIN4_PD4
-                //#define RK30SDK_WIFI_GPIO_ANTSEL2_ENABLE_VALUE      GPIO_LOW    //use 6620 in CDT chip, LOW--work; High--no work.
-                //#define RK30SDK_WIFI_GPIO_ANTSEL2_PIN_NAME          GPIO4D4_SMCDATA12_TRACEDATA12_NAME
-                //#define RK30SDK_WIFI_GPIO_ANTSEL2_IOMUX_FGPIO       GPIO4D_GPIO4D4
-                //#define RK30SDK_WIFI_GPIO_ANTSEL2_IOMUX_FMUX        GPIO4D_TRACE_DATA12
-                //ANTSEL3
-                //#define RK30SDK_WIFI_GPIO_ANTSEL3                   RK30_PIN4_PD3
-                //#define RK30SDK_WIFI_GPIO_ANTSEL3_ENABLE_VALUE      GPIO_HIGH    //use 6620 in CDT chip, High--work; Low--no work..
-                //#define RK30SDK_WIFI_GPIO_ANTSEL3_PIN_NAME          GPIO4D3_SMCDATA11_TRACEDATA11_NAME
-                //#define RK30SDK_WIFI_GPIO_ANTSEL3_IOMUX_FGPIO       GPIO4D_GPIO4D3
-                //#define RK30SDK_WIFI_GPIO_ANTSEL3_IOMUX_FMUX        GPIO4D_TRACE_DATA11
-                //GPS_LAN
-                //#define RK30SDK_WIFI_GPIO_GPS_LAN                   RK30_PIN4_PD6
-                //#define RK30SDK_WIFI_GPIO_GPS_LAN_ENABLE_VALUE      GPIO_HIGH    //use 6620 in CDT chip, High--work; Low--no work..
-                //#define RK30SDK_WIFI_GPIO_GPS_LAN_PIN_NAME          GPIO4D6_SMCDATA14_TRACEDATA14_NAME
-                //#define RK30SDK_WIFI_GPIO_GPS_LAN_IOMUX_FGPIO       GPIO4D_GPIO4D6
-                //#define RK30SDK_WIFI_GPIO_GPS_LAN_IOMUX_FMUX        GPIO4D_TRACE_DATA14
-                #endif // #if COMBO_MODULE_MT6620_CDT--#endif
-                
             #elif defined(CONFIG_MACH_SKYWORTH_T10_SDK)     // define the gpio for MT6620 in KYWORTH_T10 project.
-                #define COMBO_MODULE_MT6620_CDT    0  //- 1--use Cdtech chip; 0--unuse CDT chip
-                //power, PMU_EN
-                #define RK30SDK_WIFI_GPIO_POWER_N                   RK30_PIN3_PD0            
-                #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE        GPIO_HIGH        
-                #define RK30SDK_WIFI_GPIO_POWER_PIN_NAME            GPIO3D0_SDMMC1PWREN_NAME
-                #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FGPIO         GPIO3D_GPIO3D0
-                #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FMUX          GPIO3D_SDMMC1_PWR_EN
-                //reset, DAIRST,SYSRST_B
-                #define RK30SDK_WIFI_GPIO_RESET_N                   RK30_PIN3_PD1
-                #define RK30SDK_WIFI_GPIO_RESET_ENABLE_VALUE        GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME            GPIO3D1_SDMMC1BACKENDPWR_NAME
-                #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FGPIO         GPIO3D_GPIO3D1
-                #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FMUX          GPIO3D_SDMMC1_BACKEND_PWR
-                //VDDIO
-                //#define RK30SDK_WIFI_GPIO_VCCIO_WL                 RK30_PIN6_PB4
-                //#define RK30SDK_WIFI_GPIO_VCCIO_WL_ENABLE_VALUE    GPIO_HIGH       
-                //WIFI_INT_B
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B                RK30_PIN3_PD2
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_ENABLE_VALUE   GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_PIN_NAME       GPIO3D2_SDMMC1INTN_NAME
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FGPIO    GPIO3D_GPIO3D2
-                #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FMUX     GPIO3D_SDMMC1_INT_N
-                //BGF_INT_B
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B                 RK30_PIN3_PC6
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B_ENABLE_VALUE    GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B_PIN_NAME        GPIO3C6_SDMMC1DETECTN_NAME
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FGPIO     GPIO3C_GPIO3C6
-                #define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FMUX      GPIO3C_SDMMC1_DETECT_N
-                //GPS_SYNC
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC                  RK30_PIN3_PC7
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_ENABLE_VALUE     GPIO_HIGH 
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_PIN_NAME         GPIO3C7_SDMMC1WRITEPRT_NAME
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FGPIO      GPIO3C_GPIO3C7
-                #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FMUX       GPIO3C_SDMMC1_WRITE_PRT    
             
             #else //For exmpale, to define the gpio for MT6620 in RK30SDK project.
                 #define COMBO_MODULE_MT6620_CDT    1  //- 1--use Cdtech chip; 0--unuse CDT chip
-                //power
+                //power, PMU_EN
                 #define RK30SDK_WIFI_GPIO_POWER_N                   RK30_PIN3_PD0            
                 #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE        GPIO_HIGH        
                 #define RK30SDK_WIFI_GPIO_POWER_PIN_NAME            GPIO3D0_SDMMC1PWREN_NAME
                 #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FGPIO         GPIO3D_GPIO3D0
                 #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FMUX          GPIO3D_SDMMC1_PWR_EN
-                //reset
+                //reset, DAIRST,SYSRST_B
                 #define RK30SDK_WIFI_GPIO_RESET_N                   RK30_PIN3_PD1
                 #define RK30SDK_WIFI_GPIO_RESET_ENABLE_VALUE        GPIO_HIGH 
                 #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME            GPIO3D1_SDMMC1BACKENDPWR_NAME
@@ -1348,64 +1222,6 @@ int rk29sdk_wifi_power_state = 0;
 int rk29sdk_bt_power_state = 0;
 
     #if defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
-    	/////////////////////////////////////////////////////////////////////////////////////
-	    // set the gpio to develop wifi EVB if you select the macro of CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD
-	    #define USE_SDMMC_CONTROLLER_FOR_WIFI   0
-   		#define COMBO_MODULE_MT6620_CDT         0  //- 1--use Cdtech chip; 0--unuse CDT chip
-        //power
-        #define RK30SDK_WIFI_GPIO_POWER_N                   RK30_PIN3_PD0            
-        #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE        GPIO_HIGH        
-        #define RK30SDK_WIFI_GPIO_POWER_PIN_NAME            GPIO3D0_SDMMC1PWREN_NAME
-        #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FGPIO         GPIO3D_GPIO3D0
-        #define RK30SDK_WIFI_GPIO_POWER_IOMUX_FMUX          GPIO3D_SDMMC1_PWR_EN
-        //reset
-        #define RK30SDK_WIFI_GPIO_RESET_N                   RK30_PIN3_PD1
-        #define RK30SDK_WIFI_GPIO_RESET_ENABLE_VALUE        GPIO_HIGH 
-        #define RK30SDK_WIFI_GPIO_RESET_PIN_NAME            GPIO3D1_SDMMC1BACKENDPWR_NAME
-        #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FGPIO         GPIO3D_GPIO3D1
-        #define RK30SDK_WIFI_GPIO_RESET_IOMUX_FMUX          GPIO3D_SDMMC1_BACKEND_PWR
-        //VDDIO
-        //#define RK30SDK_WIFI_GPIO_VCCIO_WL                 RK30_PIN2_PC5
-        //#define RK30SDK_WIFI_GPIO_VCCIO_WL_ENABLE_VALUE    GPIO_HIGH       
-        //WIFI_INT_B
-        #define RK30SDK_WIFI_GPIO_WIFI_INT_B                RK30_PIN3_PD2
-        #define RK30SDK_WIFI_GPIO_WIFI_INT_B_ENABLE_VALUE   GPIO_HIGH 
-        #define RK30SDK_WIFI_GPIO_WIFI_INT_B_PIN_NAME       GPIO3D2_SDMMC1INTN_NAME
-        #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FGPIO    GPIO3D_GPIO3D2
-        #define RK30SDK_WIFI_GPIO_WIFI_INT_B_IOMUX_FMUX     GPIO3D_SDMMC1_INT_N
-        //BGF_INT_B
-        #define RK30SDK_WIFI_GPIO_BGF_INT_B                 RK30_PIN3_PC6
-        #define RK30SDK_WIFI_GPIO_BGF_INT_B_ENABLE_VALUE    GPIO_HIGH 
-        #define RK30SDK_WIFI_GPIO_BGF_INT_B_PIN_NAME        GPIO3C6_SDMMC1DETECTN_NAME
-        #define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FGPIO     GPIO3C_GPIO3C6
-        #define RK30SDK_WIFI_GPIO_BGF_INT_B_IOMUX_FMUX      GPIO3C_SDMMC1_DETECT_N
-        //GPS_SYNC
-        #define RK30SDK_WIFI_GPIO_GPS_SYNC                  RK30_PIN3_PC7
-        #define RK30SDK_WIFI_GPIO_GPS_SYNC_ENABLE_VALUE     GPIO_HIGH 
-        #define RK30SDK_WIFI_GPIO_GPS_SYNC_PIN_NAME         GPIO3C7_SDMMC1WRITEPRT_NAME
-        #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FGPIO      GPIO3C_GPIO3C7
-        #define RK30SDK_WIFI_GPIO_GPS_SYNC_IOMUX_FMUX       GPIO3C_SDMMC1_WRITE_PRT
-
-        #if COMBO_MODULE_MT6620_CDT
-        //ANTSEL2
-        #define RK30SDK_WIFI_GPIO_ANTSEL2                   RK30_PIN4_PD4
-        #define RK30SDK_WIFI_GPIO_ANTSEL2_ENABLE_VALUE      GPIO_LOW    //use 6620 in CDT chip, LOW--work; High--no work.
-        #define RK30SDK_WIFI_GPIO_ANTSEL2_PIN_NAME          GPIO4D4_SMCDATA12_TRACEDATA12_NAME
-        #define RK30SDK_WIFI_GPIO_ANTSEL2_IOMUX_FGPIO       GPIO4D_GPIO4D4
-        #define RK30SDK_WIFI_GPIO_ANTSEL2_IOMUX_FMUX        GPIO4D_TRACE_DATA12
-        //ANTSEL3
-        #define RK30SDK_WIFI_GPIO_ANTSEL3                   RK30_PIN4_PD3
-        #define RK30SDK_WIFI_GPIO_ANTSEL3_ENABLE_VALUE      GPIO_HIGH    //use 6620 in CDT chip, High--work; Low--no work..
-        #define RK30SDK_WIFI_GPIO_ANTSEL3_PIN_NAME          GPIO4D3_SMCDATA11_TRACEDATA11_NAME
-        #define RK30SDK_WIFI_GPIO_ANTSEL3_IOMUX_FGPIO       GPIO4D_GPIO4D3
-        #define RK30SDK_WIFI_GPIO_ANTSEL3_IOMUX_FMUX        GPIO4D_TRACE_DATA11
-        //GPS_LAN
-        #define RK30SDK_WIFI_GPIO_GPS_LAN                   RK30_PIN4_PD6
-        #define RK30SDK_WIFI_GPIO_GPS_LAN_ENABLE_VALUE      GPIO_HIGH    //use 6620 in CDT chip, High--work; Low--no work..
-        #define RK30SDK_WIFI_GPIO_GPS_LAN_PIN_NAME          GPIO4D6_SMCDATA14_TRACEDATA14_NAME
-        #define RK30SDK_WIFI_GPIO_GPS_LAN_IOMUX_FGPIO       GPIO4D_GPIO4D6
-        #define RK30SDK_WIFI_GPIO_GPS_LAN_IOMUX_FMUX        GPIO4D_TRACE_DATA14
-        #endif // #if COMBO_MODULE_MT6620_CDT--#endif
         
     #endif // #if defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)---#endif
 #endif // #if defined(CONFIG_WIFI_COMBO_MODULE_CONTROL_FUNC) ---#endif
@@ -1870,9 +1686,64 @@ int rk29sdk_wifi_combo_get_GPS_SYNC_gpio(void)
 }
 EXPORT_SYMBOL(rk29sdk_wifi_combo_get_GPS_SYNC_gpio);
 
+#if defined(CONFIG_MTK_COMBO_MT66XX)
+    static struct mtk_wmt_platform_data mtk_wmt_pdata = {
+        .pmu = RK30SDK_WIFI_GPIO_POWER_N,//RK30_PIN0_PB5, //MUST set to pin num in target system
+        .rst = RK30SDK_WIFI_GPIO_RESET_N,//RK30_PIN3_PD0, //MUST set to pin num in target system
+        .bgf_int = RK30SDK_WIFI_GPIO_BGF_INT_B,//RK30_PIN0_PA5,//MUST set to pin num in target system if use UART interface.
+        .urt_cts = -EINVAL, // set it to the correct GPIO num if use common SDIO, otherwise set it to -EINVAL.
+        .rtc = -EINVAL, //Optipnal. refer to HW design.
+        .gps_sync = -EINVAL, //Optional. refer to HW design.
+        .gps_lna = -EINVAL, //Optional. refer to HW design.
+    };
+    static struct mtk_sdio_eint_platform_data mtk_sdio_eint_pdata = {
+        .sdio_eint = RK30_PIN3_PD2,//53, //MUST set pin num in target system.
+    };
+    static struct platform_device mtk_wmt_dev = {
+        .name = "mtk_wmt",
+        .id = 1,
+        .dev = {
+       
+       
+        .platform_data = &mtk_wmt_pdata,
+        },
+    };
+    static struct platform_device mtk_sdio_eint_dev = {
+        .name = "mtk_sdio_eint",
+        .id = 1,
+        .dev = {
+        .platform_data = &mtk_sdio_eint_pdata,
+        },
+    };
+    static void __init mtk_combo_init(void)
+    {
+        /* gpio number align target system<A1><AF>s setting */
+        gpio_request(mtk_wmt_pdata.pmu, "MT66XX PMUEN");
+        gpio_request(mtk_wmt_pdata.rst, "MT66XX SYSRST");
+        gpio_direction_output(mtk_wmt_pdata.pmu, 0);
+        gpio_direction_output(mtk_wmt_pdata.rst, 0);
+        gpio_free(mtk_wmt_pdata.pmu);
+        gpio_free(mtk_wmt_pdata.rst);
+        
+        /* step3. if use UART interface, config UART_CTS(host end) to UART_CTS mode;
+        if use common SDIO interface, config UART_CTS(host_end) to GPIO mode. */
+        if (mtk_wmt_pdata.urt_cts == -EINVAL) {
+            //UART interface,config to UART CTS mode
+        } else {
+            //SDIO interface,config to GPIO mode.
+            //omap_mux_set_gpio(3,mtk_wmt_pdata.urt_cts);
+        }
+        return;
+    }
+#endif---//#if defined(CONFIG_MTK_COMBO_MT66XX)
 
 static int rk29sdk_wifi_combo_module_gpio_init(void)
 {
+#if defined(CONFIG_MTK_COMBO_MT66XX)
+    mtk_combo_init();
+    platform_device_register(&mtk_wmt_dev);
+    platform_device_register(&mtk_sdio_eint_dev);
+#else  	
     //VDDIO
     #ifdef RK30SDK_WIFI_GPIO_VCCIO_WL
         #ifdef RK30SDK_WIFI_GPIO_VCCIO_WL_PIN_NAME
@@ -1941,7 +1812,7 @@ static int rk29sdk_wifi_combo_module_gpio_init(void)
 	#endif
 
 	#endif//#if COMBO_MODULE_MT6620_CDT ---#endif 
-
+#endif
     return 0;
 }
 
