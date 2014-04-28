@@ -1100,7 +1100,7 @@ static int rk2928_lcdc_get_dsp_addr(struct rk_lcdc_device_driver *dev_drv,unsign
        }
        
        if(lcdc_dev->clk_on){
-               dsp_addr[0] = lcdc_readl(lcdc_dev, WIN0_YRGB_MST);
+               dsp_addr[0] = LcdRdReg(lcdc_dev, WIN0_YRGB_MST);
                //dsp_addr[1] = lcdc_readl(lcdc_dev, WIN1_YRGB_MST);
        }
        return 0;
