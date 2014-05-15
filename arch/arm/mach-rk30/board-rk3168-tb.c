@@ -985,8 +985,15 @@ struct rk29_sdmmc_platform_data default_sdmmc0_data = {
 	    (MMC_VDD_25_26 | MMC_VDD_26_27 | MMC_VDD_27_28 | MMC_VDD_28_29 |
 	     MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32 | MMC_VDD_32_33 |
 	     MMC_VDD_33_34 | MMC_VDD_34_35 | MMC_VDD_35_36),
+	     
+	#if !defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD)
 	.host_caps =
 	    (MMC_CAP_4_BIT_DATA | MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED),
+	#else
+	.host_caps = 
+	    (MMC_CAP_4_BIT_DATA | MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED | MMC_CAP_SDIO_IRQ),	
+	#endif
+	    
 	.io_init = rk29_sdmmc0_cfg_gpio,
 
 #if !defined(CONFIG_SDMMC_RK29_OLD)

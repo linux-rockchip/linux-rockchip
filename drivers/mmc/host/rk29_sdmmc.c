@@ -2599,6 +2599,11 @@ static const struct mmc_host_ops rk29_sdmmc_ops[] = {
 		.set_ios	= rk29_sdmmc_set_ios,
 		.get_ro		= rk29_sdmmc_get_ro,
 		.get_cd		= rk29_sdmmc_get_cd,
+		#if defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD) 
+		#if !defined(CONFIG_MTK_COMBO_MT66XX)
+		.enable_sdio_irq = rk29_sdmmc_enable_sdio_irq,
+	        #endif
+	        #endif
 	    .start_signal_voltage_switch	= rk_sdmmc_signal_voltage_switch,
 	},
 	{
