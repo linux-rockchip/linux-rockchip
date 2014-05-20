@@ -34,8 +34,8 @@
 #include "esp_ext.h"
 #endif /* USE_EXT_GPIO */
 
-static int __init esp_sdio_init(void);
-static void  esp_sdio_exit(void);
+static int /*__init*/ esp_sdio_init(void);
+static void  /*__exit*/ esp_sdio_exit(void);
 
 
 #define ESP_DMA_IBUFSZ   2048
@@ -807,7 +807,7 @@ static struct sdio_driver esp_sdio_dummy_driver = {
                 .remove = esp_sdio_dummy_remove,
 };
 
-static int __init esp_sdio_init(void) 
+static int /*__init*/ esp_sdio_init(void) 
 {
 #define ESP_WAIT_UP_TIME_MS 11000
         int err;

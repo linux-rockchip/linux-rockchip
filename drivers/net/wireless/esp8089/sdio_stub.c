@@ -7,7 +7,7 @@
 #include <mach/gpio.h>
 #include <mach/iomux.h>
 
-#define ESP8089_DRV_VERSION "2.03"
+#define ESP8089_DRV_VERSION "2.20"
 
 extern int rk29sdk_wifi_power(int on);
 extern int rk29sdk_wifi_set_carddetect(int val);

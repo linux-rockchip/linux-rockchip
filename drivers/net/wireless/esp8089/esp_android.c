@@ -299,6 +299,10 @@ int android_request_init_conf(void)
         }
 #endif /* INIT_DATA_CONF */
 	conf_buf = (u8 *)kmalloc(MAX_BUF_LEN, GFP_KERNEL);
+        if (conf_buf == NULL) {
+                esp_dbg(ESP_DBG_ERROR, "%s: failed kmalloc memory for read init_data_conf", __func__);
+                return -ENOMEM;
+        }
 
 #ifdef INIT_DATA_CONF
 	if ((ret=android_readwrite_file(filename, conf_buf, NULL, length)) != length) {
@@ -370,9 +374,10 @@ int android_request_init_conf(void)
 
 	//show_esp_init_table(esp_init_table);
 
-	return 0;
+	ret = 0;
 failed:
-	kfree(conf_buf);
+	if (conf_buf)
+		kfree(conf_buf);
 	return ret;
 }
 

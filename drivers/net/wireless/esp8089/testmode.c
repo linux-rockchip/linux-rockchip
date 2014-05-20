@@ -27,8 +27,8 @@
 
 static u32 connected_nl;
 static struct genl_info info_copy;
-static struct esp_sip *sip_copy;
-static u8 *sdio_buff;
+static struct esp_sip *sip_copy = NULL;
+static u8 *sdio_buff = NULL;
 
 #define SIP sip_copy
 #define OUT_DONE() \
@@ -599,6 +599,9 @@ void test_exit_netlink(void)
 		return;
 
         kfree(sdio_buff);
+	sdio_buff = NULL;
+	sip_copy = NULL;
+	
         printk(KERN_INFO "esp_sdio: closing netlink\n");
         /* unregister the notifier */
         netlink_unregister_notifier(&test_netlink_notifier);
