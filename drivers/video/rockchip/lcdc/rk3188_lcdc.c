@@ -134,7 +134,7 @@ static int rk3188_lcdc_alpha_cfg(struct rk3188_lcdc_device *lcdc_dev)
 				v_WIN0_ALPHA_EN(0) | v_WIN1_ALPHA_EN(0));
 	}
 	lcdc_msk_reg(lcdc_dev,DSP_CTRL0,m_WIN0_ALPHA_MODE | m_ALPHA_MODE_SEL0 |
-			m_ALPHA_MODE_SEL1,v_WIN0_ALPHA_MODE(1) | v_ALPHA_MODE_SEL0(1) |
+			m_ALPHA_MODE_SEL1,v_WIN0_ALPHA_MODE(1) | v_ALPHA_MODE_SEL0(0) |
 			v_ALPHA_MODE_SEL1(0));//default set to per-pixel alpha	
 
 	return 0;
@@ -174,7 +174,7 @@ static int win0_open(struct rk3188_lcdc_device *lcdc_dev,bool open)
 
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_WIN0_EN, v_WIN0_EN(open));
 		#ifdef CONFIG_LCDC_OVERLAY_ENABLE
-		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_ALPHA_MODE_SEL0 | m_WIN1_ALPHA_MODE, v_ALPHA_MODE_SEL0(1) | v_WIN1_ALPHA_MODE(1));
+		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_ALPHA_MODE_SEL0 | m_WIN1_ALPHA_MODE, v_ALPHA_MODE_SEL0(0) | v_WIN1_ALPHA_MODE(1));
 		lcdc_msk_reg(lcdc_dev, ALPHA_CTRL, m_WIN1_ALPHA_EN, v_WIN1_ALPHA_EN(open));
 		#endif
 		if(!lcdc_dev->atv_layer_cnt)  //if no layer used,disable lcdc
@@ -689,7 +689,7 @@ static int win1_set_par(struct rk3188_lcdc_device *lcdc_dev,rk_screen *screen,
 			lcdc_msk_reg(lcdc_dev, WIN_VIR,m_WIN1_VIR,v_WIN1_ARGB888_VIRWIDTH(xvir));
 			lcdc_msk_reg(lcdc_dev,ALPHA_CTRL,m_WIN1_ALPHA_EN,v_WIN1_ALPHA_EN(1));
 			lcdc_msk_reg(lcdc_dev,DSP_CTRL0,m_WIN1_ALPHA_MODE | m_ALPHA_MODE_SEL0,
-				v_WIN1_ALPHA_MODE(1) | v_ALPHA_MODE_SEL0(1));//default set to per-pixel alpha
+				v_WIN1_ALPHA_MODE(1) | v_ALPHA_MODE_SEL0(0));//default set to per-pixel alpha
 			lcdc_msk_reg(lcdc_dev,SYS_CTRL,m_WIN1_RB_SWAP,v_WIN1_RB_SWAP(1));
 			break;
 		case ARGB888:
