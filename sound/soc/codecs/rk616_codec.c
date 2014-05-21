@@ -2595,6 +2595,9 @@ static int rk616_hw_params(struct snd_pcm_substream *substream,
 			APS_SEL | APS_CLR | I2S_CHANNEL_SEL,
 			mfd_i2s_ctl);
 	rk616_codec_power_up(RK616_CODEC_PLAYBACK);
+	if(SNDRV_PCM_STREAM_CAPTURE == substream->stream){
+		rk616_codec_power_up(RK616_CODEC_CAPTURE);
+	}
 	return 0;
 }
 
