@@ -38,8 +38,10 @@
 *        2. The resoultion which the ration is same is first choice;
 *v0.1.0x11:
 *        1. add support sensor af power;
+*v0.1.0x13:
+*        1. add support skip frames function;
 */
-static int version = KERNEL_VERSION(0,1,0x11);
+static int version = KERNEL_VERSION(0,1,0x13);
 module_param(version, int, S_IRUGO);
 
 
@@ -61,6 +63,8 @@ module_param(debug, int, S_IRUGO|S_IWUSR);
 
 
 #define CONFIG_SENSOR_I2C_RDWRCHK 0
+#define CONFIG_SENSOR_SKIP_FRAME  0	  /*dalon.zhang@rock-chips.com: v0.1.0x12*/
+extern void rk_camera_skip_frames(struct soc_camera_device *icd, unsigned int id, unsigned int frmcnt);
 
 static const struct rk_sensor_datafmt *generic_sensor_find_datafmt(
 	enum v4l2_mbus_pixelcode code, const struct rk_sensor_datafmt *fmt,
@@ -1039,6 +1043,9 @@ int generic_sensor_s_control(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
         
         if (ctrl_info->cb) {
             ret = (ctrl_info->cb)(icd,ctrl_info, &ext_ctrl,true);
+			#if (CONFIG_SENSOR_SKIP_FRAME == 1)
+			rk_camera_skip_frames(icd, ext_ctrl.id, 1);
+			#endif
         } else {
             SENSOR_TR("v4l2_control id(0x%x) callback isn't exist",ctrl->id);
             ret = -EINVAL;

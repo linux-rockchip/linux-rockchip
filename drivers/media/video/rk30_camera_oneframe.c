@@ -336,9 +336,11 @@ module_param(debug, int, S_IRUGO|S_IWUSR);
 *         2. Reset cif and Reinit sensor when cif havn't receive data first;
 *v0.3.0x15:
 *         1. fix access cif register in rk_camera_remove_device, it may be happen before clock turn on;
+*v0.3.0x17:
+*	     1. fix display bug when the moment switch awb mode;add rk_camera_skip_frames function;
 */
 
-#define RK_CAM_VERSION_CODE KERNEL_VERSION(0, 3, 0x15)
+#define RK_CAM_VERSION_CODE KERNEL_VERSION(0, 3, 0x17)
 static int version = RK_CAM_VERSION_CODE;
 module_param(version, int, S_IRUGO);
 
@@ -366,6 +368,8 @@ module_param(version, int, S_IRUGO);
 
 extern void videobuf_dma_contig_free(struct videobuf_queue *q, struct videobuf_buffer *buf);
 extern dma_addr_t videobuf_to_dma_contig(struct videobuf_buffer *buf);
+
+
 /* buffer for one video frame */
 struct rk_camera_buffer
 {
@@ -524,6 +528,8 @@ struct rk_camera_dev
     struct timeval first_tv;
     
     int chip_id;
+	unsigned int frmcnt_cur;
+	unsigned int frmcnt_to_skip;
 };
 
 static const struct v4l2_queryctrl rk_camera_controls[] =
@@ -1321,7 +1327,7 @@ rk_camera_capture_process_end:
     spin_lock_irqsave(&pcdev->camera_work_lock, flags);    
     list_add_tail(&camera_work->queue, &pcdev->camera_work_queue);    
     spin_unlock_irqrestore(&pcdev->camera_work_lock, flags); 
-    wake_up(&(camera_work->vb->done));     /* ddl@rock-chips.com : v0.3.9 */ 
+   	wake_up(&(camera_work->vb->done));     /* ddl@rock-chips.com : v0.3.9 */ 
     return;
 }
 
@@ -1387,7 +1393,6 @@ static inline irqreturn_t rk_camera_cifirq(int irq, void *data)
     
     return IRQ_HANDLED;
 }
-
 static inline irqreturn_t rk_camera_dmairq(int irq, void *data)
 {
     struct rk_camera_dev *pcdev = data;
@@ -1421,7 +1426,12 @@ static inline irqreturn_t rk_camera_dmairq(int irq, void *data)
             RKCAMERA_TR("frame_inval : %0x",pcdev->frame_inval);
             pcdev->frame_inval = 0;
         }
-        
+        if(pcdev->fps - pcdev->frmcnt_cur <= pcdev->frmcnt_to_skip)
+    	{
+    		rk_videobuf_capture(pcdev->active,pcdev);
+			goto end;
+    	}
+		
         if(pcdev->fps == RK30_CAM_FRAME_MEASURE) {
             do_gettimeofday(&tv);            
             pcdev->frame_interval = ((tv.tv_sec*1000000 + tv.tv_usec) - (pcdev->first_tv.tv_sec*1000000 + pcdev->first_tv.tv_usec))
@@ -1465,7 +1475,7 @@ static inline irqreturn_t rk_camera_dmairq(int irq, void *data)
                 vb->state = VIDEOBUF_DONE;    	        
                 vb->field_count++;
             }
-            wake_up(&vb->done);
+           	wake_up(&vb->done);
         }
     }
 
@@ -2921,6 +2931,8 @@ static int rk_camera_s_stream(struct soc_camera_device *icd, int enable)
 		pcdev->fps = 0;
         pcdev->last_fps = 0;
         pcdev->frame_interval = 0;
+		pcdev->frmcnt_cur = 0;
+		pcdev->frmcnt_to_skip = 0;
 		hrtimer_cancel(&(pcdev->fps_timer.timer));
 		pcdev->fps_timer.pcdev = pcdev;
         pcdev->timer_get_fps = false;
@@ -3166,6 +3178,22 @@ static int rk_camera_set_digit_zoom(struct soc_camera_device *icd,
 #endif	
 
 	return 0;
+}
+
+void rk_camera_skip_frames(struct soc_camera_device *icd, unsigned int id, unsigned int frmcnt)
+{
+	struct soc_camera_host *ici = to_soc_camera_host(icd->dev.parent);
+	struct rk_camera_dev *pcdev = ici->priv;
+	
+	switch(id)
+	{
+		case V4L2_CID_DO_WHITE_BALANCE:
+			pcdev->frmcnt_cur = pcdev->fps;
+			pcdev->frmcnt_to_skip = frmcnt;
+			break;
+		default:
+			break;
+	}
 }
 
 static inline struct v4l2_queryctrl const *rk_camera_soc_camera_find_qctrl(
