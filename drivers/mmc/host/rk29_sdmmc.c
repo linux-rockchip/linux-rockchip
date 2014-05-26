@@ -1887,6 +1887,11 @@ static int rk29_sdmmc_start_request(struct mmc_host *mmc )
 	mrq = host->new_mrq;
 	cmd = mrq->cmd;
 	cmd->error = 0;
+  	if(host->shutdown == 1){
+        		spin_unlock_irqrestore(&host->lock, iflags);
+        		printk("rk29_sdmmc_start_request....shutdown=1\n");
+        		return;
+    }
 	
 	cmdr = rk29_sdmmc_prepare_command(cmd);
 	ret = SDM_SUCCESS;
@@ -3560,8 +3565,8 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 	}	
     
 	host = mmc_priv(mmc);
-    host->mmc = mmc;
-    host->pdev = pdev;
+	host->mmc = mmc;
+	host->pdev = pdev;
 
 	host->ctype = 0; // set default 1 bit mode
 	host->errorstep = 0;
@@ -3578,13 +3583,13 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 	host->irq_state = true;
 	host->timeout_times = 0;
 	host->host_dev_id = real_dev_id;
-
+	host->shutdown = 0;
 	//detect pin info
-    host->det_pin.io        = pdata->det_pin_info.io;
-    host->det_pin.enable    = pdata->det_pin_info.enable;
-    host->det_pin.iomux.name  = pdata->det_pin_info.iomux.name;
-    host->det_pin.iomux.fgpio = pdata->det_pin_info.iomux.fgpio;
-    host->det_pin.iomux.fmux  = pdata->det_pin_info.iomux.fmux;
+	host->det_pin.io        = pdata->det_pin_info.io;
+	host->det_pin.enable    = pdata->det_pin_info.enable;
+	host->det_pin.iomux.name  = pdata->det_pin_info.iomux.name;
+	host->det_pin.iomux.fgpio = pdata->det_pin_info.iomux.fgpio;
+	host->det_pin.iomux.fmux  = pdata->det_pin_info.iomux.fmux;
     //power pin info
     host->gpio_power_en = pdata->power_en;
     host->gpio_power_en_level = pdata->power_en_level;
@@ -4037,6 +4042,7 @@ static int rk29_sdmmc_shutdown(struct platform_device *pdev)
 	struct mmc_host *mmc;// = platform_get_drvdata(pdev);
 	struct rk29_sdmmc *host;
     struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
+	int time_out;
 
     if( !(pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
         return 0;
@@ -4046,26 +4052,36 @@ static int rk29_sdmmc_shutdown(struct platform_device *pdev)
 		return 0;
 
 	host = mmc_priv(mmc);
+	host->shutdown = 1;
 	printk("rk29_sdmmc_shutdown!\n");
 
 	/* SHOULD NOT CHANGE THIS STEP, PLS!*/
 	clk_enable(clk_get(&pdev->dev, "emmc"));
 	clk_enable(clk_get(&pdev->dev, "hclk_emmc"));
+    mdelay(10); 
+    dsb();
 	
+ 	time_out = 500;
+    while (rk29_sdmmc_read(host->regs, SDMMC_STATUS) & (SDMMC_STAUTS_DATA_BUSY|SDMMC_STAUTS_MC_BUSY))
+	{
+            mdelay(100);
+            time_out --;
+            if(time_out == 0){
+                printk("rk29_sdmmc_shutdown: host is busy before CMD0 with arg:0xf0f0f0f0\n");
+                break;
+            }
+    }
+	printk("rk29_sdmmc_shutdown: host issue CMD0 with arg:0xf0f0f0f0\n");
 	/*force eMMC go pre-idle state*/
 	rk29_sdmmc_write(host->regs, SDMMC_CMDARG, 0xF0F0F0F0);
-	rk29_sdmmc_write(host->regs, SDMMC_CMD, MMC_GO_IDLE_STATE| SDMMC_CMD_INIT| SDMMC_CMD_USE_HOLD_REG|SDMMC_CMD_START);
-	mdelay(10);
+	rk29_sdmmc_write(host->regs, SDMMC_CMD, 0 | SDMMC_CMD_INIT| SDMMC_CMD_USE_HOLD_REG|SDMMC_CMD_START);
+	mdelay(200);
 	
 	rk29_sdmmc_write(host->regs,SDMMC_PWREN, 0x0);
 	rk29_sdmmc_write(host->regs,SDMMC_RST_n, 0x0);
 	dsb();
 	
-	mdelay(50);
 	
-	rk29_sdmmc_write(host->regs,SDMMC_PWREN, 0x1);
-	rk29_sdmmc_write(host->regs,SDMMC_RST_n, 0x1);
-	dsb();
 
 
 	return 0;

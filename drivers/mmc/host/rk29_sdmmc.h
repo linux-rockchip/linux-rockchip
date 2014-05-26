@@ -516,7 +516,7 @@ struct rk29_sdmmc {
 	u32			cmd_status;
 	u32			data_status;
 	u32			stop_cmdr;
-
+	u32			shutdown; //shutdown flag for cmd io err
     u32         old_div;
 	u32			cmdr;   //the value setted into command-register
 	u32			dodma;  //sign the DMA used for transfer.
