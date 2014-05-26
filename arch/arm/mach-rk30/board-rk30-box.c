@@ -1693,16 +1693,16 @@ static struct rkdisplay_platform_data hdmi_data = {
 
 #if defined(CONFIG_RK1000_TVOUT) || defined(CONFIG_RK610_TVOUT) || defined(CONFIG_CH7025_7026_TVOUT)
 static struct rkdisplay_platform_data tv_data = {
-	#ifdef CONFIG_HDMI_RK30
-	.property 		= DISPLAY_AUX,
-	#else
+//	#ifdef CONFIG_HDMI_RK30
+//	.property 		= DISPLAY_AUX,
+//	#else
 	.property 		= DISPLAY_MAIN,
-	#endif
+//	#endif
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 #ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
 	.io_pwr_pin 	= RK30_PIN0_PC7,
 #else
-    .io_pwr_pin 	= INVALID_GPIO,
+	.io_pwr_pin 	= INVALID_GPIO,
 #endif
 	.io_reset_pin 	= RK30_PIN0_PC6,
 #ifdef CONFIG_CH7025_7026_TVOUT

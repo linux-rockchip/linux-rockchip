@@ -424,9 +424,12 @@ static void hdmi_sort_modelist(struct hdmi_edid *edid)
 	    }
 	}
 	fb_destroy_modelist(head);
-
-	edid->modelist = head_new;
-	edid->modelist.prev->next = &edid->modelist;
+	if(head_new.next == &head_new) {
+		INIT_LIST_HEAD(&edid->modelist);
+	} else {
+		edid->modelist = head_new;
+		edid->modelist.prev->next = &edid->modelist;
+	}
 }
 
 /**
@@ -451,6 +454,7 @@ int hdmi_ouputmode_select(struct hdmi *hdmi, int edid_ok)
 		hdmi->edid.ycbcr422 = 0;
 		hdmi->autoset = 0;
 	}
+	hdmi_sort_modelist(&hdmi->edid);
 	if(head->next == head) {
 		dev_info(hdmi->dev, "warning: no CEA video mode parsed from EDID !!!!\n");
 		// If EDID get error, list all system supported mode.
@@ -492,9 +496,7 @@ int hdmi_ouputmode_select(struct hdmi *hdmi, int edid_ok)
 			hdmi_add_videomode(mode, head);
 		}
 	}
-	else
-		hdmi_sort_modelist(&hdmi->edid);
-		
+	
 //	#ifdef HDMI_DEBUG
 	hdmi_show_sink_info(hdmi);
 //	#endif

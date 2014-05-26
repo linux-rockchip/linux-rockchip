@@ -71,7 +71,7 @@ int rk30_hdmi_detect_hotplug(struct hdmi *hdmi)
 	#endif
 }
 
-#define HDMI_EDID_DDC_CLK	90000
+#define HDMI_EDID_DDC_CLK	50000
 int rk30_hdmi_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
@@ -90,7 +90,7 @@ int rk30_hdmi_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
 	HDMIWrReg(DDC_BUS_FREQ_H, (ddc_bus_freq >> 8) & 0xFF);
 	
 	// Enable edid interrupt
-	HDMIWrReg(INTR_MASK1, m_INT_HOTPLUG | m_INT_MSENS | m_INT_EDID_ERR | m_INT_EDID_READY);
+	HDMIWrReg(INTR_MASK1, m_INT_HOTPLUG | m_INT_EDID_ERR | m_INT_EDID_READY);
 	
 	while(trytime--) {
 		// Config EDID block and segment addr
@@ -132,7 +132,7 @@ int rk30_hdmi_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
 		msleep(100);
 	}
 	// Disable edid interrupt
-	HDMIWrReg(INTR_MASK1, m_INT_HOTPLUG | m_INT_MSENS);
+	HDMIWrReg(INTR_MASK1, m_INT_HOTPLUG);
 	return ret;
 }
 
@@ -678,7 +678,7 @@ int rk30_hdmi_removed(struct hdmi *hdmi)
 		rk30_hdmi_set_pwr_mode(rk30_hdmi, PWR_SAVE_MODE_B);
 	if(rk30_hdmi->pwr_mode == PWR_SAVE_MODE_B)
 	{
-		HDMIWrReg(INTR_MASK1, m_INT_HOTPLUG | m_INT_MSENS);
+		HDMIWrReg(INTR_MASK1, m_INT_HOTPLUG);
 		HDMIWrReg(INTR_MASK2, 0);
 		HDMIWrReg(INTR_MASK3, 0);
 		HDMIWrReg(INTR_MASK4, 0);
@@ -697,16 +697,20 @@ int rk30_hdmi_removed(struct hdmi *hdmi)
 int rk30_hdmi_enable(struct hdmi *hdmi)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
-
-	enable_irq(rk30_hdmi->irq);
+	if(!rk30_hdmi->enable) {
+		enable_irq(rk30_hdmi->irq);
+		rk30_hdmi->enable = 1;
+	}
 	return 0;
 }
 
 int rk30_hdmi_disable(struct hdmi *hdmi)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
-
-	disable_irq(rk30_hdmi->irq);
+	if(rk30_hdmi->enable) {
+		rk30_hdmi->enable = 1;
+		disable_irq(rk30_hdmi->irq);
+	}
 	return 0;
 }
 

@@ -38,8 +38,9 @@ static int hdmi_get_status(struct rk_display_device *device)
 static int hdmi_get_modelist(struct rk_display_device *device, struct list_head **modelist)
 {
 	struct hdmi *hdmi = device->priv_data;
-
+	mutex_lock(&hdmi->lock);
 	*modelist = &hdmi->edid.modelist;
+	mutex_unlock(&hdmi->lock);
 	return 0;
 }
 
@@ -174,7 +175,7 @@ static int hdmi_get_edidaudioinfo(struct rk_display_device *device, char *audioi
 		return -1;
 
 	memset(audioinfo, 0x00, len);
-
+	mutex_lock(&hdmi->lock);
 	//printk("hdmi:edid: audio_num: %d\n", hdmi->edid.audio_num);
 	for(i = 0; i < hdmi->edid.audio_num; i++)
 	{
@@ -189,7 +190,7 @@ static int hdmi_get_edidaudioinfo(struct rk_display_device *device, char *audioi
 		audioinfo[size]=',';
 		audioinfo += (size+1);
 	}
-
+	mutex_unlock(&hdmi->lock);
 	return 0;
 }
 

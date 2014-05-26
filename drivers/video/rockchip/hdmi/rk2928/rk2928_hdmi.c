@@ -42,13 +42,15 @@ static void rk2928_hdmi_early_suspend(struct early_suspend *h)
 {
 	struct rk2928_hdmi *rk2928_hdmi = container_of(h, struct rk2928_hdmi, early_suspend);
 	struct hdmi *hdmi = rk2928_hdmi->hdmi;
-	
+	struct delayed_work	*delay_work;
 	RK2928DBG("hdmi enter early suspend \n");
 	
 	rk30_mux_api_set(GPIO0A7_I2C3_SDA_HDMI_DDCSDA_NAME, GPIO0A_GPIO0A7);
 	rk30_mux_api_set(GPIO0A6_I2C3_SCL_HDMI_DDCSCL_NAME, GPIO0A_GPIO0A6);
 	
-	hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	if(delay_work)
+		flush_delayed_work(delay_work);
 	return;
 }
 

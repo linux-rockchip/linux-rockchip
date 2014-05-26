@@ -50,13 +50,16 @@ static void rk30_hdmi_early_suspend(struct early_suspend *h)
 {
 	struct rk30_hdmi *rk30_hdmi = container_of(h, struct rk30_hdmi, early_suspend);
 	struct hdmi *hdmi = rk30_hdmi->hdmi;
+	struct delayed_work	*delay_work;
 	
 	RK30DBG("hdmi enter early suspend pwr %d\n", rk30_hdmi->pwr_mode);
 	// When HDMI 1.1V and 2.5V power off, DDC channel will be pull down, current is produced
 	// from VCC_IO which is pull up outside soc. We need to switch DDC IO to GPIO.
 	rk30_mux_api_set(GPIO0A2_HDMII2CSDA_NAME, GPIO0A_GPIO0A2);
 	rk30_mux_api_set(GPIO0A1_HDMII2CSCL_NAME, GPIO0A_GPIO0A1);
-	hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	if(delay_work)
+		flush_delayed_work(delay_work);
 	return;
 }
 
@@ -141,7 +144,7 @@ static int __devinit rk30_hdmi_probe (struct platform_device *pdev)
 	platform_set_drvdata(pdev, rk30_hdmi);
 	
 	rk30_hdmi->pwr_mode = PWR_SAVE_MODE_A;
-	
+	rk30_hdmi->enable = 1;
 	/* get the IRQ */
 	rk30_hdmi->irq = platform_get_irq(pdev, 0);
 	if(rk30_hdmi->irq <= 0) {

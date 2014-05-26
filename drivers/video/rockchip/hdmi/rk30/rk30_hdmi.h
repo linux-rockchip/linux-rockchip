@@ -37,7 +37,7 @@ struct rk30_hdmi {
 	int				pwr_mode;
 	
 	int				tmdsclk;
-
+	int				enable;
 	spinlock_t		irq_lock;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND

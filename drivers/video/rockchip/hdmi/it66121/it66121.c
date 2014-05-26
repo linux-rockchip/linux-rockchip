@@ -62,7 +62,9 @@ static int it66121_disable(struct hdmi *hdmi)
 static void it66121_early_suspend(struct early_suspend *h)
 {
 	struct hdmi *hdmi = it66121->hdmi;
-	hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	struct delayed_work	*delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+	if(delay_work)
+		flush_delayed_work(delay_work);
 	return;
 }
 
