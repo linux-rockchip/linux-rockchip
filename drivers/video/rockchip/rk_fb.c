@@ -888,13 +888,13 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 			if((fence_wait_begin == 1)&&(dev_drv->suspend_flag == 0)){	
 				dev_drv->win_data.rel_fence_fd[0] =  get_unused_fd();
 				if (dev_drv->win_data.rel_fence_fd[0] < 0){
-					printk("%s,rel_fence_fd=%d\n",dev_drv->win_data.rel_fence_fd[0]);
+					printk("rel_fence_fd=%d\n",dev_drv->win_data.rel_fence_fd[0]);
 					return -EFAULT;
 				}
 
 				dev_drv->win_data.rel_fence_fd[1] =  get_unused_fd();
 				if (dev_drv->win_data.rel_fence_fd[1] < 0){
-					printk("%s,rel_fence_fd=%d\n",dev_drv->win_data.rel_fence_fd[1]);
+					printk("rel_fence_fd=%d\n",dev_drv->win_data.rel_fence_fd[1]);
 					return -EFAULT;
 				}
 
