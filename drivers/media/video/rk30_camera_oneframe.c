@@ -338,9 +338,11 @@ module_param(debug, int, S_IRUGO|S_IWUSR);
 *         1. fix access cif register in rk_camera_remove_device, it may be happen before clock turn on;
 *v0.3.0x17:
 *	     1. fix display bug when the moment switch awb mode;add rk_camera_skip_frames function;
+*v0.3.0x19:
+		 1.	disable cif irq when capture_en disabled,fix unexpected infinite interrups comming
 */
 
-#define RK_CAM_VERSION_CODE KERNEL_VERSION(0, 3, 0x17)
+#define RK_CAM_VERSION_CODE KERNEL_VERSION(0, 3, 0x19)
 static int version = RK_CAM_VERSION_CODE;
 module_param(version, int, S_IRUGO);
 
@@ -1652,7 +1654,7 @@ static int rk_camera_activate(struct rk_camera_dev *pcdev, struct soc_camera_dev
     * ddl@rock-chips.com : Cif clk control in rk_sensor_power which in rk_camera.c
     */
     write_cif_reg(pcdev->base,CIF_CIF_CTRL,AXI_BURST_16|MODE_ONEFRAME|DISABLE_CAPTURE);   /* ddl@rock-chips.com : vip ahb burst 16 */
-    write_cif_reg(pcdev->base,CIF_CIF_INTEN, 0x01);    //capture complete interrupt enable
+   // write_cif_reg(pcdev->base,CIF_CIF_INTEN, 0x01);    //capture complete interrupt enable
     return 0;
 }
 
@@ -2041,7 +2043,7 @@ static void rk_camera_setup_format(struct soc_camera_device *icd, __u32 host_pix
     rk_camera_cif_reset(pcdev,true);
     
     write_cif_reg(pcdev->base,CIF_CIF_CTRL,AXI_BURST_16|MODE_ONEFRAME|DISABLE_CAPTURE);   /* ddl@rock-chips.com : vip ahb burst 16 */
-    write_cif_reg(pcdev->base,CIF_CIF_INTEN, 0x01|0x200);    //capture complete interrupt enable
+   // write_cif_reg(pcdev->base,CIF_CIF_INTEN, 0x01|0x200);    //capture complete interrupt enable
 
     write_cif_reg(pcdev->base,CIF_CIF_FOR,cif_fmt_val);         /* ddl@rock-chips.com: VIP capture mode and capture format must be set before FS register set */
 
@@ -2944,7 +2946,8 @@ static int rk_camera_s_stream(struct soc_camera_device *icd, int enable)
         pcdev->irqinfo.cifirq_normal_idx = 0;
         pcdev->irqinfo.cifirq_abnormal_idx = 0;
         pcdev->irqinfo.dmairq_idx = 0;
-        
+		       
+ 		write_cif_reg(pcdev->base,CIF_CIF_INTEN, 0x01|0x200);
 		cif_ctrl_val |= ENABLE_CAPTURE;
         write_cif_reg(pcdev->base,CIF_CIF_CTRL, cif_ctrl_val);
         spin_unlock_irqrestore(&pcdev->lock,flags);
@@ -2961,6 +2964,7 @@ static int rk_camera_s_stream(struct soc_camera_device *icd, int enable)
 		spin_lock_irqsave(&pcdev->lock, flags);
     	write_cif_reg(pcdev->base,CIF_CIF_CTRL, cif_ctrl_val);
         atomic_set(&pcdev->stop_cif,true);
+		write_cif_reg(pcdev->base,CIF_CIF_INTEN, 0x0);
     	spin_unlock_irqrestore(&pcdev->lock, flags);
 		flush_workqueue((pcdev->camera_wq));
 	}
