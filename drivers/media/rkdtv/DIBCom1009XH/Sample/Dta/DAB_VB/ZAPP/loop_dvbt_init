@@ -1,0 +1,16 @@
+#channel dab
+gch 176640 5 3 0 0
+gch 474000 8 1 0 1
+#fic filter/item
+gfi 0 5 0
+atf 0 0
+#TDMB filter/item
+gfi 0 6 1
+atf 1 6 1
+#MSC filter/item
+gfi 0 7 2
+atf 2 4 0 2
+#MSC packet filter/item with DG
+gfi 0 8 3
+atf 3 8 1 0 1 3
+mntstart

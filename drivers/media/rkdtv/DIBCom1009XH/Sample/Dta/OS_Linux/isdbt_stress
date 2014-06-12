@@ -1,0 +1,28 @@
+sdemod 1
+gch 737143 6 2 0 0
+mnt 0 3 0
+gfi_async 0 0 0
+atf 0 274 0
+dch 0
+
+gch 737143 6 2 1 1 0 0
+mnt 0 3 0
+gfi 0 0 0
+atf 0 8193 0
+dch 0
+
+gch 737143 6 2 2 1 0 0
+mnt 0 3 0
+dch 0
+
+gstr 3 2 0 0
+gfe 3 2
+gch 737143 6 0 3 0 0 0
+mnt 0 3 0
+dstr 3
+
+gstr 1 2 1 0 0
+gfe 1 0
+gfe 1 1
+gch 737143 6 0 1 0 0 0
+dstr 1

@@ -1,0 +1,7 @@
+log logfile ---------------------------MSCPacket-----------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/packet_init
+fpause 50000
+loga logfile 255
+batch DAB_VB/STATIC/packet_end
+logtime logfile STOP....

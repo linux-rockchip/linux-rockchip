@@ -1,0 +1,8 @@
+log logfile ------------------------DVBT-ZAPP------------------------------
+logtime logfile START...
+batch DAB_VB/ZAPP/loop_dvbt_init
+batchl DAB_VB/ZAPP/loop_dvbt 80
+loga logfile 255
+batch DAB_VB/ZAPP/loop_end
+dch 1
+logtime logfile STOP....

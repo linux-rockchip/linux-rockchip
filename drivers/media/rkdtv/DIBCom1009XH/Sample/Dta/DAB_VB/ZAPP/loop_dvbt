@@ -1,0 +1,13 @@
+#todo : add sipsi
+#delete item
+gfi 1 0 4
+atf 4 0 4
+rpause 10000
+dtf 4
+atf 4 0 4
+#delete filter/item
+rpause 10000
+dfi 4
+
+
+

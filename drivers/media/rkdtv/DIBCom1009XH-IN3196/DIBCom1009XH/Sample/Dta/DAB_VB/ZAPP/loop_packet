@@ -1,0 +1,18 @@
+#delete item : NO DG
+gfi 0 8 3
+atf 3 8 1 0 0 3
+rpause 10000
+dtf 3
+atf 3 8 1 0 0 3
+#delete filter/item : NO DG
+rpause 10000
+dfi 3
+#delete item : WITH DG
+gfi 0 8 3
+atf 3 8 1 0 1 3
+rpause 10000
+dtf 3
+atf 3 8 1 0 1 3
+#delete filter/item : WITH DG
+rpause 10000
+dfi 3

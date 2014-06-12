@@ -1,0 +1,8 @@
+log logfile ------------------------ALLDABZAPP-------------------------------
+logtime logfile START...
+batch DAB_VB/ZAPP/loop_alldab_init
+batchl DAB_VB/ZAPP/loop_all_dab 80
+loga logfile 255
+dch 1
+batch DAB_VB/ZAPP/loop_end
+logtime logfile STOP....

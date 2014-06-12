@@ -1,0 +1,8 @@
+gch 690000 8 1 0 0
+mnt 0 100 0
+gfi 0 2 0
+atf 0 1008 768 0 0
+mntstart
+pause 10000
+mntstop
+dch 0

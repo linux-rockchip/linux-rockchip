@@ -1,0 +1,6 @@
+log logfile ============================SCAN=======================================
+freqclear
+batchl DAB_VB/ZAPP/dab_rtm_scan 10
+logtime logfile SCAN....
+logdrv logfile
+#todo : tune + monit??

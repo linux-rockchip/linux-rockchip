@@ -1,0 +1,15 @@
+#
+# Headset device configuration
+#
+
+menu "Headset device support"
+
+config RK_HEADSET
+	tristate "Rockchips HeadSet support"
+	---help---
+		Rockchips HeadSet support:
+		    support hook interrupt mode.
+		    support hook adc mode.
+
+endmenu
+

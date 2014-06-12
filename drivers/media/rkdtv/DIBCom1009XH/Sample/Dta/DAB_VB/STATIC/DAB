@@ -1,0 +1,7 @@
+log logfile ---------------------------DAB-----------------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/dab_init
+fpause 100000
+loga logfile 255
+batch DAB_VB/STATIC/dab_end
+logtime logfile STOP....

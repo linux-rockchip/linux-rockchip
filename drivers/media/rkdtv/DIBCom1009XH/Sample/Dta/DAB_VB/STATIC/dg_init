@@ -1,0 +1,12 @@
+#channel DAB
+gch 176640 5 3 0 0
+#item fic
+gfi 0 5 0
+atf 0 0
+#item dab audio
+gfi 0 7 1
+atf 1 4 0 1
+#item dab packet with dg
+gfi 0 8 2
+atf 2 8 1 0 1 2
+mntstart

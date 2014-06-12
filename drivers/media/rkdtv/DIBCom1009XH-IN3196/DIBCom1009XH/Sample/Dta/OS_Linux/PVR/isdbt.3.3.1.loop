@@ -1,0 +1,11 @@
+gstr 3 2 1 1 0
+gfe 3 2
+gch 474000 6 0 3 0 1 0
+mnt 1 100 0
+mnt 0 100 0
+gfi 1 0 1
+atf 1 8192 1
+pause 3000
+dch 1
+dstr 3
+

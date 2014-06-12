@@ -1,0 +1,30 @@
+#add all dab filters/items
+gfi 0 5 0
+atf 0 0
+gfi 0 7 1
+atf 1 5 0 1
+gfi 0 6 2
+atf 2 6 2
+gfi 0 7 3
+atf 3 4 3
+rpause 10000
+#delete all dab items
+dtf 0
+dtf 1
+dtf 2
+dtf 3
+#add all dab items
+atf 0 0
+atf 1 5 0 1
+atf 2 6 2
+atf 3 4 3
+rpause 10000
+#delete all dab filters/items
+dtf 0
+dfi 0
+dtf 1
+dfi 1
+dtf 2
+dfi 2
+dtf 3
+dfi 3

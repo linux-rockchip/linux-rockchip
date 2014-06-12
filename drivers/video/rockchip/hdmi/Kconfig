@@ -1,0 +1,14 @@
+menuconfig RK_HDMI
+       bool "Rockchip HDMI support"
+       depends on FB_ROCKCHIP
+       select FB_MODE_HELPERS
+       
+source "drivers/video/rockchip/hdmi/rk3288/Kconfig"
+
+config RK_HDMI_DEBUG
+		bool "Rockchip HDMI Debugging"
+        depends on RK_HDMI
+        default n
+		help
+		  Enableds verbose debugging the the HDMI drivers
+

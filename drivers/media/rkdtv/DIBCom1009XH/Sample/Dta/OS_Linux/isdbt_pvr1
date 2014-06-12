@@ -1,0 +1,7 @@
+sdemod 1
+gch 737143 6 2 1 1 0 0
+mnt 0 100 0
+gfi 0 0 0
+atf 0 8193 0
+pause 10000
+dch 0

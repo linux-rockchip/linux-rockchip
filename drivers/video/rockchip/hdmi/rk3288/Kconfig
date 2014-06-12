@@ -1,0 +1,7 @@
+config  HDMI_RK3288
+        bool "RK32 HDMI support"
+        depends on LCDC_RK3288 && RK_HDMI
+        help
+           Support rk32 hdmi if you say y here
+
+

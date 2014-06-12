@@ -1,0 +1,7 @@
+log logfile ---------------------------MSCAudio------------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/msc_init
+fpause 100000
+loga logfile 255
+batch DAB_VB/STATIC/msc_end
+logtime logfile STOP....

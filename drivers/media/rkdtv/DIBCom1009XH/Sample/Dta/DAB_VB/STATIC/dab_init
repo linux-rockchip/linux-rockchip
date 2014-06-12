@@ -1,0 +1,15 @@
+#dab channel
+gch 176640 5 3 0 0
+#fic item
+gfi 0 5 0
+atf 0 0
+#dab audio item
+gfi 0 7 1
+atf 1 5 0 1
+#tdmb item
+gfi 0 6 2
+atf 2 6 2
+#second dab audio item
+gfi 0 7 3
+atf 3 4 0 3
+mntstart

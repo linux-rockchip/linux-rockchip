@@ -1,0 +1,25 @@
+#fic item
+rpause 15000
+loga logfile 5
+dtf 0
+rpause 5000
+atf 0 0
+#TDMB filter
+rpause 5000
+loga logfile 6
+dtf 1
+rpause 5000
+atf 1 6 1
+#MSC filter
+rpause 5000
+loga logfile 7
+dtf 2
+rpause 5000
+atf 2 4 0 2
+#Msc packet filter
+rpause 5000
+loga logfile 8
+dtf 3
+rpause 5000
+atf 3 8 1 0 1 3
+rpause 5000

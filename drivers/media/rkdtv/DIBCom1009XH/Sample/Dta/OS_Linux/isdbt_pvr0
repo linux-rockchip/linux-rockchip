@@ -1,0 +1,9 @@
+sdemod 1
+gch 737143 6 2 0 0
+mnt 0 100 0
+gfi_async 0 0 0
+atf 0 274 0
+mntstart
+pause 10000
+mntstop
+dch 0

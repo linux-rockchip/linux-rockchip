@@ -1,0 +1,12 @@
+gch 176640 8 3 0 0
+gch 474000 8 1 0 1
+gfi 0 5 0
+atf 0 0
+gfi 0 7 2
+atf 2 4 0 2
+gfi 1 0 1
+atf 1 0 1
+gfi 0 6 3
+atf 3 6 3
+mntstart
+#todo : add sipsi

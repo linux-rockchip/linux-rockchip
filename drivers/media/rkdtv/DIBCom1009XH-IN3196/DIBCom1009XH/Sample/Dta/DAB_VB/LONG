@@ -1,0 +1,6 @@
+settime 40
+log logfile ###############################DYNAMIC_TESTS###########################
+batch DAB_VB/ZAPPING_LONG
+log logfile ###############################STATIC_TESTS############################
+batch DAB_VB/ALL
+log logfile ***********************************************************************

@@ -1,0 +1,3 @@
+obj-$(CONFIG_AU8524_CONTROL)	+= MxL5007.o MxL5007_API.o MxL_User_Define.o
+
+EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core/  -Idrivers/media/dvb/frontends -Idrivers/media/dvb/rkdtv/AU8524/AU8524A/Chip/Common/ -Idrivers/media/dvb/rkdtv/AU8524/AU8524A/Chip/AU852X_ATSC_QAM/ -Idrivers/media/dvb/rkdtv/AU8524/AU8524A/Chip/AU8524/  -Idrivers/media/dvb/rkdtv/AU8524/AU8524A/Common -Idrivers/media/dvb/rkdtv/AU8524/AU8524A/Tuner/Common

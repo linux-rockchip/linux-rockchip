@@ -1,0 +1,15 @@
+gstr 0 3 0
+gfe 0 0
+gch 200000 5 0 0 0 0 0
+mntstart
+gfi 0 5 0
+atf 0 0
+gfi 0 7 1
+atf 1 4 0 1
+gfi 0 6 2
+atf 2 6 2
+gfi 0 8 3
+atf 3 8 1 0 0 3
+pause 5000
+dstr 0
+mntstop

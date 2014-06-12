@@ -1,0 +1,4 @@
+log logfile ============================SCAN=======================================
+batchl DAB_VB/ZAPP/dab_rtm_scan 10
+logtime logfile SCAN....
+logdrv logfile

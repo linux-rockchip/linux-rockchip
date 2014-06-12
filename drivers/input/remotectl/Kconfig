@@ -1,0 +1,21 @@
+#
+# Touchscreen driver configuration
+#
+menuconfig ROCKCHIP_REMOTECTL
+	bool "rkxx remotectl"
+	default n
+	help
+	  Say Y here, will suport rk remotectl.
+	  This option doesn't affect the kernel.
+	  If unsure, say Y.
+	  
+if ROCKCHIP_REMOTECTL  
+
+config RK_REMOTECTL_GPIO
+	bool "rkxx remoctrl gpio"
+	default y
+	
+config RK_REMOTECTL_PWM
+    bool "rkxx remoctrl pwm0 capture"
+	default n
+endif

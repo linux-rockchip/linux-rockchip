@@ -1,0 +1,9 @@
+#channel dab
+gch 176640 5 3 0 0
+#fic filter/item
+gfi 0 5 0
+atf 0 0
+#TDMB filter/item
+gfi 0 6 1
+atf 1 6 1
+mntstart

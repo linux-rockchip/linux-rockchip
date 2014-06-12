@@ -1,0 +1,7 @@
+log logfile ---------------------------DataGroup-------------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/dg_init
+fpause 100000
+loga logfile 255
+batch DAB_VB/STATIC/dg_end
+logtime logfile STOP....

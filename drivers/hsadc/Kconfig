@@ -1,0 +1,9 @@
+
+config ROCKCHIP_HSADC
+	bool "Hsadc support"
+	depends on ARCH_ROCKCHIP
+	default n
+	help
+	  Say Y here to enable Rockchip hsadc driver.
+
+	  

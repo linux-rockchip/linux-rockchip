@@ -1,0 +1,7 @@
+log logfile ------------------------PACKET-ZAPP---------------------------
+logtime logfile START...
+batch DAB_VB/ZAPP/loop_packet_init
+batchl DAB_VB/ZAPP/loop_packet 40
+loga logfile 255
+batch DAB_VB/ZAPP/loop_end
+logtime logfile STOP....

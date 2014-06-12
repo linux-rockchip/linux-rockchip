@@ -1,0 +1,54 @@
+# KERNELRELEASE is a flag for a single run of the first condition
+# exported by KERNELSRCDIR/Makefile
+ifndef KERNELRELEASE
+
+KERNELRELEASE := $(shell uname -r)
+KDIR    := /lib/modules/$(KERNELRELEASE)/build
+
+default:
+	$(SILENT)$(ERR)
+	$(SILENT)$(MAKE) -I$(CURDIR) -C $(KDIR) M=$(CURDIR)
+
+clean:
+	$(SILENT)$(ERR)
+	$(SILENT)-rm -f *.o .*.cmd *.mod.c *.ko *.symvers >/dev/null 2>&1
+	$(SILENT)-rm ../../Bridge/$(BRIDGE_DIR)/*.o ../../Bridge/$(BRIDGE_DIR)/.*.o.cmd >/dev/null 2>&1
+	$(SILENT)-rm ../../*/Common/*.o ../../*/Common/.*.o.cmd >/dev/null 2>&1
+	$(SILENT)-rm ../../*/Common/*/*.o ../../*/Common/*/.*.o.cmd >/dev/null 2>&1
+	$(SILENT)-rm -Rf .tmp_versions  >/dev/null 2>&1
+
+all: default
+
+else
+# this branch is executed when called from KERNELSRCDIR Makefile
+
+# M was initialized in the first invocation of the Makefile
+BRIDGE := $(M)/../../Bridge
+
+BRIDGE_CHIP_PATH := $(addprefix $(BRIDGE)/Common/,$(CHIP_SELECT))
+
+INCLUDE := -I$(BRIDGE)/$(BRIDGE_DIR) -I$(M) -I$(BRIDGE)/Common -I$(BRIDGE)/Common/Messages $(addprefix -I,$(BRIDGE_CHIP_PATH))
+
+EXTRA_CFLAGS += $(INCLUDE) $(DEFINES)
+EXTRA_CFLAGS += -Wall
+
+BRIDGE_CHIP_SOURCES := $(wildcard $(addsuffix /*.c, $(BRIDGE_CHIP_PATH)))
+BRIDGE_CHIP_SOURCES += $(BRIDGE)/Common/Messages/DibMsgGeneric.c $(BRIDGE)/Common/Messages/DibMsgData.c $(BRIDGE)/Common/Messages/DibMsgFields.c
+
+SOURCES_SDK_COMMON := $(shell echo $(BRIDGE)/Common/*.c  | sed 's,$(M),,g' ) \
+                      $(shell echo $(BRIDGE_CHIP_SOURCES) | sed 's,$(M),,g' )
+OBJECTS_SDK_COMMON := $(SOURCES_SDK_COMMON:%.c=%.o)
+
+SOURCES_SDK_TARGET := $(shell echo $(BRIDGE)/$(BRIDGE_DIR)/*.c | sed 's,$(M),,g' )
+OBJECTS_SDK_TARGET := $(SOURCES_SDK_TARGET:%.c=%.o)
+
+OBJS := $(OBJECTS_SDK_COMMON) $(OBJECTS_SDK_TARGET)
+OBJS += DibBridgeTargetModule.o DibBridgeTargetIrq.o DibBridgeTargetMpe.o DibBridgeTargetNet.o
+
+MOD_NAME := DibBridge
+
+# the following variables trigger actions in scripts/Makefile.build
+$(MOD_NAME)-objs += $(OBJS)
+obj-m += $(MOD_NAME).o
+
+endif

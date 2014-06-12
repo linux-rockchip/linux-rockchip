@@ -1,0 +1,9 @@
+log logfile ---------------------------PVR------------------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/pvr_init
+fpause 50000
+loga logfile 255
+logts logfile
+batch DAB_VB/STATIC/pvr_end
+logtime logfile STOP....
+#add SIPSI!!

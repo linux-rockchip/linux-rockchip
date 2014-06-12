@@ -1,0 +1,16 @@
+#delete item
+gfi 0 7 3
+atf 3 4 0 3
+gfi 0 7 2
+atf 2 5 0 2
+rpause 10000
+dtf 3
+dtf 2
+atf 3 4 0 3
+atf 2 5 0 2
+#delete filter/item
+rpause 10000
+dfi 3
+dfi 2
+
+

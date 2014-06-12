@@ -1,0 +1,7 @@
+log logfile ------------------------MSC-ZAPP-------------------------------
+logtime logfile START...
+batch DAB_VB/ZAPP/loop_msc_init
+batchl DAB_VB/ZAPP/loop_msc 80
+loga logfile 255
+batch DAB_VB/ZAPP/loop_end
+logtime logfile STOP....

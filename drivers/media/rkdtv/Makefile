@@ -1,0 +1,19 @@
+#
+# Makefile for the rockchip support DVB adapters drivers.
+#
+
+obj-$(CONFIG_ROCKCHIP_DTV)	+= TSTV.o 
+
+obj-$(CONFIG_AU8524_CONTROL)	+= AU8524/
+obj-$(CONFIG_DIBCOM8096_CONTROL)	+= DIBCom8096/
+obj-$(CONFIG_DIBCOM7090_CONTROL)	+= DIBCom7090/
+obj-$(CONFIG_MTV818_CONTROL)	+= MTV818/
+obj-$(CONFIG_NMI310_CONTROL)	+= NMI310_Driver/
+obj-$(CONFIG_NMI320_CONTROL)	+= NMI320_Driver/
+obj-$(CONFIG_SIANO1130_CONTROL)	+= SIANO_SMS1130/
+obj-$(CONFIG_GX1131_CONTROL)	+= GX1131/
+obj-$(CONFIG_GX1001_CONTROL)	+= GX1001/
+obj-$(CONFIG_ITE9133_CONTROL)	+= ITE9133/
+obj-$(CONFIG_DIBCOM1009XH_CONTROL) += DIBCom1009XH/
+
+EXTRA_CFLAGS += -Idrivers/media/dvb-core/  -Idrivers/media/dvb-frontends  -Idrivers/spi/

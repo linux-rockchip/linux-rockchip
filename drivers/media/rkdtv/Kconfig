@@ -1,0 +1,69 @@
+if DVB_CORE
+config ROCKCHIP_DTV
+	bool "Supported Rockchip Adapters"
+	depends on DVB_CORE
+	default y  
+endif
+
+choice
+depends on ROCKCHIP_DTV
+prompt "Select Adapter for RK29"
+default DIBCOM1009XH_CONTROL
+
+config AU8524_CONTROL
+    bool "ATSC-T AU8524 CONTROL"
+
+config MTV818_CONTROL
+    bool "ISDB-T MTV818 CONTROL"
+config DIBCOM8096_CONTROL
+    tristate "ISDB-T DIBCOM8096 CONTROL"
+config DIBCOM7090_CONTROL
+tristate "DVB-T DIBCOM7090 CONTROL"
+    
+config NMI310_CONTROL
+    bool "DVB-T NMI310 CONTROL"
+	
+config NMI320_CONTROL
+    bool "DVB-T NMI320 CONTROL"
+	
+config SIANO1130_CONTROL
+    bool "ISDB-T SIANO1130 CONTROL"
+    
+config GX1131_CONTROL
+    bool "DVB-S/DVB-S2 GX1131 CONTROL"    
+    
+config GX1001_CONTROL
+    bool "DVB-C GX1001 CONTROL"       
+    
+config ITE9133_CONTROL
+    bool "DVB-T ITE9133 CONTROL"    
+    
+config DIBCOM1009XH_CONTROL
+	bool "Dibcom1009XH CONTROL"
+endchoice
+choice
+	prompt "Dib10096XH Mode select"
+	depends on DIBCOM1009XH_CONTROL
+	default DIBCOM1009XH_DVB_CONTROL
+	---help---
+		
+config DIBCOM1009XH_DVB_CONTROL   
+	  bool "DVBT Mode"  	
+	  
+config DIBCOM1009XH_ISDB_ONESEG_CONTROL   
+	  bool "ISDBT One Seg Mode" 
+	  
+config DIBCOM1009XH_ISDB_FULLSEG_CONTROL   
+	  bool "ISDBT Full Seg Mode" 
+	  
+if DIBCOM1009XH_ISDB_FULLSEG_CONTROL && DVB_CORE
+config DIBCOM1009XH_ISDB_BCAS
+	bool "Supported ISDB BCAS Syetem Support"
+	depends on DIBCOM1009XH_ISDB_FULLSEG_CONTROL
+	default n  
+endif 	  
+endchoice   
+
+
+      
+

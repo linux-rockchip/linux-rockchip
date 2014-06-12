@@ -1,0 +1,7 @@
+log logfile ---------------------------FIC------------------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/fic_init
+fpause 50000
+loga logfile 255
+batch DAB_VB/STATIC/fic_end
+logtime logfile STOP....

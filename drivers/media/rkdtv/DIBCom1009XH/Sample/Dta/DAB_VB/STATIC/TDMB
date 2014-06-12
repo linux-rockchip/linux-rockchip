@@ -1,0 +1,7 @@
+log logfile ---------------------------TDMB----------------------------------------
+logtime logfile START...
+batch DAB_VB/STATIC/tdmb_init
+fpause 100000
+loga logfile 255
+batch DAB_VB/STATIC/tdmb_end
+logtime logfile STOP....
