@@ -143,6 +143,7 @@ struct rockchip_spdif_info {
 	void __iomem	*regs;
 	unsigned long	clk_rate;
 	struct clk	*clk;
+	struct clk	*hclk;
 	struct snd_dmaengine_dai_dma_data	dma_playback;
 };
 
@@ -167,9 +168,9 @@ static void spdif_snd_txctrl(struct rockchip_spdif_info *spdif, int on)
 		writel(xfer, regs + XFER);
 		writel(opr, regs + DMACR);
 		RK_SPDIF_DBG("on xfer=0x%x,opr=0x%x\n",readl(regs + XFER),readl(regs + DMACR));
-    }else{
-  	    xfer &= ~XFER_TRAN_START;
-  	    opr  &= ~DMACR_TRAN_DMA_ENABLE; 
+  }else{
+    xfer &= ~XFER_TRAN_START;
+    opr  &= ~DMACR_TRAN_DMA_ENABLE; 
 		writel(xfer, regs + XFER);
 		writel(opr, regs + DMACR);
 		writel(1<<7, regs + CFGR);
@@ -411,8 +412,14 @@ static int spdif_probe(struct platform_device *pdev)
 		printk("spdif:Unable to get register resource.\n");
 		return -ENXIO;
 	}
-
-	spdif->clk= clk_get(&pdev->dev, "spdif_mclk");
+	spdif->hclk = clk_get(&pdev->dev, "spdif_hclk");
+	if(IS_ERR(spdif->hclk) ) {
+		dev_err(&pdev->dev, "get spdif_hclk failed.\n");
+	} else{
+		clk_prepare_enable(spdif->hclk);
+	}
+	
+	spdif->clk= clk_get(&pdev->dev, "spdif_8ch_mclk");
 	if (IS_ERR(spdif->clk)) {
 		dev_err(&pdev->dev, "Can't retrieve spdif clock\n");
 		return PTR_ERR(spdif->clk);
@@ -499,7 +506,23 @@ static struct platform_driver rockchip_spdif_driver = {
 		.of_match_table = of_match_ptr(exynos_spdif_match),
 	},
 };
-module_platform_driver(rockchip_spdif_driver);
+
+static int __init rk_spdif_init(void)
+{
+    RK_SPDIF_DBG("rk_spdif_init\n");
+    return platform_driver_register(&rockchip_spdif_driver);
+}
+
+static void __exit rk_spdif_exit(void)
+{
+    RK_SPDIF_DBG("rk_spdif_exit\n");
+    platform_driver_unregister(&rockchip_spdif_driver);
+}
+
+
+late_initcall(rk_spdif_init);
+module_exit(rk_spdif_exit);
+//module_platform_driver(rockchip_spdif_driver);
 
 MODULE_AUTHOR("Seungwhan Youn, <sw.youn@rockchip.com>");
 MODULE_DESCRIPTION("rockchip S/PDIF Controller Driver");

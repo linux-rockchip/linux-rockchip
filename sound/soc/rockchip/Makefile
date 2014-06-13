@@ -10,6 +10,7 @@ snd-soc-rockchip-spdif-objs := rk_spdif.o
 obj-$(CONFIG_SND_RK_SOC) += snd-soc-rockchip.o
 obj-$(CONFIG_SND_RK_SOC_I2S) += snd-soc-rockchip-i2s.o
 obj-$(CONFIG_SND_RK_SOC_SPDIF) += snd-soc-rockchip-spdif.o
+obj-$(CONFIG_SND_RK_SOC_CARD_SPDIF) += snd-soc-hdmi-spdif.o
 
 # ROCKCHIP Machine Support
 snd-soc-wm8900-objs := rk_wm8900.o

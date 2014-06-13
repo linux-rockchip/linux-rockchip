@@ -249,10 +249,10 @@ struct hdmi_video {
 
 // HDMI Audio Parameters
 struct hdmi_audio {
-	u32	type;							//Audio type
-	u32	channel;						//Audio channel number
-	u32	rate;							//Audio sampling rate
-	u32	word_length;					//Audio data word length
+	u32	type;					//Audio type
+	u32	channel;				//Audio channel number
+	u32	rate;					//Audio sampling rate
+	u32	word_length;				//Audio data word length
 };
 
 // HDMI EDID Information
@@ -264,7 +264,7 @@ struct hdmi_edid {
 	unsigned char deepcolor;			//bit3:DC_48bit; bit2:DC_36bit; bit1:DC_30bit; bit0:DC_Y444;
 	unsigned int  cecaddress;			//CEC physical address
 	unsigned int  maxtmdsclock;			//Max supported tmds clock
-	unsigned char fields_present;		//bit7: latency bit6: i_lantency bit5: hdmi_video
+	unsigned char fields_present;			//bit7: latency bit6: i_lantency bit5: hdmi_video
 	unsigned char video_latency;
 	unsigned char audio_latency;
 	unsigned char interlaced_video_latency;
@@ -273,7 +273,7 @@ struct hdmi_edid {
 	struct fb_monspecs	*specs;			//Device spec
 	struct list_head modelist;			//Device supported display mode list
 	struct hdmi_audio *audio;			//Device supported audio info
-	int	audio_num;						//Device supported audio type number
+	unsigned int  audio_num;			//Device supported audio type number
 };
 
 struct hdmi;

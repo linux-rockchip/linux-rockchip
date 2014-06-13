@@ -335,6 +335,9 @@ config SND_SOC_HDMI_I2S
 config SND_SOC_HDMI_SPDIF
 	tristate
 
+config SND_SOC_SPDIF
+	tristate
+	
 
 config SND_SOC_SSM2602
 	tristate

@@ -27,6 +27,7 @@ struct hdmi_dev {
 	struct clk		*hdcp_clk;
 	
 	struct hdmi		*hdmi;
+	struct device		*dev;
 	struct dentry		*debugfs_dir;
 	int			irq;
 

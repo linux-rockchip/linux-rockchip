@@ -21,8 +21,8 @@ static const struct hdmi_video_timing hdmi_mode [] = {
 	{ {	"3840x2160p@24Hz",	24,		3840,	2160,	297000000,	296,	1276,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	93,	HDMI_3840x2160p_24HZ_4_3,	1,		OUT_P888	},
 	{ {	"3840x2160p@25Hz",	25,		3840,	2160,	297000000,	296,	1056,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	94,	HDMI_3840x2160p_25HZ_4_3,	1,		OUT_P888	},
 	{ {	"3840x2160p@30Hz", 	30,		3840,	2160,	297000000,	296,	176,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	95,	HDMI_3840x2160p_30HZ_4_3,	1,		OUT_P888	},
-	{ {	"3840x2160p@50Hz",	50,		3840,	2160,	594000000,	296,	1056,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	96,	HDMI_3840x2160p_50HZ_4_3,	1,		OUT_P888	},
-	{ {	"3840x2160p@60Hz",	60,		3840,	2160,	594000000,	296,	176,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	97,	HDMI_3840x2160p_60HZ_4_3,	1,		OUT_P888	},
+//	{ {	"3840x2160p@50Hz",	50,		3840,	2160,	594000000,	296,	1056,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	96,	HDMI_3840x2160p_50HZ_4_3,	1,		OUT_P888	},
+//	{ {	"3840x2160p@60Hz",	60,		3840,	2160,	594000000,	296,	176,	72,	8,	88,	10,	FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,	0,	0	},	97,	HDMI_3840x2160p_60HZ_4_3,	1,		OUT_P888	},
 
 };
 
@@ -112,7 +112,12 @@ int hdmi_find_best_mode(struct hdmi* hdmi, int vic)
 		}
 	}
 	if( (vic == 0 || found == 0) && head->next != head)	{
-		modelist = list_entry(head->next, struct display_modelist, list);
+		//If parse edid error, we select default mode;
+		if(hdmi->edid.specs == NULL || hdmi->edid.specs->modedb_len == 0)
+			return HDMI_VIDEO_DEFAULT_MODE;
+			//modelist = list_entry(head->prev, struct display_modelist, list);
+		else
+			modelist = list_entry(head->next, struct display_modelist, list);
 	}
 		
 	if(modelist != NULL)
@@ -180,7 +185,9 @@ static int hdmi_videomode_compare(const struct fb_videomode *mode1,
 			return 1;
 		else if(mode1->yres == mode2->yres)
 		{
-			if(mode1->pixclock > mode2->pixclock)	
+			if(mode1->vmode < mode2->vmode)
+				return 1;
+			else if(mode1->pixclock > mode2->pixclock)	
 				return 1;
 			else if(mode1->pixclock == mode2->pixclock)
 			{	
@@ -455,20 +462,17 @@ static void hdmi_sort_modelist(struct hdmi_edid *edid)
 int hdmi_ouputmode_select(struct hdmi *hdmi, int edid_ok)
 {
 	struct list_head *head = &hdmi->edid.modelist;
-	struct fb_monspecs	*specs = hdmi->edid.specs;
+	struct fb_monspecs *specs = hdmi->edid.specs;
 	struct fb_videomode *modedb = NULL, *mode = NULL;
 	int i, pixclock;
 	
 	if(edid_ok != HDMI_ERROR_SUCESS) {
 		dev_err(hdmi->dev, "warning: EDID error, assume sink as DVI !!!!");
 		hdmi->edid.sink_hdmi = 0;
-	}
-
-	if(edid_ok != HDMI_ERROR_SUCESS) {
 		hdmi->edid.ycbcr444 = 0;
 		hdmi->edid.ycbcr422 = 0;
-		hdmi->autoset = 0;
 	}
+	
 	if(head->next == head) {
 		dev_info(hdmi->dev, "warning: no CEA video mode parsed from EDID !!!!\n");
 		// If EDID get error, list all system supported mode.

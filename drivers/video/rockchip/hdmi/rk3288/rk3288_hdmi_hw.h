@@ -1458,15 +1458,6 @@ static inline int hdmi_msk_reg(struct hdmi_dev *hdmi_dev, u16 offset, u32 msk, u
         return ret;
 }
 
-void hdmi_dev_initial(struct hdmi_dev *hdmi_dev);
-int hdmi_dev_enable(struct hdmi *hdmi);
-int hdmi_dev_disable(struct hdmi *hdmi);
-int hdmi_dev_insert(struct hdmi *hdmi);
-int hdmi_dev_remove(struct hdmi *hdmi);
-int hdmi_dev_detect_hotplug(struct hdmi *hdmi);
-int hdmi_dev_read_edid(struct hdmi *hdmi, int block, unsigned char *buff);
-int hdmi_dev_config_video(struct hdmi *hdmi, struct hdmi_video *vpara);
-int hdmi_dev_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio);
-int hdmi_dev_control_output(struct hdmi *hdmi, int enable);
+void hdmi_dev_initial(struct hdmi_dev *hdmi_dev, struct hdmi_ops *ops);
 irqreturn_t hdmi_dev_irq(int irq, void *priv);
 #endif

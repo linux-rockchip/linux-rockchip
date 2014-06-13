@@ -580,36 +580,7 @@ static void rk3288_hdmi_i2cm_reset(struct hdmi_dev *hdmi_dev)
 	udelay(100);
 }
 
-void hdmi_dev_initial(struct hdmi_dev *hdmi_dev)
-{
-	// reset hdmi
-	writel_relaxed((1 << 9) | (1 << 25), RK_CRU_VIRT + 0x01d4);
-	udelay(1);
-	writel_relaxed((0 << 9) | (1 << 25), RK_CRU_VIRT + 0x01d4);
-
-	rk3288_hdmi_powerdown(hdmi_dev);
-	
-	//mute unnecessary interrrupt, only enable hpd
-	hdmi_writel(hdmi_dev, IH_MUTE_FC_STAT0, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_FC_STAT1, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_FC_STAT2, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_AS_STAT0, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_PHY_STAT0, 0xfe);
-	hdmi_writel(hdmi_dev, IH_MUTE_I2CM_STAT0, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_CEC_STAT0, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_VP_STAT0, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_I2CMPHY_STAT0, 0xff);
-	hdmi_writel(hdmi_dev, IH_MUTE_AHBDMAAUD_STAT0, 0xff);
-	
-	hdmi_writel(hdmi_dev, PHY_MASK, 0xf1);
-	
-	//Force output blue
-	hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x00);	/*R*/
-	hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x00);	/*G*/
-	hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0xff);	/*B*/
-}
-
-int hdmi_dev_detect_hotplug(struct hdmi *hdmi)
+static int hdmi_dev_detect_hotplug(struct hdmi *hdmi)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 	u32 value = hdmi_readl(hdmi_dev, PHY_STAT0);
@@ -622,7 +593,7 @@ int hdmi_dev_detect_hotplug(struct hdmi *hdmi)
 		return HDMI_HPD_REMOVED;
 }
 
-int hdmi_dev_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
+static int hdmi_dev_read_edid(struct hdmi *hdmi, int block, unsigned char *buff)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 	int i = 0, n = 0, index = 0, ret = -1, trytime = 2;
@@ -767,7 +738,7 @@ static void hdmi_dev_config_avi(struct hdmi_dev *hdmi_dev, struct hdmi_video *vp
 	hdmi_msk_reg(hdmi_dev, FC_AVICONF3, m_FC_YQ | m_FC_CN, v_FC_YQ(YQ_LIMITED_RANGE) | v_FC_CN(CN_GRAPHICS));
 }
 
-static int hdmi_dev_config_vsi(struct hdmi *hdmi, unsigned char vic_3d, unsigned char format, int auto_send)
+static int hdmi_dev_config_vsi(struct hdmi *hdmi, unsigned char vic_3d, unsigned char format)
 {
         int i = 0, id = 0x000c03;
 	unsigned char data[3] = {0};
@@ -802,17 +773,17 @@ static int hdmi_dev_config_vsi(struct hdmi *hdmi, unsigned char vic_3d, unsigned
 		hdmi_writel(hdmi_dev, FC_VSDPAYLOAD0 + i, data[i]);
 	}
 
-	if (auto_send) {
-		hdmi_msk_reg(hdmi_dev, FC_DATAUTO0, m_VSD_AUTO, v_VSD_AUTO(auto_send));
-	}
-	else {
-		hdmi_msk_reg(hdmi_dev, FC_DATMAN, m_VSD_MAN, v_VSD_MAN(1));
-	}
+//	if (auto_send) {
+		hdmi_msk_reg(hdmi_dev, FC_DATAUTO0, m_VSD_AUTO, v_VSD_AUTO(1));
+//	}
+//	else {
+//		hdmi_msk_reg(hdmi_dev, FC_DATMAN, m_VSD_MAN, v_VSD_MAN(1));
+//	}
 
 	return 0;
 }
 
-int hdmi_dev_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)
+static int hdmi_dev_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 
@@ -834,15 +805,15 @@ int hdmi_dev_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)
 	if (vpara->sink_hdmi == OUTPUT_HDMI) {
 		hdmi_dev_config_avi(hdmi_dev, vpara);
 		if ( vpara->format_3d != HDMI_3D_NONE)
-                        hdmi_dev_config_vsi(hdmi, vpara->format_3d, HDMI_VIDEO_FORMAT_3D, 1);
+                        hdmi_dev_config_vsi(hdmi, vpara->format_3d, HDMI_VIDEO_FORMAT_3D);
 		#ifndef HDMI_VERSION_2
                 else if ((vpara->vic > 92 && vpara->vic < 96) || (vpara->vic == 98)) {
 			vpara->vic = (vpara->vic == 98) ? 4 : (96 - vpara->vic);
-                        hdmi_dev_config_vsi(hdmi, vpara->vic, HDMI_VIDEO_FORMAT_4Kx2K, 1);
+                        hdmi_dev_config_vsi(hdmi, vpara->vic, HDMI_VIDEO_FORMAT_4Kx2K);
                 }
 		#endif
                 else
-                        hdmi_dev_config_vsi(hdmi, vpara->vic, HDMI_VIDEO_FORMAT_NORMAL, 1);
+                        hdmi_dev_config_vsi(hdmi, vpara->vic, HDMI_VIDEO_FORMAT_NORMAL);
 		dev_info(hdmi->dev, "[%s] sucess output HDMI.\n", __FUNCTION__);
 	}
 	else {
@@ -869,7 +840,7 @@ static void hdmi_dev_config_aai(struct hdmi_dev *hdmi_dev, struct hdmi_audio *au
 	hdmi_writel(hdmi_dev, FC_AUDICONF3, 0x00);
 }
 
-int hdmi_dev_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
+static int hdmi_dev_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 	int word_length = 0, channel = 0, mclk_fs;
@@ -1029,7 +1000,7 @@ int hdmi_dev_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
     return 0;
 }
 
-int hdmi_dev_control_output(struct hdmi *hdmi, int enable)
+static int hdmi_dev_control_output(struct hdmi *hdmi, int enable)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 
@@ -1054,7 +1025,7 @@ int hdmi_dev_control_output(struct hdmi *hdmi, int enable)
 	return 0;
 }
 
-int hdmi_dev_insert(struct hdmi *hdmi)
+static int hdmi_dev_insert(struct hdmi *hdmi)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 	
@@ -1067,7 +1038,7 @@ int hdmi_dev_insert(struct hdmi *hdmi)
 	return HDMI_ERROR_SUCESS;
 }
 
-int hdmi_dev_remove(struct hdmi *hdmi)
+static int hdmi_dev_remove(struct hdmi *hdmi)
 {
 	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
 	
@@ -1076,6 +1047,77 @@ int hdmi_dev_remove(struct hdmi *hdmi)
 	return HDMI_ERROR_SUCESS;
 }
 
+static int hdmi_dev_enable(struct hdmi *hdmi)
+{
+	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
+
+	HDMIDBG("%s", __FUNCTION__);
+	if(!hdmi_dev->enable) {
+		hdmi_dev->enable = 1;
+		hdmi_msk_reg(hdmi_dev, PHY_CONF0, m_ENHPD_RXSENSE_SIG, v_ENHPD_RXSENSE_SIG(1));
+//		enable_irq(hdmi_dev->irq);
+		if(hdmi_dev->workqueue) {
+			queue_delayed_work(hdmi_dev->workqueue, &(hdmi_dev->delay_work), msecs_to_jiffies(0));
+			hdmi_submit_work(hdmi, HDMI_HPD_CHANGE, 10, NULL);
+		}
+	}
+	return 0;
+}
+
+static int hdmi_dev_disable(struct hdmi *hdmi)
+{
+	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
+
+	HDMIDBG("%s", __FUNCTION__);
+	if(hdmi_dev->enable) {
+		hdmi_dev->enable = 0;
+		hdmi_msk_reg(hdmi_dev, PHY_CONF0, m_ENHPD_RXSENSE_SIG, v_ENHPD_RXSENSE_SIG(0));
+//		disable_irq(hdmi_dev->irq);
+	}
+	return 0;
+}
+
+void hdmi_dev_initial(struct hdmi_dev *hdmi_dev, struct hdmi_ops *ops)
+{
+	if(ops) {
+		ops->enable	= hdmi_dev_enable;
+		ops->disable	= hdmi_dev_disable;
+		ops->getStatus	= hdmi_dev_detect_hotplug;
+		ops->insert	= hdmi_dev_insert;
+		ops->remove	= hdmi_dev_remove;
+		ops->getEdid	= hdmi_dev_read_edid;
+		ops->setVideo	= hdmi_dev_config_video;
+		ops->setAudio	= hdmi_dev_config_audio;
+		ops->setMute	= hdmi_dev_control_output;
+		ops->setVSI	= hdmi_dev_config_vsi;
+	}
+	
+	// reset hdmi
+	writel_relaxed((1 << 9) | (1 << 25), RK_CRU_VIRT + 0x01d4);
+	udelay(1);
+	writel_relaxed((0 << 9) | (1 << 25), RK_CRU_VIRT + 0x01d4);
+
+	rk3288_hdmi_powerdown(hdmi_dev);
+	
+	//mute unnecessary interrrupt, only enable hpd
+	hdmi_writel(hdmi_dev, IH_MUTE_FC_STAT0, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_FC_STAT1, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_FC_STAT2, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_AS_STAT0, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_PHY_STAT0, 0xfe);
+	hdmi_writel(hdmi_dev, IH_MUTE_I2CM_STAT0, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_CEC_STAT0, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_VP_STAT0, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_I2CMPHY_STAT0, 0xff);
+	hdmi_writel(hdmi_dev, IH_MUTE_AHBDMAAUD_STAT0, 0xff);
+	
+	hdmi_writel(hdmi_dev, PHY_MASK, 0xf1);
+	
+	//Force output black
+	hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x00);	/*R*/
+	hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x00);	/*G*/
+	hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x00);	/*B*/
+}
 
 irqreturn_t hdmi_dev_irq(int irq, void *priv)
 {		
@@ -1171,29 +1213,4 @@ irqreturn_t hdmi_dev_irq(int irq, void *priv)
 	return IRQ_HANDLED;
 }
 
-int hdmi_dev_enable(struct hdmi *hdmi)
-{
-	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
-
-	if(!hdmi_dev->enable) {
-		hdmi_dev->enable = 1;
-		hdmi_msk_reg(hdmi_dev, PHY_CONF0, m_ENHPD_RXSENSE_SIG, v_ENHPD_RXSENSE_SIG(1));
-//		enable_irq(hdmi_dev->irq);
-		queue_delayed_work(hdmi_dev->workqueue, &(hdmi_dev->delay_work), msecs_to_jiffies(0));
-		hdmi_submit_work(hdmi, HDMI_HPD_CHANGE, 10, NULL);
-	}
-	return 0;
-}
-
-int hdmi_dev_disable(struct hdmi *hdmi)
-{
-	struct hdmi_dev *hdmi_dev = hdmi->property->priv;
-
-	if(hdmi_dev->enable) {
-		hdmi_dev->enable = 0;
-		hdmi_msk_reg(hdmi_dev, PHY_CONF0, m_ENHPD_RXSENSE_SIG, v_ENHPD_RXSENSE_SIG(0));
-//		disable_irq(hdmi_dev->irq);
-	}
-	return 0;
-}
 

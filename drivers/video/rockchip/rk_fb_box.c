@@ -1670,7 +1670,7 @@ int rk_get_real_fps(int before)
 EXPORT_SYMBOL(rk_get_real_fps);
 
 #endif
-#define ION_MAX 8
+#define ION_MAX 10
 static u64 ion_hanle[ION_MAX] ={0}; 
 
 static u32 pre_tv_sec = 0;

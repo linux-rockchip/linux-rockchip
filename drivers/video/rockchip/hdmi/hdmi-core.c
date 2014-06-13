@@ -160,7 +160,7 @@ static void hdmi_wq_parse_edid(struct hdmi *hdmi)
 		memset(buff, 0 , HDMI_EDID_BLOCK_SIZE);
 		rc = hdmi->ops->getEdid(hdmi, i, buff);
 		if(rc) {
-			printk("[HDMI] read edid block %d error\n", i);	
+			dev_err(hdmi->dev, "[HDMI] read edid block %d error\n", i);	
 			goto out;
 		}
 
@@ -386,7 +386,7 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 	
 	hdmi->property = property;
 	hdmi->ops = ops;
-	hdmi->enable = true;
+	hdmi->enable = false;
 	hdmi->mute = HDMI_AV_UNMUTE;
 	hdmi->hotplug = HDMI_HPD_REMOVED;
 	hdmi->autoset = HDMI_AUTO_CONFIG;
@@ -494,7 +494,7 @@ int hdmi_get_hotplug(void)
 
 int hdmi_config_audio(struct hdmi_audio	*audio)
 {
-	int i, j;
+	int i;//j;
 	struct hdmi *hdmi;
 	if(audio == NULL)
 		return HDMI_ERROR_FALSE;

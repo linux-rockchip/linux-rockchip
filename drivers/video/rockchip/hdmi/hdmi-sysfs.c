@@ -47,15 +47,16 @@ static int hdmi_get_modelist(struct rk_display_device *device, struct list_head 
 static int hdmi_set_mode(struct rk_display_device *device, struct fb_videomode *mode)
 {
 	struct hdmi *hdmi = device->priv_data;
+	struct display_modelist *display_modelist = container_of(mode, struct display_modelist, mode);
 	int vic = 0;
-	printk("%s mode %x\n", __FUNCTION__, mode);
+
 	if(mode == NULL) {
 		hdmi->autoset = 1;
 		vic = hdmi_find_best_mode(hdmi, 0);
 	}
 	else {
 		hdmi->autoset = 0;
-		vic = hdmi_videomode_to_vic(mode);
+		vic = display_modelist->vic;
 	}
 
 	if(vic && hdmi->vic != vic)

@@ -147,9 +147,9 @@ static int rk3288_hdmi_clk_enable(struct hdmi_dev *hdmi_dev)
 
 	if ((hdmi_dev->clk_on & HDMI_PD_ON) == 0) {
 		if (hdmi_dev->pd == NULL) {
-			hdmi_dev->pd = devm_clk_get(hdmi_dev->hdmi->dev, "pd_hdmi");
+			hdmi_dev->pd = devm_clk_get(hdmi_dev->dev, "pd_hdmi");
 			if (IS_ERR(hdmi_dev->pd)) {
-				dev_err(hdmi_dev->hdmi->dev, "Unable to get hdmi pd\n");
+				dev_err(hdmi_dev->dev, "Unable to get hdmi pd\n");
 				return -1;
 			}
 		}
@@ -159,9 +159,9 @@ static int rk3288_hdmi_clk_enable(struct hdmi_dev *hdmi_dev)
 
 	if ((hdmi_dev->clk_on & HDMI_PCLK_ON) == 0) {
 		if (hdmi_dev->pclk == NULL) {
-			hdmi_dev->pclk = devm_clk_get(hdmi_dev->hdmi->dev, "pclk_hdmi");
+			hdmi_dev->pclk = devm_clk_get(hdmi_dev->dev, "pclk_hdmi");
 			if (IS_ERR(hdmi_dev->pclk)) {
-				dev_err(hdmi_dev->hdmi->dev, "Unable to get hdmi pclk\n");
+				dev_err(hdmi_dev->dev, "Unable to get hdmi pclk\n");
 				return -1;
 			}
 		}
@@ -171,9 +171,9 @@ static int rk3288_hdmi_clk_enable(struct hdmi_dev *hdmi_dev)
 
 	if ((hdmi_dev->clk_on & HDMI_HDCPCLK_ON) == 0) {
 		if (hdmi_dev->hdcp_clk == NULL) {
-			hdmi_dev->hdcp_clk = devm_clk_get(hdmi_dev->hdmi->dev, "hdcp_clk_hdmi");
+			hdmi_dev->hdcp_clk = devm_clk_get(hdmi_dev->dev, "hdcp_clk_hdmi");
 			if (IS_ERR(hdmi_dev->hdcp_clk)) {
-				dev_err(hdmi_dev->hdmi->dev, "Unable to get hdmi hdcp_clk\n");
+				dev_err(hdmi_dev->dev, "Unable to get hdmi hdcp_clk\n");
 				return -1;
 			}
 		}
@@ -213,7 +213,7 @@ static int rk3288_hdmi_fb_event_notify(struct notifier_block *self, unsigned lon
 	struct fb_event *event = data;
 	int blank_mode = *((int *)event->data);
 	struct hdmi *hdmi = hdmi_dev->hdmi;
-	struct delay_work *delay_work;
+	struct delayed_work *delay_work;
 	
 	if (action == FB_EARLY_EVENT_BLANK) {
 		switch (blank_mode) {
@@ -236,7 +236,7 @@ static int rk3288_hdmi_fb_event_notify(struct notifier_block *self, unsigned lon
 				HDMIDBG("resume hdmi\n");
 				if(hdmi->sleep) {
 					rk3288_hdmi_clk_enable(hdmi_dev);
-					hdmi_dev_initial(hdmi_dev);
+					hdmi_dev_initial(hdmi_dev, NULL);
 					if(hdmi->ops->hdcp_power_on_cb)
 						hdmi->ops->hdcp_power_on_cb();
 					hdmi_submit_work(hdmi, HDMI_RESUME_CTL, 0, NULL);
@@ -266,18 +266,7 @@ static struct hdmi_property rk3288_hdmi_property = {
 	.display = DISPLAY_MAIN,
 };
 
-static struct hdmi_ops rk3288_hdmi_ops = {
-	.enable	= hdmi_dev_enable,
-	.disable = hdmi_dev_disable,
-	.getStatus = hdmi_dev_detect_hotplug,
-	.insert = hdmi_dev_insert,
-	.remove = hdmi_dev_remove,
-	.getEdid = hdmi_dev_read_edid,
-	.setVideo = hdmi_dev_config_video,
-	.setAudio = hdmi_dev_config_audio,
-	.setMute = hdmi_dev_control_output,
-//	.setCEC = hdmi_dev_set_cec,
-};
+static struct hdmi_ops rk3288_hdmi_ops;
 
 static int rk3288_hdmi_probe (struct platform_device *pdev)
 {
@@ -295,7 +284,7 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	}
 	memset(hdmi_dev, 0, sizeof(struct hdmi_dev));
 	platform_set_drvdata(pdev, hdmi_dev);
-
+	hdmi_dev->dev = &pdev->dev;
 	/*request and remap iomem*/
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -312,6 +301,16 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 		goto failed;
 	}
 	
+	/*enable pd and pclk and hdcp_clk*/
+	if (rk3288_hdmi_clk_enable(hdmi_dev) < 0) {
+		ret = -ENXIO;
+		goto failed1;
+	}
+	
+	//lcdc source select
+	grf_writel(HDMI_SEL_LCDC(rk3288_hdmi_property.videosrc), RK3288_GRF_SOC_CON6);		
+	hdmi_dev_initial(hdmi_dev, &rk3288_hdmi_ops);
+	
 	// Register HDMI device	
 	rk3288_hdmi_property.name = (char*)pdev->name;
 	rk3288_hdmi_property.priv = hdmi_dev;
@@ -323,18 +322,8 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	}
 	
 	hdmi_dev->hdmi->dev = &pdev->dev;
-	hdmi_dev->enable = 1;
-	
-	/*enable pd and pclk and hdcp_clk*/
-	if (rk3288_hdmi_clk_enable(hdmi_dev) < 0) {
-		ret = -ENXIO;
-		goto failed1;
-	}
-	
-	//lcdc source select
-	grf_writel(HDMI_SEL_LCDC(rk3288_hdmi_property.videosrc), RK3288_GRF_SOC_CON6);	
-	hdmi_dev_initial(hdmi_dev);
-	
+//	hdmi_dev->enable = 1;
+			
 	#ifdef CONFIG_HAS_EARLYSUSPEND
 	hdmi_dev->early_suspend.suspend = rk3288_hdmi_early_suspend;
 	hdmi_dev->early_suspend.resume = rk3288_hdmi_early_resume;

@@ -86,19 +86,10 @@ static int hdmi_edid_parse_dtd(unsigned char *block, struct fb_videomode *mode)
 
 int hdmi_edid_parse_base(unsigned char *buf, int *extend_num, struct hdmi_edid *pedid)
 {
-	int rc, i;
+	int rc;
 	
 	if(buf == NULL || extend_num == NULL)
 		return E_HDMI_EDID_PARAM;
-		
-//	#ifdef DEBUG	
-//	for(i = 0; i < HDMI_EDID_BLOCK_SIZE; i++)
-//	{
-//		hdmi_edid_debug("%02x ", buf[i]&0xff);
-//		if((i+1) % 16 == 0)
-//			hdmi_edid_debug("\n");
-//	}
-//	#endif
 	
 	// Check first 8 byte to ensure it is an edid base block.
 	if( buf[0] != 0x00 ||

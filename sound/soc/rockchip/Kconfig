@@ -15,7 +15,7 @@ config SND_RK_SOC_SPDIF
 
 if SND_RK_SOC
 
-if SND_RK_SOC && RK_HDMI
+if SND_RK_SOC && RK_HDMI1
 choice
   bool "Set audio support for HDMI"
   default SND_RK_SOC_HDMI_I2S
@@ -32,6 +32,15 @@ choice
 		tristate  "HDMI use SPDIF"
 endchoice
 endif #SND_RK_SOC && RK_HDMI
+
+config SND_RK_SOC_CARD_SPDIF
+    default y
+    depends on !SND_RK_SOC_HDMI_SPDIF
+    tristate "SoC spdif support for rockchip"
+		select SND_RK_SOC_SPDIF
+		select SND_SOC_HDMI_SPDIF
+		#select SND_SOC_CARD_SPDIF
+
 
 config SND_RK_SOC_AK4396
 	tristate "SoC I2S Audio support for rockchip - AK4396"
