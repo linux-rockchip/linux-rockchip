@@ -4013,6 +4013,8 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif /* defined(AP) && !defined(WLP2P) */
 	dhd_conf_set_bw(dhd);
+	dhd_conf_set_srl(dhd);
+	dhd_conf_set_lrl(dhd);
 
 #if defined(SOFTAP)
 	if (ap_fw_loaded == TRUE) {
@@ -5018,11 +5020,7 @@ fail_0:
 extern char WIFI_MODULE_NAME[];
 extern char RKWIFI_DRV_VERSION[];
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-static int __init rockchip_wifi_init_module(void)
-#else
 int rockchip_wifi_init_module(void)
-#endif
 {
     printk("=======================================================\n");
     printk("==== Launching Wi-Fi driver! (Powered by Rockchip) ====\n");
@@ -5032,11 +5030,7 @@ int rockchip_wifi_init_module(void)
     return dhd_module_init();
 }
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-static void __exit rockchip_wifi_exit_module(void)
-#else
 void rockchip_wifi_exit_module(void)
-#endif
 {
     printk("=======================================================\n");
     printk("== Dis-launching Wi-Fi driver! (Powered by Rockchip) ==\n");
@@ -5044,13 +5038,8 @@ void rockchip_wifi_exit_module(void)
     dhd_module_cleanup();
 }
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-late_initcall(rockchip_wifi_init_module);
-module_exit(rockchip_wifi_exit_module);
-#else
 EXPORT_SYMBOL(rockchip_wifi_init_module);
 EXPORT_SYMBOL(rockchip_wifi_exit_module);
-#endif
 /*
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 #ifdef USE_LATE_INITCALL_SYNC

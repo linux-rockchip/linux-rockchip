@@ -20,6 +20,7 @@
 #define _HCI_INTF_C_
 
 #include <drv_types.h>
+#include <platform_ops.h>
 
 #ifndef CONFIG_USB_HCI
 #error "CONFIG_USB_HCI shall be on!\n"
@@ -1877,7 +1878,7 @@ _func_exit_;
 extern int console_suspend_enabled;
 #endif
 
-static int __init rtw_drv_entry(void)
+static int /*__init*/ rtw_drv_entry(void)
 {
 	int ret = 0;
 
@@ -1887,9 +1888,17 @@ static int __init rtw_drv_entry(void)
 	DBG_871X_LEVEL(_drv_always_, DRV_NAME" BT-Coex version = %s\n", BTCOEXVERSION);
 #endif // BTCOEXVERSION
 
+	ret = platform_wifi_power_on();
+	if(ret != 0)
+	{
+		DBG_871X("%s: power on failed!!(%d)\n", __FUNCTION__, ret);
+		ret = -1;
+		goto exit;
+	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24))
 	//console_suspend_enabled=0;
 #endif
+
 	usb_drv.drv_registered = _TRUE;
 	rtw_suspend_lock_init();
 	rtw_drv_proc_init();
@@ -1910,13 +1919,15 @@ exit:
 	return ret;
 }
 
-static void __exit rtw_drv_halt(void)
+static void /*__exit*/ rtw_drv_halt(void)
 {
 	DBG_871X_LEVEL(_drv_always_, "module exit start\n");
 
 	usb_drv.drv_registered = _FALSE;
 
 	usb_deregister(&usb_drv.usbdrv);
+
+	platform_wifi_power_off();
 
 	rtw_suspend_lock_uninit();
 	rtw_drv_proc_deinit();
@@ -1931,29 +1942,19 @@ static void __exit rtw_drv_halt(void)
 extern int wifi_activate_usb(void);
 extern int wifi_deactivate_usb(void);
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-static int __init rockchip_wifi_init_module(void)
-#else
 int rockchip_wifi_init_module(void)
-#endif
 {
     printk("\n");
     printk("=======================================================\n");
     printk("==== Launching Wi-Fi driver! (Powered by Rockchip) ====\n");
     printk("=======================================================\n");
     printk("Realtek 8188EU USB WiFi driver (Powered by Rockchip,Ver %s) init.\n", RTL8192_DRV_VERSION);
-    wifi_deactivate_usb();
-    msleep(100);
     wifi_activate_usb();
 
     return rtw_drv_entry();
 }
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-static void __exit rockchip_wifi_exit_module(void)
-#else
 void rockchip_wifi_exit_module(void)
-#endif
 {
     printk("\n");
     printk("=======================================================\n");
@@ -1964,13 +1965,11 @@ void rockchip_wifi_exit_module(void)
     wifi_deactivate_usb();
 }
 
-#ifdef CONFIG_RK_CHECK_UACCESS
-late_initcall(rockchip_wifi_init_module);
-module_exit(rockchip_wifi_exit_module);
-#else
 EXPORT_SYMBOL(rockchip_wifi_init_module);
 EXPORT_SYMBOL(rockchip_wifi_exit_module);
-#endif
+
+//module_init(rtw_drv_entry);
+//module_exit(rtw_drv_halt);
 
 #ifdef CONFIG_INTEL_PROXIM
 _adapter  *rtw_usb_get_sw_pointer(void)

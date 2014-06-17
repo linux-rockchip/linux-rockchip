@@ -79,6 +79,7 @@ const char *const ioStaString[] =
 
 BTC_COEXIST GLBtCoexist;
 u8 GLBtcWiFiInScanState;
+u8 GLBtcWiFiInIQKState;
 
 u32 GLBtcDbgType[BTC_MSG_MAX];
 u8 GLBtcDbgBuf[BT_TMP_BUF_SIZE];
@@ -1303,6 +1304,8 @@ u8 EXhalbtcoutsrc_InitlizeVariables(void *padapter)
 
 	GLBtcWiFiInScanState = _FALSE;
 
+	GLBtcWiFiInIQKState = _FALSE;
+
 	return _TRUE;
 }
 
@@ -2007,7 +2010,7 @@ void EXhalbtcoutsrc_PnpNotify(PBTC_COEXIST pBtCoexist, u8 pnpState)
 	}
 }
 
-void EXhalbtcoutsrc_CoexDmSwitch(PBTC_COEXIST pBtCoexist)
+void EXhalbtcoutsrc_CoexDmSwitch(PBTC_COEXIST pBtCoexist, BOOLEAN antInverse)
 {
 	if (!halbtcoutsrc_IsBtCoexistAvailable(pBtCoexist))
 		return;
@@ -2021,7 +2024,7 @@ void EXhalbtcoutsrc_CoexDmSwitch(PBTC_COEXIST pBtCoexist)
 		{
 			pBtCoexist->bStopCoexDm = TRUE;
 			EXhalbtc8723b1ant_CoexDmReset(pBtCoexist);
-			EXhalbtcoutsrc_SetAntNum(BT_COEX_ANT_TYPE_DETECTED, 2);
+			EXhalbtcoutsrc_SetAntNum(BT_COEX_ANT_TYPE_DETECTED, 2, antInverse);
 			EXhalbtc8723b2ant_InitHwConfig(pBtCoexist);
 			EXhalbtc8723b2ant_InitCoexDm(pBtCoexist);
 			pBtCoexist->bStopCoexDm = FALSE;
@@ -2250,7 +2253,7 @@ void EXhalbtcoutsrc_SetChipType(u8 chipType)
 	}
 }
 
-void EXhalbtcoutsrc_SetAntNum(u8 type, u8 antNum)
+void EXhalbtcoutsrc_SetAntNum(u8 type, u8 antNum, BOOLEAN antInverse)
 {
 	if (BT_COEX_ANT_TYPE_PG == type)
 	{
@@ -2274,6 +2277,11 @@ void EXhalbtcoutsrc_SetAntNum(u8 type, u8 antNum)
 	{
 		GLBtCoexist.boardInfo.btdmAntNum = antNum;
 		GLBtCoexist.boardInfo.btdmAntPos = BTC_ANTENNA_AT_MAIN_PORT;
+	}
+
+	if (antInverse == _TRUE)
+	{
+		GLBtCoexist.boardInfo.btdmAntPos = BTC_ANTENNA_AT_AUX_PORT;
 	}
 }
 
@@ -2448,7 +2456,7 @@ u8 hal_btcoex_GetChipType(PADAPTER padapter)
 	return pHalData->bt_coexist.btChipType;
 }
 
-void hal_btcoex_SetPgAntNum(PADAPTER padapter, u8 antNum)
+void hal_btcoex_SetPgAntNum(PADAPTER padapter, u8 antNum, BOOLEAN antInverse)
 {
 	PHAL_DATA_TYPE	pHalData;
 
@@ -2456,7 +2464,7 @@ void hal_btcoex_SetPgAntNum(PADAPTER padapter, u8 antNum)
 	pHalData = GET_HAL_DATA(padapter);
 
 	pHalData->bt_coexist.btTotalAntNum = antNum;
-	EXhalbtcoutsrc_SetAntNum(BT_COEX_ANT_TYPE_PG, antNum);
+	EXhalbtcoutsrc_SetAntNum(BT_COEX_ANT_TYPE_PG, antNum, antInverse);
 }
 
 u8 hal_btcoex_GetPgAntNum(PADAPTER padapter)
@@ -2530,8 +2538,16 @@ void hal_btcoex_SpecialPacketNotify(PADAPTER padapter, u8 pktType)
 	EXhalbtcoutsrc_SpecialPacketNotify(&GLBtCoexist, pktType);
 }
 
+void hal_btcoex_IQKNotify(PADAPTER padapter, u8 state)
+{
+	GLBtcWiFiInIQKState = state;
+}
+
 void hal_btcoex_BtInfoNotify(PADAPTER padapter, u8 length, u8 *tmpBuf)
 {
+	if (GLBtcWiFiInIQKState == _TRUE)
+		return;
+	
 	EXhalbtcoutsrc_BtInfoNotify(&GLBtCoexist, tmpBuf, length);
 }
 

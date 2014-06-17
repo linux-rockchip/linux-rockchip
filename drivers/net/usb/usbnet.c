@@ -1451,17 +1451,7 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 		if ((dev->driver_info->flags & FLAG_ETHER) != 0 &&
 		    ((dev->driver_info->flags & FLAG_POINTTOPOINT) == 0 ||
 		     (net->dev_addr [0] & 0x02) == 0))
-		{
-			if((le16_to_cpu(xdev->descriptor.idVendor) == 0x258d) && (le16_to_cpu(xdev->descriptor.idProduct) == 0x2000)){
-			strcpy (net->name, "lte%d");
-			}else if((le16_to_cpu(xdev->descriptor.idVendor) == 0x258d) && (le16_to_cpu(xdev->descriptor.idProduct) == 0x1101)){
-			strcpy (net->name, "lte%d");
-			}else if((le16_to_cpu(xdev->descriptor.idVendor) == 0x216f) && (le16_to_cpu(xdev->descriptor.idProduct) == 0x0043)){
-			strcpy (net->name, "lte%d");
-			}else{
 			strcpy (net->name, "eth%d");
-			}
-		}
 		/* WLAN devices should always be named "wlan%d" */
 		if ((dev->driver_info->flags & FLAG_WLAN) != 0)
 			strcpy(net->name, "wlan%d");

@@ -1348,9 +1348,11 @@ u8 convert_ip_addr(u8 hch, u8 mch, u8 lch)
 }
 
 extern char* rtw_initmac;
+extern int rk29sdk_wifi_mac_addr(unsigned char *buf);
 void rtw_macaddr_cfg(u8 *mac_addr)
 {
 	u8 mac[ETH_ALEN];
+    u8 macbuf[30] = {0};
 	if(mac_addr == NULL)	return;
 	
 	if ( rtw_initmac )
@@ -1364,9 +1366,22 @@ void rtw_macaddr_cfg(u8 *mac_addr)
 		_rtw_memcpy(mac_addr, mac, ETH_ALEN);
 	}
 	else
-	{	//	Use the mac address stored in the Efuse
-		_rtw_memcpy(mac, mac_addr, ETH_ALEN);
-	}
+    {
+        printk("Wifi Efuse Mac => %02x:%02x:%02x:%02x:%02x:%02x\n", mac_addr[0], mac_addr[1],
+            mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        if (!rk29sdk_wifi_mac_addr(macbuf)) {
+            int jj,kk;
+            printk("=========> get mac address from flash %s\n", macbuf);
+            for( jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3 )
+            {
+                mac[jj] = key_2char2num(macbuf[kk], macbuf[kk+ 1]);
+            }
+            _rtw_memcpy(mac_addr, mac, ETH_ALEN);
+        } else {
+            //  Use the mac address stored in the Efuse
+            _rtw_memcpy(mac, mac_addr, ETH_ALEN);
+        }
+    }
 	
 	if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
 	     (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||

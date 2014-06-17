@@ -36,6 +36,10 @@ void rtl8188ee_set_hal_ops(_adapter * padapter);
 void rtl8812ae_set_hal_ops(_adapter * padapter);
 #endif
 
+#ifdef CONFIG_RTL8723B
+void rtl8723be_set_hal_ops(_adapter * padapter);
+#endif
+
 void rtw_set_hal_ops(_adapter *padapter);
 
 #endif //__PCIE_HAL_H__

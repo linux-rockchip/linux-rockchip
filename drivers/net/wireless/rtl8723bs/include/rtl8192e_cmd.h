@@ -22,22 +22,24 @@
 
 typedef enum _RTL8192E_H2C_CMD 
 {
-	H2C_8192E_RSVDPAGE = 0,
-	H2C_8192E_MSRRPT = 1,
-	H2C_8192E_SCAN = 2,
-	H2C_8192E_KEEP_ALIVE_CTRL = 3,
-	H2C_8192E_DISCONNECT_DECISION = 4,
+	H2C_8192E_RSVDPAGE	= 0x00,
+	H2C_8192E_MSRRPT	= 0x01,
+	H2C_8192E_SCAN		= 0x02,
+	H2C_8192E_KEEP_ALIVE_CTRL = 0x03,
+	H2C_8192E_DISCONNECT_DECISION = 0x04,
+	H2C_8192E_INIT_OFFLOAD = 0x06,
+	H2C_8192E_AP_OFFLOAD = 0x08,
+	H2C_8192E_BCN_RSVDPAGE = 0x09,
+	H2C_8192E_PROBERSP_RSVDPAGE = 0x0a,
 
-	H2C_8192E_INIT_OFFLOAD = 6,		
-	H2C_8192E_AP_OFFLOAD = 8,
-	H2C_8192E_BCN_RSVDPAGE = 9,
-	H2C_8192E_PROBERSP_RSVDPAGE = 10,
+	H2C_8192E_AP_WOW_GPIO_CTRL = 0x13,
 	
 	H2C_8192E_SETPWRMODE = 0x20,		
 	H2C_8192E_PS_TUNING_PARA = 0x21,
 	H2C_8192E_PS_TUNING_PARA2 = 0x22,
 	H2C_8192E_PS_LPS_PARA = 0x23,
 	H2C_8192E_P2P_PS_OFFLOAD = 0x24,
+	H2C_8192E_SAP_PS = 0x26,
 	H2C_8192E_RA_MASK = 0x40,
 	H2C_8192E_RSSI_REPORT = 0x42,
 
@@ -175,10 +177,14 @@ typedef struct _SETWOWLAN_PARM{
 
 #define FW_REMOTE_WAKE_CTRL_EN			BIT(0)
 #define FW_REALWOWLAN_EN				BIT(5)
-void rtl8192e_set_wowlan_cmd(_adapter* padapter, u8 enable);
-void SetFwRelatedForWoWLAN8192E(_adapter* padapter, u8 bHostIsGoingtoSleep);
 #endif//CONFIG_WOWLAN
 
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
+void rtl8192e_set_wowlan_cmd(_adapter* padapter, u8 enable);
+void rtl8192e_set_ap_wowlan_cmd(_adapter* padapter, u8 enable);
+void rtl8192e_set_ap_ps_wowlan_cmd(_adapter* padapter, u8 enable);
+void SetFwRelatedForWoWLAN8192E(_adapter* padapter, u8 bHostIsGoingtoSleep);
+#endif
 /// TX Feedback Content
 #define 	USEC_UNIT_FOR_8192E_C2H_TX_RPT_QUEUE_TIME			256
 

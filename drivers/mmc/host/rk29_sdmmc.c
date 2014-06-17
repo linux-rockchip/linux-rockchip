@@ -575,6 +575,9 @@ static int rk29_sdmmc_reset_fifo(struct rk29_sdmmc *host)
 static int rk29_sdmmc_wait_unbusy(struct rk29_sdmmc *host)
 {
     int time_out = 500000;//250000; //max is 250ms; //adapt the value to the sick card.  modify at 2011-10-08
+    
+    if(RK29_SDMMC_EMMC_ID == host->host_dev_id)
+        time_out = 2500000;
 
 #if SDMMC_USE_INT_UNBUSY
     if((24==host->cmd->opcode)||(25==host->cmd->opcode))
@@ -1884,6 +1887,11 @@ static int rk29_sdmmc_start_request(struct mmc_host *mmc )
 	mrq = host->new_mrq;
 	cmd = mrq->cmd;
 	cmd->error = 0;
+  	if(host->shutdown == 1){
+        		spin_unlock_irqrestore(&host->lock, iflags);
+        		printk("rk29_sdmmc_start_request....shutdown=1\n");
+        		return;
+    }
 	
 	cmdr = rk29_sdmmc_prepare_command(cmd);
 	ret = SDM_SUCCESS;
@@ -2596,6 +2604,11 @@ static const struct mmc_host_ops rk29_sdmmc_ops[] = {
 		.set_ios	= rk29_sdmmc_set_ios,
 		.get_ro		= rk29_sdmmc_get_ro,
 		.get_cd		= rk29_sdmmc_get_cd,
+		#if defined(CONFIG_USE_SDMMC0_FOR_WIFI_DEVELOP_BOARD) 
+		#if !defined(CONFIG_MTK_COMBO_MT66XX)
+		.enable_sdio_irq = rk29_sdmmc_enable_sdio_irq,
+	        #endif
+	        #endif
 	    .start_signal_voltage_switch	= rk_sdmmc_signal_voltage_switch,
 	},
 	{
@@ -3552,8 +3565,8 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 	}	
     
 	host = mmc_priv(mmc);
-    host->mmc = mmc;
-    host->pdev = pdev;
+	host->mmc = mmc;
+	host->pdev = pdev;
 
 	host->ctype = 0; // set default 1 bit mode
 	host->errorstep = 0;
@@ -3570,13 +3583,13 @@ static int rk29_sdmmc_probe(struct platform_device *pdev)
 	host->irq_state = true;
 	host->timeout_times = 0;
 	host->host_dev_id = real_dev_id;
-
+	host->shutdown = 0;
 	//detect pin info
-    host->det_pin.io        = pdata->det_pin_info.io;
-    host->det_pin.enable    = pdata->det_pin_info.enable;
-    host->det_pin.iomux.name  = pdata->det_pin_info.iomux.name;
-    host->det_pin.iomux.fgpio = pdata->det_pin_info.iomux.fgpio;
-    host->det_pin.iomux.fmux  = pdata->det_pin_info.iomux.fmux;
+	host->det_pin.io        = pdata->det_pin_info.io;
+	host->det_pin.enable    = pdata->det_pin_info.enable;
+	host->det_pin.iomux.name  = pdata->det_pin_info.iomux.name;
+	host->det_pin.iomux.fgpio = pdata->det_pin_info.iomux.fgpio;
+	host->det_pin.iomux.fmux  = pdata->det_pin_info.iomux.fmux;
     //power pin info
     host->gpio_power_en = pdata->power_en;
     host->gpio_power_en_level = pdata->power_en_level;
@@ -4023,29 +4036,52 @@ out:
 	return ret;
 }
 
+
 static int rk29_sdmmc_shutdown(struct platform_device *pdev)
 {
-	struct mmc_host *mmc = platform_get_drvdata(pdev);
+	struct mmc_host *mmc;// = platform_get_drvdata(pdev);
 	struct rk29_sdmmc *host;
+    struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
+	int time_out;
+
+    if( !(pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
+        return 0;
+        
+    mmc =   platform_get_drvdata(pdev); 
+	if(mmc == NULL)
+		return 0;
 
 	host = mmc_priv(mmc);
+	host->shutdown = 1;
 	printk("rk29_sdmmc_shutdown!\n");
 
-	/* NOT NEED force eMMC go pre-idle state*/
-	
 	/* SHOULD NOT CHANGE THIS STEP, PLS!*/
 	clk_enable(clk_get(&pdev->dev, "emmc"));
-	clk_enable(clk_get(&pdev->dev, "hclk_emmc"));	
+	clk_enable(clk_get(&pdev->dev, "hclk_emmc"));
+    mdelay(10); 
+    dsb();
+	
+ 	time_out = 500;
+    while (rk29_sdmmc_read(host->regs, SDMMC_STATUS) & (SDMMC_STAUTS_DATA_BUSY|SDMMC_STAUTS_MC_BUSY))
+	{
+            mdelay(100);
+            time_out --;
+            if(time_out == 0){
+                printk("rk29_sdmmc_shutdown: host is busy before CMD0 with arg:0xf0f0f0f0\n");
+                break;
+            }
+    }
+	printk("rk29_sdmmc_shutdown: host issue CMD0 with arg:0xf0f0f0f0\n");
+	/*force eMMC go pre-idle state*/
+	rk29_sdmmc_write(host->regs, SDMMC_CMDARG, 0xF0F0F0F0);
+	rk29_sdmmc_write(host->regs, SDMMC_CMD, 0 | SDMMC_CMD_INIT| SDMMC_CMD_USE_HOLD_REG|SDMMC_CMD_START);
+	mdelay(200);
 	
 	rk29_sdmmc_write(host->regs,SDMMC_PWREN, 0x0);
 	rk29_sdmmc_write(host->regs,SDMMC_RST_n, 0x0);
 	dsb();
 	
-	mdelay(50);
 	
-	rk29_sdmmc_write(host->regs,SDMMC_PWREN, 0x1);
-	rk29_sdmmc_write(host->regs,SDMMC_RST_n, 0x1);
-	dsb();
 
 
 	return 0;
@@ -4156,10 +4192,20 @@ static void rk29_sdmmc_sdcard_resume(struct rk29_sdmmc *host)
 
 static int rk29_sdmmc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-    struct mmc_host *mmc = platform_get_drvdata(pdev);
-    struct rk29_sdmmc *host = mmc_priv(mmc);
-    int ret = 0;
+	struct mmc_host *mmc=NULL;
+	struct rk29_sdmmc *host=NULL;
+	int ret = 0;
+    struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
 
+    if((pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
+        return 0;
+        
+    mmc =   platform_get_drvdata(pdev); 
+	if(mmc == NULL)
+			return 0;
+
+	host = mmc_priv(mmc);
+	
     if(host && host->pdev && (RK29_CTRL_SDMMC_ID == host->host_dev_id) )
     {
         if (mmc)
@@ -4220,9 +4266,19 @@ static int rk29_sdmmc_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int rk29_sdmmc_resume(struct platform_device *pdev)
 {
-    struct mmc_host *mmc = platform_get_drvdata(pdev);
-    struct rk29_sdmmc *host = mmc_priv(mmc);
-    int ret = 0;
+	struct mmc_host *mmc=NULL;
+	struct rk29_sdmmc *host=NULL;
+	int ret = 0;
+    struct rk29_sdmmc_platform_data *pdata = pdev->dev.platform_data;
+
+    if( (pdata && pdata->emmc_is_selected && pdata->emmc_is_selected(RK29_SDMMC_EMMC_ID))) 
+        return 0;
+        
+    mmc =   platform_get_drvdata(pdev); 
+	if(mmc == NULL)
+	       return 0;
+
+	host = mmc_priv(mmc);
 
     if(host && host->pdev && (RK29_CTRL_SDMMC_ID == host->host_dev_id) )
     {

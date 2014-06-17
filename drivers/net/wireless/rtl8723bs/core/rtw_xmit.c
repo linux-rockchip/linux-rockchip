@@ -632,17 +632,10 @@ static void update_attrib_phy_info(struct pkt_attrib *pattrib, struct sta_info *
 
 	pattrib->sgi = query_ra_short_GI(psta);
 
+	pattrib->ldpc = psta->ldpc;
+	pattrib->stbc = psta->stbc;
+
 #ifdef CONFIG_80211N_HT
-#ifdef CONFIG_80211AC_VHT
-	if (psta->vhtpriv.vht_option) {
-		if(TEST_FLAG(psta->vhtpriv.ldpc_cap, LDPC_VHT_ENABLE_TX))
-			pattrib->ldpc = 1;
-
-		if(TEST_FLAG(psta->vhtpriv.stbc_cap, STBC_VHT_ENABLE_TX))
-			pattrib->stbc = 1;
-	}
-#endif //CONFIG_80211AC_VHT
-
 	pattrib->ht_en = psta->htpriv.ht_option;
 	pattrib->ch_offset = psta->htpriv.ch_offset;
 	pattrib->ampdu_en = _FALSE;
@@ -672,6 +665,7 @@ static s32 update_attrib_sec_info(_adapter *padapter, struct pkt_attrib *pattrib
 
 	_rtw_memset(pattrib->dot118021x_UncstKey.skey,  0, 16);		
 	_rtw_memset(pattrib->dot11tkiptxmickey.skey,  0, 16);
+	pattrib->mac_id = psta->mac_id;
 
 	if (psta->ieee8021x_blocked == _TRUE)
 	{
@@ -810,6 +804,19 @@ static s32 update_attrib_sec_info(_adapter *padapter, struct pkt_attrib *pattrib
 		pattrib->bswenc = _FALSE;
 #endif
 
+#ifdef CONFIG_TDLS
+	if(pattrib->direct_link == _TRUE)
+	{
+		pattrib->mac_id = pattrib->ptdls_sta->mac_id;
+		if(pattrib->encrypt>0)
+		{
+			pattrib->encrypt= _AES_;
+			pattrib->iv_len=8;
+			pattrib->icv_len=8;
+			pattrib->bswenc = _FALSE;
+		}
+	}
+#endif //CONFIG_TDLS
 exit:
 
 	return res;
@@ -876,6 +883,74 @@ static void set_qos(struct pkt_file *ppktfile, struct pkt_attrib *pattrib)
 	pattrib->subtype = WIFI_QOS_DATA_TYPE;
 }
 
+#ifdef CONFIG_TDLS
+void rtw_check_tdls_established(_adapter *padapter, struct pkt_attrib *pattrib)
+{
+	pattrib->ptdls_sta = NULL;
+
+	pattrib->direct_link = _FALSE;
+	if((padapter->tdlsinfo.link_established == _TRUE)){
+		pattrib->ptdls_sta = rtw_get_stainfo(&padapter->stapriv, pattrib->dst);
+		if((pattrib->ptdls_sta!=NULL)&&
+			(pattrib->ptdls_sta->tdls_sta_state & TDLS_LINKED_STATE)&&
+			(pattrib->ether_type!=0x0806)){
+				pattrib->direct_link = _TRUE;
+				//DBG_871X("send ptk to "MAC_FMT" using direct link\n", MAC_ARG(pattrib->dst));
+		}
+	}
+}
+
+s32 update_tdls_attrib(_adapter *padapter, struct pkt_attrib *pattrib)
+{
+
+	struct sta_info *psta = NULL;
+	struct sta_priv		*pstapriv = &padapter->stapriv;
+	struct security_priv	*psecuritypriv = &padapter->securitypriv;
+	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;
+	struct qos_priv		*pqospriv= &pmlmepriv->qospriv;
+
+	s32 res=_SUCCESS;
+	
+	psta = rtw_get_stainfo(pstapriv, pattrib->ra);
+	if (psta == NULL)	{ 
+		res =_FAIL;
+		goto exit;
+	}
+
+	pattrib->mac_id = psta->mac_id;
+	pattrib->psta = psta;
+	pattrib->ack_policy = 0;
+	// get ether_hdr_len
+	pattrib->pkt_hdrlen = ETH_HLEN;//(pattrib->ether_type == 0x8100) ? (14 + 4 ): 14; //vlan tag
+
+	// [TDLS] TODO: setup req/rsp should be AC_BK
+	if (pqospriv->qos_option &&  psta->qos_option) {
+		pattrib->priority = 4;	//tdls management frame should be AC_VI
+		pattrib->hdrlen = WLAN_HDR_A3_QOS_LEN;
+		pattrib->subtype = WIFI_QOS_DATA_TYPE;
+	} else {
+		pattrib->priority = 0;
+		pattrib->hdrlen = WLAN_HDR_A3_LEN;
+		pattrib->subtype = WIFI_DATA_TYPE;	
+	}
+
+	//TODO:_lock
+	if(update_attrib_sec_info(padapter, pattrib, psta) == _FAIL)
+	{
+		res = _FAIL;
+		goto exit;
+	}
+
+	update_attrib_phy_info(pattrib, psta);
+
+
+exit:
+
+	return res;
+}
+
+#endif //CONFIG_TDLS
+
 static s32 update_attrib(_adapter *padapter, _pkt *pkt, struct pkt_attrib *pattrib)
 {
 	uint i;
@@ -915,6 +990,10 @@ static s32 update_attrib(_adapter *padapter, _pkt *pkt, struct pkt_attrib *pattr
 		_rtw_memcpy(pattrib->ra, pattrib->dst, ETH_ALEN);
 		_rtw_memcpy(pattrib->ta, get_bssid(pmlmepriv), ETH_ALEN);
 	}
+
+#ifdef CONFIG_TDLS
+	rtw_check_tdls_established(padapter, pattrib);
+#endif //CONFIG_TDLS
 
 	pattrib->pktlen = pktfile.pkt_len;
 
@@ -1038,7 +1117,6 @@ static s32 update_attrib(_adapter *padapter, _pkt *pkt, struct pkt_attrib *pattr
 
 	update_attrib_phy_info(pattrib, psta);
 
-	pattrib->mac_id = psta->mac_id;
 	//DBG_8192C("%s ==> mac_id(%d)\n",__FUNCTION__,pattrib->mac_id );
 	
 	pattrib->psta = psta;
@@ -1287,8 +1365,6 @@ s32 rtw_make_wlanhdr (_adapter *padapter , u8 *hdr, struct pkt_attrib *pattrib)
 #ifdef CONFIG_TDLS
 	struct tdls_info *ptdlsinfo = &padapter->tdlsinfo;
 	struct sta_priv 	*pstapriv = &padapter->stapriv;
-	struct sta_info *ptdls_sta=NULL, *psta_backup=NULL;
-	u8 direct_link=0;
 #endif //CONFIG_TDLS
 
 	sint res = _SUCCESS;
@@ -1329,27 +1405,19 @@ _func_enter_;
 	{
 		if ((check_fwstate(pmlmepriv,  WIFI_STATION_STATE) == _TRUE)) {
 			//to_ds = 1, fr_ds = 0;
+
 #ifdef CONFIG_TDLS
-			if((ptdlsinfo->setup_state == TDLS_LINKED_STATE)){
-				ptdls_sta = rtw_get_stainfo(pstapriv, pattrib->dst);
-				if((ptdls_sta!=NULL)&&(ptdls_sta->tdls_sta_state & TDLS_LINKED_STATE)&&(pattrib->ether_type!=0x0806)){
-					//TDLS data transfer, ToDS=0, FrDs=0
-					_rtw_memcpy(pwlanhdr->addr1, pattrib->dst, ETH_ALEN);
-					_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
-					_rtw_memcpy(pwlanhdr->addr3, get_bssid(pmlmepriv), ETH_ALEN);
-					direct_link=1;
-				}else{
-					// 1.Data transfer to AP
-					// 2.Arp pkt will relayed by AP
-					SetToDs(fctrl);							
-					_rtw_memcpy(pwlanhdr->addr1, get_bssid(pmlmepriv), ETH_ALEN);
-					_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
-					_rtw_memcpy(pwlanhdr->addr3, pattrib->dst, ETH_ALEN);
-				} 
-			}else
+			if(pattrib->direct_link == _TRUE){
+				//TDLS data transfer, ToDS=0, FrDs=0
+				_rtw_memcpy(pwlanhdr->addr1, pattrib->dst, ETH_ALEN);
+				_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
+				_rtw_memcpy(pwlanhdr->addr3, get_bssid(pmlmepriv), ETH_ALEN);
+			} 
+			else
 #endif //CONFIG_TDLS
 			{
-				//Data transfer to AP
+				// 1.Data transfer to AP
+				// 2.Arp pkt will relayed by AP
 				SetToDs(fctrl);							
 				_rtw_memcpy(pwlanhdr->addr1, get_bssid(pmlmepriv), ETH_ALEN);
 				_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
@@ -1426,20 +1494,31 @@ _func_enter_;
 				DBG_871X("%s, psta->state(0x%x) != _FW_LINKED\n", __func__, psta->state);
 				return _FAIL;
 			}
+
 		
-			//if(psta)
+			if(psta)
 			{
 #ifdef CONFIG_TDLS
-				if(direct_link==1)
+				if(pattrib->direct_link==_TRUE)
 				{
-					psta_backup = psta;
-					psta = ptdls_sta;
+					psta = pattrib->ptdls_sta;
+
+					//qos_en, ht_en, init rate, ,bw, ch_offset, sgi
+					//pattrib->qos_en = ptdls_sta->qos_option;
+
+					pattrib->raid = psta->raid;
+#ifdef CONFIG_80211N_HT
+					pattrib->bwmode = psta->bw_mode;
+					pattrib->ht_en = psta->htpriv.ht_option;
+					pattrib->ch_offset = psta->htpriv.ch_offset;
+					pattrib->sgi= query_ra_short_GI(psta);
+#endif //CONFIG_80211N_HT
 				}
 #endif //CONFIG_TDLS
 
+
 				psta->sta_xmitpriv.txseq_tid[pattrib->priority]++;
 				psta->sta_xmitpriv.txseq_tid[pattrib->priority] &= 0xFFF;
-
 				pattrib->seqnum = psta->sta_xmitpriv.txseq_tid[pattrib->priority];
 
 				SetSeqNum(hdr, pattrib->seqnum);
@@ -1480,31 +1559,6 @@ _func_enter_;
 
 				}
 #endif //CONFIG_80211N_HT
-#ifdef CONFIG_TDLS
-				if(direct_link==1)
-				{
-					if (pattrib->encrypt){
-						pattrib->encrypt= _AES_;
-						pattrib->iv_len=8;
-						pattrib->icv_len=8;
-					}
-
-					//qos_en, ht_en, init rate, ,bw, ch_offset, sgi
-					//pattrib->qos_en = ptdls_sta->qos_option;
-					
-					pattrib->raid = ptdls_sta->raid;
-#ifdef CONFIG_80211N_HT
-					pattrib->bwmode = ptdls_sta->bw_mode;
-					pattrib->ht_en = ptdls_sta->htpriv.ht_option;
-					pattrib->ch_offset = ptdls_sta->htpriv.ch_offset;
-					pattrib->sgi= query_ra_short_GI(ptdls_sta);
-#endif //CONFIG_80211N_HT
-					pattrib->mac_id = ptdls_sta->mac_id;
-
-					psta = psta_backup;
-				}
-#endif //CONFIG_TDLS
-
 			}
 		}
 		
@@ -1593,25 +1647,25 @@ s32 rtw_txframes_sta_ac_pending(_adapter *padapter, struct pkt_attrib *pattrib)
 
 #ifdef CONFIG_TDLS
 
-int rtw_build_tdls_ies(_adapter * padapter, struct xmit_frame * pxmitframe, u8 *pframe, u8 action)
+int rtw_build_tdls_ies(_adapter * padapter, struct xmit_frame * pxmitframe, u8 *pframe, struct tdls_txmgmt *ptxmgmt)
 {
 	int res=_SUCCESS;
 
-	switch(action){
+	switch(ptxmgmt->action_code){
 		case TDLS_SETUP_REQUEST:
-			rtw_build_tdls_setup_req_ies(padapter, pxmitframe, pframe);
+			rtw_build_tdls_setup_req_ies(padapter, pxmitframe, pframe, ptxmgmt);
 			break;
 		case TDLS_SETUP_RESPONSE:
-			rtw_build_tdls_setup_rsp_ies(padapter, pxmitframe, pframe);
+			rtw_build_tdls_setup_rsp_ies(padapter, pxmitframe, pframe, ptxmgmt);
 			break;
 		case TDLS_SETUP_CONFIRM:
-			rtw_build_tdls_setup_cfm_ies(padapter, pxmitframe, pframe);
+			rtw_build_tdls_setup_cfm_ies(padapter, pxmitframe, pframe, ptxmgmt);
 			break;
 		case TDLS_TEARDOWN:
-			rtw_build_tdls_teardown_ies(padapter, pxmitframe, pframe);
+			rtw_build_tdls_teardown_ies(padapter, pxmitframe, pframe, ptxmgmt);
 			break;
 		case TDLS_DISCOVERY_REQUEST:
-			rtw_build_tdls_dis_req_ies(padapter, pxmitframe, pframe);
+			rtw_build_tdls_dis_req_ies(padapter, pxmitframe, pframe, ptxmgmt);
 			break;			
 		case TDLS_PEER_TRAFFIC_INDICATION:
 			rtw_build_tdls_peer_traffic_indication_ies(padapter, pxmitframe, pframe);
@@ -1621,6 +1675,9 @@ int rtw_build_tdls_ies(_adapter * padapter, struct xmit_frame * pxmitframe, u8 *
 			break;
 		case TDLS_CHANNEL_SWITCH_RESPONSE:
 			rtw_build_tdls_ch_switch_rsp_ies(padapter, pxmitframe, pframe);
+			break;
+		case TDLS_PEER_TRAFFIC_RESPONSE:
+			rtw_build_tdls_peer_traffic_rsp_ies(padapter, pxmitframe, pframe);
 			break;
 #ifdef CONFIG_WFD			
 		case TUNNELED_PROBE_REQ:
@@ -1638,7 +1695,7 @@ int rtw_build_tdls_ies(_adapter * padapter, struct xmit_frame * pxmitframe, u8 *
 	return res;
 }
 
-s32 rtw_make_tdls_wlanhdr (_adapter *padapter , u8 *hdr, struct pkt_attrib *pattrib, u8 action)
+s32 rtw_make_tdls_wlanhdr (_adapter *padapter , u8 *hdr, struct pkt_attrib *pattrib, struct tdls_txmgmt *ptxmgmt)
 {
 	u16 *qc;
 	struct rtw_ieee80211_hdr *pwlanhdr = (struct rtw_ieee80211_hdr *)hdr;
@@ -1657,16 +1714,16 @@ _func_enter_;
 
 	SetFrameSubType(fctrl, pattrib->subtype);
 
-	switch(action){
+	switch(ptxmgmt->action_code){
 		case TDLS_SETUP_REQUEST:
 		case TDLS_SETUP_RESPONSE:
 		case TDLS_SETUP_CONFIRM:
-		case TDLS_TEARDOWN:	//directly to peer STA or via AP
 		case TDLS_PEER_TRAFFIC_INDICATION:
 		case TDLS_PEER_PSM_REQUEST:	//directly to peer STA or via AP
 		case TUNNELED_PROBE_REQ:
 		case TUNNELED_PROBE_RSP:
-			SetToDs(fctrl);							
+		case TDLS_DISCOVERY_REQUEST:
+			SetToDs(fctrl);
 			_rtw_memcpy(pwlanhdr->addr1, get_bssid(pmlmepriv), ETH_ALEN);
 			_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
 			_rtw_memcpy(pwlanhdr->addr3, pattrib->dst, ETH_ALEN);
@@ -1680,26 +1737,31 @@ _func_enter_;
 			_rtw_memcpy(pwlanhdr->addr3, get_bssid(pmlmepriv), ETH_ALEN);
 			tdls_seq=1;
 			break;
-		case TDLS_DISCOVERY_REQUEST:	//unicast: directly to peer sta, Bcast: via AP
-			if(_rtw_memcmp(pattrib->dst, baddr, ETH_ALEN) )
-			{
-				SetToDs(fctrl);							
-				_rtw_memcpy(pwlanhdr->addr1, get_bssid(pmlmepriv), ETH_ALEN);
-				_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
-				_rtw_memcpy(pwlanhdr->addr3, pattrib->dst, ETH_ALEN);
-			}
-			else
+		case TDLS_TEARDOWN:
+			if(ptxmgmt->status_code == _RSON_TDLS_TEAR_UN_RSN_)
 			{
 				_rtw_memcpy(pwlanhdr->addr1, pattrib->dst, ETH_ALEN);
 				_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
 				_rtw_memcpy(pwlanhdr->addr3, get_bssid(pmlmepriv), ETH_ALEN);
 				tdls_seq=1;
 			}
+			else
+			{
+				SetToDs(fctrl);		
+				_rtw_memcpy(pwlanhdr->addr1, get_bssid(pmlmepriv), ETH_ALEN);
+				_rtw_memcpy(pwlanhdr->addr2, pattrib->src, ETH_ALEN);
+				_rtw_memcpy(pwlanhdr->addr3, pattrib->dst, ETH_ALEN);
+			}
 			break;
 	}
 
 	if (pattrib->encrypt)
 		SetPrivacy(fctrl);
+
+	if(ptxmgmt->action_code == TDLS_PEER_TRAFFIC_RESPONSE)
+	{
+		SetPwrMgt(fctrl);
+	}
 
 	if (pqospriv->qos_option)
 	{
@@ -1725,7 +1787,9 @@ _func_enter_;
 				pattrib->encrypt= _AES_;
 				pattrib->iv_len=8;
 				pattrib->icv_len=8;
+				pattrib->bswenc = _FALSE;
 			}
+			pattrib->mac_id = ptdls_sta->mac_id;
 		}else{
 			res=_FAIL;
 			goto exit;
@@ -1745,7 +1809,7 @@ _func_exit_;
 	return res;
 }
 
-s32 rtw_xmit_tdls_coalesce(_adapter * padapter, struct xmit_frame * pxmitframe, u8 action)
+s32 rtw_xmit_tdls_coalesce(_adapter * padapter, struct xmit_frame * pxmitframe, struct tdls_txmgmt *ptxmgmt)
 {
 	s32 llc_sz;
 
@@ -1780,7 +1844,7 @@ _func_enter_;
 	pbuf_start = pxmitframe->buf_addr;
 	mem_start = pbuf_start + TXDESC_OFFSET;
 
-	if (rtw_make_tdls_wlanhdr(padapter, mem_start, pattrib, action) == _FAIL) {
+	if (rtw_make_tdls_wlanhdr(padapter, mem_start, pattrib, ptxmgmt) == _FAIL) {
 		res = _FAIL;
 		goto exit;
 	}
@@ -1825,7 +1889,7 @@ _func_enter_;
 	//pattrib->pktlen will be counted in rtw_build_tdls_ies
 	pattrib->pktlen = 0;
 
-	rtw_build_tdls_ies(padapter, pxmitframe, pframe, action);
+	rtw_build_tdls_ies(padapter, pxmitframe, pframe, ptxmgmt);
 
 	if ((pattrib->icv_len >0 )&& (pattrib->bswenc)) {
 		pframe += pattrib->pktlen;
@@ -2444,6 +2508,14 @@ void rtw_count_tx_stats(PADAPTER padapter, struct xmit_frame *pxmitframe, int sz
 			pstats->tx_pkts += pkt_num;
 
 			pstats->tx_bytes += sz;
+#ifdef CONFIG_TDLS
+			if(pxmitframe->attrib.ptdls_sta != NULL)
+			{
+				pstats = &(pxmitframe->attrib.ptdls_sta->sta_stats);
+				pstats->tx_pkts += pkt_num;
+				pstats->tx_bytes += sz;
+			}
+#endif //CONFIG_TDLS
 		}
 		
 #ifdef CONFIG_CHECK_LEAVE_LPS
@@ -2574,6 +2646,7 @@ _func_enter_;
 #if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
 		pxmitbuf->len = 0;
 		pxmitbuf->pdata = pxmitbuf->ptail = pxmitbuf->phead;
+		pxmitbuf->agg_num = 1;
 #endif
 #ifdef CONFIG_PCI_HCI
 		pxmitbuf->len = 0;
@@ -3300,7 +3373,15 @@ void rtw_alloc_hwxmits(_adapter *padapter)
 
 	pxmitpriv->hwxmit_entry = HWXMIT_ENTRY;
 
+	pxmitpriv->hwxmits = NULL;
+
 	pxmitpriv->hwxmits = (struct hw_xmit *)rtw_zmalloc(sizeof (struct hw_xmit) * pxmitpriv->hwxmit_entry);	
+
+	if(pxmitpriv->hwxmits == NULL)
+	{
+		DBG_871X("alloc hwxmits fail!...\n");
+		return;
+	}
 	
 	hwxmits = pxmitpriv->hwxmits;
 
@@ -3744,7 +3825,7 @@ sint xmitframe_enqueue_for_tdls_sleeping_sta(_adapter *padapter, struct xmit_fra
 		{
 			ret = _TRUE;
 			return ret;
-			}
+		}
 
 		_enter_critical_bh(&ptdls_sta->sleep_q.lock, &irqL);	
 		
@@ -3764,20 +3845,20 @@ sint xmitframe_enqueue_for_tdls_sleeping_sta(_adapter *padapter, struct xmit_fra
 			{
 				case 1:
 				case 2:
-					ptdls_sta->uapsd_bk = ptdls_sta->uapsd_bk | BIT(1);
+					ptdls_sta->uapsd_bk |= BIT(1);
 					break;
 				case 4:
 				case 5:
-					ptdls_sta->uapsd_vi = ptdls_sta->uapsd_vi | BIT(1);
+					ptdls_sta->uapsd_vi |= BIT(1);
 					break;
 				case 6:
 				case 7:
-					ptdls_sta->uapsd_vo = ptdls_sta->uapsd_vo | BIT(1);
+					ptdls_sta->uapsd_vo |= BIT(1);
 					break;
 				case 0:
 				case 3:
 				default:
-					ptdls_sta->uapsd_be = ptdls_sta->uapsd_be | BIT(1);
+					ptdls_sta->uapsd_be |= BIT(1);
 					break;
 			}
 
@@ -3809,13 +3890,12 @@ sint xmitframe_enqueue_for_sleeping_sta(_adapter *padapter, struct xmit_frame *p
 	struct pkt_attrib *pattrib = &pxmitframe->attrib;
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 	sint bmcst = IS_MCAST(pattrib->ra);
+	bool update_tim = _FALSE;
 #ifdef CONFIG_TDLS
-	struct tdls_info *ptdlsinfo = &padapter->tdlsinfo;
 
-	if( ptdlsinfo->setup_state == TDLS_LINKED_STATE )
+	if( padapter->tdlsinfo.link_established == _TRUE )
 	{
 		ret = xmitframe_enqueue_for_tdls_sleeping_sta(padapter, pxmitframe);
-		return ret;
 	}
 #endif //CONFIG_TDLS
 
@@ -3881,13 +3961,20 @@ sint xmitframe_enqueue_for_sleeping_sta(_adapter *padapter, struct xmit_frame *p
 			
 			psta->sleepq_len++;
 
+			if (!(pstapriv->tim_bitmap & BIT(0)))
+				update_tim = _TRUE;
+
 			pstapriv->tim_bitmap |= BIT(0);//
 			pstapriv->sta_dz_bitmap |= BIT(0);
-			
+
 			//DBG_871X("enqueue, sq_len=%d, tim=%x\n", psta->sleepq_len, pstapriv->tim_bitmap);
 
-			update_beacon(padapter, _TIM_IE_, NULL, _TRUE);//tx bc/mc packets after upate bcn
-			
+			if (update_tim == _TRUE) {
+				update_beacon(padapter, _TIM_IE_, NULL, _TRUE);
+			} else {
+				chk_bmc_sleepq_cmd(padapter);
+			}
+
 			//_exit_critical_bh(&psta->sleep_q.lock, &irqL);				
 			
 			ret = _TRUE;			
@@ -3943,11 +4030,14 @@ sint xmitframe_enqueue_for_sleeping_sta(_adapter *padapter, struct xmit_frame *p
 
 			if(((psta->has_legacy_ac) && (!wmmps_ac)) ||((!psta->has_legacy_ac)&&(wmmps_ac)))
 			{
+				if (!(pstapriv->tim_bitmap & BIT(psta->aid)))
+					update_tim = _TRUE;
+
 				pstapriv->tim_bitmap |= BIT(psta->aid);
 
 				//DBG_871X("enqueue, sq_len=%d, tim=%x\n", psta->sleepq_len, pstapriv->tim_bitmap);
 
-				if(psta->sleepq_len==1)
+				if(update_tim == _TRUE)
 				{
 					//DBG_871X("sleepq_len==1, update BCNTIM\n");
 					//upate BCN for TIM IE
@@ -4200,13 +4290,14 @@ void wakeup_sta_to_xmit(_adapter *padapter, struct sta_info *psta)
 
 		if(psta_bmc->sleepq_len==0)
 		{
+			if (pstapriv->tim_bitmap & BIT(0)) {
+				//DBG_871X("wakeup to xmit, qlen==0, update_BCNTIM, tim=%x\n", pstapriv->tim_bitmap);
+				//upate BCN for TIM IE
+				//update_BCNTIM(padapter);
+				update_mask |= BIT(1);
+			}
 			pstapriv->tim_bitmap &= ~BIT(0);
 			pstapriv->sta_dz_bitmap &= ~BIT(0);
-
-			//DBG_871X("wakeup to xmit, qlen==0, update_BCNTIM, tim=%x\n", pstapriv->tim_bitmap);
-			//upate BCN for TIM IE
-			//update_BCNTIM(padapter);
-			update_mask |= BIT(1);
 		}
 
 	}	
@@ -4219,15 +4310,19 @@ void wakeup_sta_to_xmit(_adapter *padapter, struct sta_info *psta)
 			if(psta->state&WIFI_SLEEP_STATE)
 				psta->state ^= WIFI_SLEEP_STATE;
 
-			goto _exit;
+			_exit_critical_bh(&pxmitpriv->lock, &irqL);
+			return;
 		}
 #endif //CONFIG_TDLS
+
+		if (pstapriv->tim_bitmap & BIT(psta->aid)) {
+			//DBG_871X("wakeup to xmit, qlen==0, update_BCNTIM, tim=%x\n", pstapriv->tim_bitmap);
+			//upate BCN for TIM IE
+			//update_BCNTIM(padapter);
+			update_mask = BIT(0);
+		}
+
 		pstapriv->tim_bitmap &= ~BIT(psta->aid);
-	
-		//DBG_871X("wakeup to xmit, qlen==0, update_BCNTIM, tim=%x\n", pstapriv->tim_bitmap);
-		//upate BCN for TIM IE
-		//update_BCNTIM(padapter);
-		update_mask = BIT(0);
 
 		if(psta->state&WIFI_SLEEP_STATE)
 			psta->state ^= WIFI_SLEEP_STATE;
@@ -4319,13 +4414,6 @@ void xmit_delivery_enabled_frames(_adapter *padapter, struct sta_info *psta)
 		}
 
 		pxmitframe->attrib.triggered = 1;
-
-/*
-		if(rtw_hal_xmit(padapter, pxmitframe) == _TRUE)
-		{		
-			rtw_os_xmit_complete(padapter, pxmitframe);
-		}
-*/
 		rtw_hal_xmitframe_enqueue(padapter, pxmitframe);
 
 		if((psta->sleepq_ac_len==0) && (!psta->has_legacy_ac) && (wmmps_ac))
@@ -4334,8 +4422,7 @@ void xmit_delivery_enabled_frames(_adapter *padapter, struct sta_info *psta)
 			if(psta->tdls_sta_state & TDLS_LINKED_STATE )
 			{
 				//_exit_critical_bh(&psta->sleep_q.lock, &irqL);
-				_exit_critical_bh(&pxmitpriv->lock, &irqL);
-				return;
+				goto exit;
 			}
 #endif //CONFIG_TDLS
 			pstapriv->tim_bitmap &= ~BIT(psta->aid);
@@ -4348,10 +4435,12 @@ void xmit_delivery_enabled_frames(_adapter *padapter, struct sta_info *psta)
 		}
 	
 	}	
-	
+
+exit:
 	//_exit_critical_bh(&psta->sleep_q.lock, &irqL);	
 	_exit_critical_bh(&pxmitpriv->lock, &irqL);
 
+	return;
 }
 
 #endif

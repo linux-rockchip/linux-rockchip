@@ -5289,8 +5289,8 @@ wl_cfg80211_send_action_frame(struct wiphy *wiphy, struct net_device *dev,
 			// terence 20130721: send hang event to wpa_supplicant
 			cnt++;
 			if (cnt > 2) {
-				WL_ERR(("Send hang event\n"));
-				net_os_send_hang_message(dev_tmp);
+				//WL_ERR(("Send hang event\n"));
+				//net_os_send_hang_message(dev_tmp);
 				cnt = 0;
 			}
 			goto exit;

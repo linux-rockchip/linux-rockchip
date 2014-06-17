@@ -167,6 +167,9 @@ _OUTSRC_FILES := hal/OUTSRC/odm_debug.o	\
 		hal/OUTSRC/odm.o\
 		hal/OUTSRC/HalPhyRf.o
 
+EXTRA_CFLAGS += -I$(src)/platform
+_PLATFORM_FILES := platform/platform_ops.o
+
 ifeq ($(CONFIG_BT_COEXIST), y)
 EXTRA_CFLAGS += -I$(src)/hal/OUTSRC-BTCoexist
 _OUTSRC_FILES += hal/OUTSRC-BTCoexist/HalBtc8188c2Ant.o \
@@ -993,7 +996,7 @@ EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ANDROID -DCONFIG_PLATFO
 ARCH := arm
 CROSS_COMPILE := /usr/src/release_fae_version/toolchain/arm-eabi-4.4.0/bin/arm-eabi-
 KSRC := /usr/src/release_fae_version/kernel25_A7_281x
-MODULE_NAME := 8188eu
+MODULE_NAME := wlan
 endif
 
 ifeq ($(CONFIG_PLATFORM_ARM_RK3188), y)

@@ -2686,7 +2686,7 @@ static void wlan_late_resume(struct early_suspend *h)
 extern void wlanRegisterNotifier(void);
 extern void wlanUnregisterNotifier(void);
 /*mtk80707 rollback to aosp hal*/
-///typedef int (*set_p2p_mode)(struct net_device *netdev, PARAM_CUSTOM_P2P_SET_STRUC_T p2pmode);//////xbw
+typedef int (*set_p2p_mode)(struct net_device *netdev, PARAM_CUSTOM_P2P_SET_STRUC_T p2pmode);
 extern void register_set_p2p_mode_handler(set_p2p_mode handler);
 
 int set_p2p_mode_handler(struct net_device *netdev, PARAM_CUSTOM_P2P_SET_STRUC_T p2pmode) {

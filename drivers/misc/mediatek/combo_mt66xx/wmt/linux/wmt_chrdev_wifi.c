@@ -342,6 +342,11 @@ static int WIFI_init(void)
 		struct device * wmtWifi_dev = NULL;
 #endif
 
+    printk("=======================================================\n");
+    printk("==== Launching Wi-Fi driver! (Powered by Rockchip) ====\n");
+    printk("=======================================================\n");
+    printk("MT6620 SDIO WiFi driver (Powered by Rockchip,Ver %s) init.\n", "1.02");
+
     /*static allocate chrdev*/
     alloc_ret = register_chrdev_region(dev, 1, WIFI_DRIVER_NAME);
     if (alloc_ret) {

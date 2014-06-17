@@ -386,7 +386,7 @@ static struct sdmmc_reg rk_sdmmc_regs[] =
 ** As the following example.
 ** added by xbw at 2013-05-08
 */
-#if defined(CONFIG_MTK_COMBO_DRIVER_VERSION_JB2) || defined(CONFIG_ESP8089)
+#if defined(CONFIG_MTK_COMBO_DRIVER_VERSION_JB2) || defined(CONFIG_ESP8089) || defined(CONFIG_RTL8723BS)
 #define RK_SDMMC_USE_SDIO_SUSPEND_RESUME    1
 #else
 #define RK_SDMMC_USE_SDIO_SUSPEND_RESUME    0
@@ -516,7 +516,7 @@ struct rk29_sdmmc {
 	u32			cmd_status;
 	u32			data_status;
 	u32			stop_cmdr;
-
+	u32			shutdown; //shutdown flag for cmd io err
     u32         old_div;
 	u32			cmdr;   //the value setted into command-register
 	u32			dodma;  //sign the DMA used for transfer.

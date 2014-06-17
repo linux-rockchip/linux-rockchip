@@ -49,17 +49,17 @@
 //---------------------------------------------------------------------
 //		RTL8192E From header
 //---------------------------------------------------------------------
-	#define RTL8192E_FW_IMG					"rtl8192E/FW_NIC.bin"
-	#define RTL8192E_FW_WW_IMG				"rtl8192E/FW_WoWLAN.bin"
-	#define RTL8192E_PHY_REG					"rtl8192E/PHY_REG.txt" 
-	#define RTL8192E_PHY_RADIO_A				"rtl8192E/RadioA.txt"
-	#define RTL8192E_PHY_RADIO_B				"rtl8192E/RadioB.txt"
-	#define RTL8192E_TXPWR_TRACK				"rtl8192E/TxPowerTrack.txt"
-	#define RTL8192E_AGC_TAB					"rtl8192E/AGC_TAB.txt"
-	#define RTL8192E_PHY_MACREG 				"rtl8192E/MAC_REG.txt"
-	#define RTL8192E_PHY_REG_PG				"rtl8192E/PHY_REG_PG.txt"
-	#define RTL8192E_PHY_REG_MP 				"rtl8192E/PHY_REG_MP.txt" 
-	#define RTL8192E_TXPWR_LMT					"rtl8192E/TXPWR_LMT.txt" 
+	#define RTL8192E_FW_IMG					"rtl8192e/FW_NIC.bin"
+	#define RTL8192E_FW_WW_IMG				"rtl8192e/FW_WoWLAN.bin"
+	#define RTL8192E_PHY_REG					"rtl8192e/PHY_REG.txt" 
+	#define RTL8192E_PHY_RADIO_A				"rtl8192e/RadioA.txt"
+	#define RTL8192E_PHY_RADIO_B				"rtl8192e/RadioB.txt"
+	#define RTL8192E_TXPWR_TRACK				"rtl8192e/TxPowerTrack.txt"
+	#define RTL8192E_AGC_TAB					"rtl8192e/AGC_TAB.txt"
+	#define RTL8192E_PHY_MACREG 				"rtl8192e/MAC_REG.txt"
+	#define RTL8192E_PHY_REG_PG				"rtl8192e/PHY_REG_PG.txt"
+	#define RTL8192E_PHY_REG_MP 				"rtl8192e/PHY_REG_MP.txt" 
+	#define RTL8192E_TXPWR_LMT				"rtl8192e/TXPWR_LMT.txt" 
 
 //---------------------------------------------------------------------
 //		RTL8192E Power Configuration CMDs for PCIe interface
@@ -144,9 +144,9 @@ typedef struct _RT_FIRMWARE_8192E {
 // For Normal Chip Setting
 // (HPQ + LPQ + NPQ + PUBQ) shall be TX_TOTAL_PAGE_NUMBER_92C
 #define NORMAL_PAGE_NUM_PUBQ_8192E			0xE0
-#define NORMAL_PAGE_NUM_LPQ_8192E			0x00
+#define NORMAL_PAGE_NUM_LPQ_8192E			0x0C
 #define NORMAL_PAGE_NUM_HPQ_8192E			0x08
-#define NORMAL_PAGE_NUM_NPQ_8192E			0x0C
+#define NORMAL_PAGE_NUM_NPQ_8192E			0x00
 #define NORMAL_PAGE_NUM_EPQ_8192E			0x00
 
 

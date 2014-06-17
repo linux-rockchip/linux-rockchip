@@ -406,7 +406,7 @@ INT32 wmt_plat_sdio_ctrl (WMT_SDIO_SLOT_NUM sdioPortType, ENUM_FUNC_STATE on)
          * controller. SDIO card removal operation and remove success messages
          * are expected.
          */
-	rk29sdk_wifi_power(0);
+	//rk29sdk_wifi_power(0);
 	rk29sdk_wifi_set_carddetect(0);
     }
     else {
@@ -414,7 +414,7 @@ INT32 wmt_plat_sdio_ctrl (WMT_SDIO_SLOT_NUM sdioPortType, ENUM_FUNC_STATE on)
          * controller. SDIO card detection operation and detect success messages
          * are expected.
          */
-	rk29sdk_wifi_power(1);
+	//rk29sdk_wifi_power(1);
 	rk29sdk_wifi_set_carddetect(1);
     }
 	//extern int omap_mmc_update_mtk_card_status(int state);

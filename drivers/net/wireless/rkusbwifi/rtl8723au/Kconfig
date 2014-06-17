@@ -4,6 +4,8 @@ config RTL8723AU
     select WIRELESS_EXT
     select WEXT_PRIV
     select IEEE80211
+    select BT_RTKBTUSB
+    select UHID
 	---help---
 	  Help message of RTL8723AU
 
