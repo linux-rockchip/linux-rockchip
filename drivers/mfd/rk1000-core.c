@@ -52,7 +52,11 @@ static int rk1000_control_probe(struct i2c_client *client,
 	}else{
 		DBG("got i2s clk ok!\n");
 		clk_enable(iis_clk);
+#if defined(CONFIG_RK616_USE_MCLK_12M)
+		clk_set_rate(iis_clk, 12000000);
+#else
 		clk_set_rate(iis_clk, 11289600);
+#endif
 		#if defined(CONFIG_ARCH_RK29)
 		rk29_mux_api_set(GPIO2D0_I2S0CLK_MIIRXCLKIN_NAME, GPIO2H_I2S0_CLK);
 		#elif defined(CONFIG_ARCH_RK30)

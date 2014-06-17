@@ -447,7 +447,7 @@ static int rk616_clk_common_init(struct mfd_rk616 *rk616)
 	u32 val = 0;
 	int ret;
 
-	val = PLL1_CLK_SEL(LCD1_DCLK) | PLL0_CLK_SEL(LCD0_DCLK) | LCD1_CLK_DIV(0) | 
+	val = PLL1_CLK_SEL(MCLK_12M) | PLL0_CLK_SEL(LCD0_DCLK) | LCD1_CLK_DIV(0) | 
 		LCD0_CLK_DIV(0) | PLL1_CLK_SEL_MASK | PLL0_CLK_SEL_MASK | 
 		LCD1_CLK_DIV_MASK | LCD0_CLK_DIV_MASK; //pll1 clk from lcdc1_dclk,pll0 clk from lcdc0_dclk,mux_lcdx = lcdx_clk
 	ret = rk616->write_dev(rk616,CRU_CLKSEL0_CON,&val);
