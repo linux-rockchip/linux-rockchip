@@ -4,6 +4,10 @@ static int rk30_vmac_register_set(void)
 {
 	//config rk30 vmac as rmii
 	writel_relaxed(0x3 << 16 | 0x2, RK30_GRF_BASE + GRF_SOC_CON1);
+
+	//emac_newrcv_en 
+	writel_relaxed(0x40 << 16 | 0x40, RK30_GRF_BASE + GRF_SOC_CON2);
+
 	int val = readl_relaxed(RK30_GRF_BASE + GRF_IO_CON3);
 	writel_relaxed(val | 0xf << 16 | 0xf, RK30_GRF_BASE + GRF_IO_CON3);
 	return 0;
