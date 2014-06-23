@@ -61,6 +61,17 @@
 #define RK_FBIOSET_VSYNC_ENABLE		0x4629
 #define RK_FBIOPUT_NUM_BUFFERS 	0x4625
 
+/**rk fb events**/
+#define RK_LF_STATUS_FC                  0xef
+#define RK_LF_STATUS_FR                  0xee
+#define RK_LF_STATUS_NC                  0xfe
+#define MAX_TIMEOUT 			 (1600000UL << 6) //>0.64s
+#define RK_LF_MAX_TIMEOUT                (1600000UL << 6) //>0.64s
+
+
+extern int rk_fb_poll_prmry_screen_vblank(void);
+extern int rk_fb_get_prmry_screen_ft(void);
+extern bool rk_fb_poll_wait_frame_complete(void);
 
 /********************************************************************
 **          display output interface supported by rockchip lcdc                       *
@@ -267,6 +278,8 @@ struct rk_lcdc_device_driver{
 	int (*set_dsp_lut)(struct rk_lcdc_device_driver *dev_drv,int *lut);
 	int (*read_dsp_lut)(struct rk_lcdc_device_driver *dev_drv,int *lut);
 	int (*lcdc_hdmi_process)(struct rk_lcdc_device_driver *dev_drv,int mode); //some lcdc need to some process in hdmi mode
+	int (*set_irq_to_cpu)(struct rk_lcdc_device_driver *dev_drv,int enable);
+	int (*poll_vblank)(struct rk_lcdc_device_driver *dev_drv);
 	int (*lcdc_rst)(struct rk_lcdc_device_driver *dev_drv);
 };
 

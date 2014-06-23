@@ -46,6 +46,7 @@
 #include <linux/sensor-dev.h>
 #include <linux/mfd/tps65910.h>
 #include <linux/regulator/act8846.h>
+#include <linux/mfd/rk808.h>
 #include <linux/regulator/rk29-pwm-regulator.h>
 #if defined(CONFIG_CT36X_TS)
 #include <linux/ct36x.h>
@@ -1340,6 +1341,23 @@ static struct rkdisplay_platform_data vga_data = {
 };
 #endif
 
+#if defined(CONFIG_MFD_RK616)
+#include <linux/mfd/rk616.h>
+#define RK616_SCL_RATE			(100*1000)   //i2c scl rate
+
+static struct rk616_platform_data rk616_pdata = {
+	.power_init = NULL,
+	.power_deinit = NULL,
+	.scl_rate   = RK616_SCL_RATE,
+	.lcd0_func = INPUT,             //port lcd0 as input
+	.lcd1_func = UNUSED,             //port lcd1 as input
+//	.lvds_ch_nr = 1,				//the number of used lvds channel  
+	.hdmi_irq = INVALID_GPIO,
+	.spk_ctl_gpio = INVALID_GPIO,
+	.hp_ctl_gpio = INVALID_GPIO,
+	.pdata = &hdmi_data,
+};
+#endif
 // i2c
 #ifdef CONFIG_I2C0_RK30
 static struct i2c_board_info __initdata i2c0_info[] = {
@@ -1522,6 +1540,92 @@ static  struct pmu_info  act8846_ldo_info[] = {
  };
 
 #include "../mach-rk30/board-pmu-act8846.c"
+#endif
+
+#ifdef CONFIG_MFD_RK808
+#define PMU_POWER_SLEEP RK30_PIN0_PA1
+#define RK808_HOST_IRQ        RK30_PIN0_PB3
+
+static struct pmu_info  rk808_dcdc_info[] = {
+	{
+		.name          = "vdd_cpu",   //arm
+		.min_uv          = 1000000,
+		.max_uv         = 1000000,
+		.suspend_vol  =  900000,
+	},
+	{
+		.name          = "vdd_core",    //logic
+		.min_uv          = 1000000,
+		.max_uv         = 1000000,
+		.suspend_vol  =  900000,
+	},
+	{
+		.name          = "rk_dcdc3",   //ddr
+		.min_uv          = 1200000,
+		.max_uv         = 1200000,
+		.suspend_vol  =  1200000,
+	},
+	{
+		.name          = "rk_dcdc4",   //vccio
+		.min_uv          = 3300000,
+		.max_uv         = 3300000,
+		.suspend_vol  =  3000000,
+	},
+	
+};
+static  struct pmu_info  rk808_ldo_info[] = {
+	{
+		.name          = "rk_ldo1",   //vcc33
+		.min_uv          = 3300000,
+		.max_uv         = 3300000,
+		.suspend_vol   = 3300000,
+	},
+	{
+		.name          = "rk_ldo2",    //vcctp
+		.min_uv          = 3300000,
+		.max_uv         = 3300000,
+		 .suspend_vol   = 3300000,
+
+	},
+	{
+		.name          = "rk_ldo3",   //vdd10
+		.min_uv          = 1000000,
+		.max_uv         = 1000000,
+		 .suspend_vol   = 1000000,
+	},
+	{
+		.name          = "rk_ldo4",   //vcc18
+		.min_uv          = 1800000,
+		.max_uv         = 1800000,
+		 .suspend_vol   = 1800000,
+	},
+	//{
+	//	.name          = "rk_ldo5",   //vcc28_cif 
+	//	.min_uv          = 1800000,
+	//	.max_uv         = 1800000,
+	//	 .suspend_vol   = 1800000,
+	//},
+	{
+		.name          = "rk_ldo6",   //vdd12
+		.min_uv          = 1200000,
+		.max_uv         = 1200000,
+		 .suspend_vol   = 1200000,
+	},
+	{
+		.name          = "rk_ldo7",   //vcc18_cif
+		.min_uv          = 1800000,
+		.max_uv         = 1800000,
+		 .suspend_vol   = 1800000,
+	},
+	{
+		.name          = "rk_ldo8",   //vcca_33
+		.min_uv          = 3300000,
+		.max_uv         = 3300000,
+		 .suspend_vol   = 3300000,
+	},
+ };
+
+#include "../mach-rk30/board-pmu-rk808.c"
 #endif
 
 #ifdef CONFIG_MFD_WM831X_I2C
@@ -1738,6 +1842,15 @@ static struct i2c_board_info __initdata i2c1_info[] = {
     	.platform_data = &tps65910_data,
 	},
 #endif
+#if defined (CONFIG_MFD_RK808)
+	{
+		.type    		= "rk808",
+		.addr           = 0x1b, 
+		.flags			= 0,
+	//	.irq            = ACT8846_HOST_IRQ,
+		.platform_data=&rk808_data,
+	},
+#endif
 };
 #endif
 
@@ -1754,7 +1867,11 @@ void __sramfunc board_pmu_suspend(void)
 	#if defined (CONFIG_MFD_TPS65910)
        if(pmic_is_tps65910())
        board_pmu_tps65910_suspend(); 
-    #endif   
+#endif 
+#if defined (CONFIG_MFD_RK808)
+	if(pmic_is_rk808())
+	board_pmu_rk808_suspend();
+#endif  
 }
 
 void __sramfunc board_pmu_resume(void)
@@ -1771,6 +1888,10 @@ void __sramfunc board_pmu_resume(void)
        if(pmic_is_tps65910())
        board_pmu_tps65910_resume(); 
 	#endif
+#if defined (CONFIG_MFD_RK808)
+	if(pmic_is_rk808())
+	board_pmu_rk808_resume();
+#endif	
 }
 
  int __sramdata gpio3d6_iomux,gpio3d6_do,gpio3d6_dir,gpio3d6_en;
@@ -1851,16 +1972,14 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.platform_data 	= &hdmi_data,
 },
 #endif
-//#if defined(CONFIG_HDMI_CAT66121)
-//	{
-//		.type		= "cat66121_hdmi",
-//		.addr		= 0x4c,
-//		.flags		= 0,
-//		.irq		= RK30_PIN2_PD6,
-//		.platform_data 	= &rk_hdmi_pdata,
-//	},
-//#endif
-
+#if defined(CONFIG_MFD_RK616)
+{
+		.type	       = "rk616",
+		.addr	       = 0x50,
+		.flags	       = 0,
+		.platform_data = &rk616_pdata,
+},
+#endif
 };
 #endif
 
@@ -2109,9 +2228,9 @@ static struct cpufreq_frequency_table dvfs_gpu_table[] = {
 
 static struct cpufreq_frequency_table dvfs_ddr_table[] = {
 	//{.frequency = 200 * 1000 + DDR_FREQ_SUSPEND,    .index = 950 * 1000},
-	{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index = 1000 * 1000},
+	//{.frequency = 300 * 1000 + DDR_FREQ_VIDEO,      .index = 1000 * 1000},
 	{.frequency = 400 * 1000 + DDR_FREQ_NORMAL,     .index = 1100 * 1000},
-	{.frequency = 600 * 1000 + DDR_FREQ_NORMAL,     .index = 1250 * 1000},
+	{.frequency = 696 * 1000 + DDR_FREQ_NORMAL,     .index = 1250 * 1000},
 	{.frequency = CPUFREQ_TABLE_END},
 };
 static struct cpufreq_frequency_table dvfs_ddr_table_t[] = {

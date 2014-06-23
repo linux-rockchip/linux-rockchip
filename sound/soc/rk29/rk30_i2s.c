@@ -713,8 +713,11 @@ static int __devinit rockchip_i2s_probe(struct platform_device *pdev)
 	}
 
 	clk_enable(i2s->iis_clk);
-	clk_set_rate(i2s->iis_clk, 11289600);
-
+#if defined(CONFIG_MFD_RK616)
+        ;
+#else
+        clk_set_rate(i2s->iis_clk, 11289600);
+#endif
 	ret = rk29_i2s_probe(pdev, dai, i2s, 0);
 	if (ret)
 		goto err_clk;
