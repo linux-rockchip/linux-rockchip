@@ -1704,12 +1704,10 @@ static int __devinit vmac_probe(struct platform_device *pdev)
 		}
 	#endif*/
 	
-	#ifdef CONFIG_ETH_MAC_FROM_RANDOM
-	    random_ether_addr(dev->dev_addr);
-        printk("random_ether_addr***********:%X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
+		random_ether_addr(dev->dev_addr);
+		printk("random_ether_addr***********:%X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
 		                  dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],
 		                  dev->dev_addr[4],dev->dev_addr[5] );	
-	#endif
 	//add end	
 	}
 
