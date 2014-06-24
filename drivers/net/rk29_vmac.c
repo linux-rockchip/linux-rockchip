@@ -409,15 +409,22 @@ static int update_error_counters(struct net_device *dev, int status)
 	WARN_ON(status & TXCH_MASK);
 	WARN_ON(!(status & (MSER_MASK | RXCR_MASK | RXFR_MASK | RXFL_MASK)));
 
-	if (status & MSER_MASK)
+	if (status & MSER_MASK) {
+		printk("MSER_MASK\n");
 		ap->stats.rx_over_errors += 256; /* ran out of BD */
-	if (status & RXCR_MASK)
+	}
+	if (status & RXCR_MASK) {
+		printk("RXCR_MASK\n");
 		ap->stats.rx_crc_errors += 256;
-	if (status & RXFR_MASK)
+	}
+	if (status & RXFR_MASK) {
+		printk("RXCR_MASK\n");
 		ap->stats.rx_frame_errors += 256;
-	if (status & RXFL_MASK)
+	}
+	if (status & RXFL_MASK) {
+		printk("RXFL_MASK\n");
 		ap->stats.rx_fifo_errors += 256;
-
+	}
 	return 0;
 }
 
@@ -826,6 +833,14 @@ static irqreturn_t vmac_intr(int irq, void *dev_instance)
 		dev_err(&ap->pdev->dev, "No source of IRQ found\n");
 #endif
 
+	if (fifo_free(&ap->rx_ring) == 1) {
+		if (unlikely(ap->mac_rxring_head == vmac_readl(ap, MAC_RXRING_HEAD))) {
+			//printk("empty  ap->mac_rxring_head: 0x%x\n", ap->mac_rxring_head);
+			//printk("empty  MAC_RXRING_HEAD: 0x%x\n", vmac_readl(ap, MAC_RXRING_HEAD));
+			vmac_toggle_rxint(dev, 0);
+			napi_schedule(&ap->napi);
+		}
+	}
 	if ((status & RXINT_MASK) &&
 			(ap->mac_rxring_head !=
 			 vmac_readl(ap, MAC_RXRING_HEAD))) {
