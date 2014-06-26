@@ -208,6 +208,17 @@
 
 };
 
+&nandc0 {
+	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+};
+&nandc1 {
+	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+};   
+
+&nandc0reg {
+	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+};
+
 &emmc {
 	clock-frequency = <100000000>;
 	clock-freq-min-max = <400000 100000000>;
@@ -220,10 +231,9 @@
 	//caps2-mmc-hs200;
 
         ignore-pm-notify;
-	keep-power-in-suspend;
-	
-	//poll-hw-reset 
-	status = "okay";
+		keep-power-in-suspend;
+		//poll-hw-reset 
+		status = "okay";
 };
     
 &sdmmc {

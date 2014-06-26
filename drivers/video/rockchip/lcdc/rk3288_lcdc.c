@@ -296,7 +296,7 @@ static void lcdc_read_reg_defalut_cfg(struct lcdc_device *lcdc_dev)
 /********do basic init*********/
 static int rk3288_lcdc_pre_init(struct rk_lcdc_driver *dev_drv)
 {
-	int v,i;
+	int v;
 	u32 mask,val;
 	struct lcdc_device *lcdc_dev = container_of(dev_drv,
 							   struct
@@ -921,7 +921,6 @@ static int rk3288_win_hwc_reg_update(struct rk_lcdc_driver *dev_drv,int win_id)
 	struct lcdc_device *lcdc_dev =
 	    container_of(dev_drv, struct lcdc_device, driver);
 	struct rk_lcdc_win *win = dev_drv->win[win_id];
-	struct rk_screen *screen = dev_drv->cur_screen;
 	unsigned int mask, val,hwc_size=0;
 
 	if(win->state == 1) {
@@ -1219,6 +1218,7 @@ static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 static int win0_open(struct lcdc_device *lcdc_dev, bool open)
 {
 //box
+	struct rk_lcdc_win *win = lcdc_dev->driver.win[0];
 	spin_lock(&lcdc_dev->reg_lock);
 	if (likely(lcdc_dev->clk_on) && lcdc_dev->driver.win[0]->state != open) {
 		if (open) {
@@ -1231,19 +1231,29 @@ static int win0_open(struct lcdc_device *lcdc_dev, bool open)
 			lcdc_dev->atv_layer_cnt--;
 		}
 		lcdc_dev->driver.win[0]->state = open;
+		if ((win->state == 0)&&(win->last_state == 1)) {
+			win->area[0].y_addr = 0;
+			win->area[0].uv_addr = 0;
+			lcdc_writel(lcdc_dev, WIN0_YRGB_MST, 0); 
+			lcdc_writel(lcdc_dev, WIN0_CBR_MST, 0);
+			lcdc_writel(lcdc_dev,WIN0_CTRL1, 0x0);
+			lcdc_msk_reg(lcdc_dev, WIN0_CTRL0, m_WIN0_EN,v_WIN0_EN(0));	
+			lcdc_cfg_done(lcdc_dev);
+			win->last_state = win->state;
+		}
 		if (!lcdc_dev->atv_layer_cnt) {
 			dev_info(lcdc_dev->dev, "no layer is used,go to standby!\n");
 			lcdc_dev->standby = 1;
 		}
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
-
 	return 0;
 }
 
 static int win1_open(struct lcdc_device *lcdc_dev, bool open)
 {
 //box
+	struct rk_lcdc_win *win = lcdc_dev->driver.win[1];
 	spin_lock(&lcdc_dev->reg_lock);
 	if (likely(lcdc_dev->clk_on) && lcdc_dev->driver.win[1]->state != open) {
 		if (open) {
@@ -1256,7 +1266,16 @@ static int win1_open(struct lcdc_device *lcdc_dev, bool open)
 			lcdc_dev->atv_layer_cnt--;
 		}
 		lcdc_dev->driver.win[1]->state = open;
-
+		if ((win->state == 0)&&(win->last_state == 1)) {
+			win->area[0].y_addr = 0;
+			win->area[0].uv_addr = 0;
+			lcdc_writel(lcdc_dev, WIN1_YRGB_MST, 0); 
+			lcdc_writel(lcdc_dev, WIN1_CBR_MST, 0);
+			lcdc_writel(lcdc_dev,WIN1_CTRL1, 0x0);
+			lcdc_msk_reg(lcdc_dev, WIN1_CTRL0, m_WIN1_EN,v_WIN1_EN(0));	
+			lcdc_cfg_done(lcdc_dev);
+			win->last_state = win->state;
+		}
 		/*if no layer used,disable lcdc*/
 		if (!lcdc_dev->atv_layer_cnt) {
 			dev_info(lcdc_dev->dev, "no layer is used,go to standby!\n");
@@ -1464,6 +1483,8 @@ static int win0_display(struct lcdc_device *lcdc_dev,
 		win->area[0].uv_addr = uv_addr;	
 		lcdc_writel(lcdc_dev, WIN0_YRGB_MST, win->area[0].y_addr); 
 		lcdc_writel(lcdc_dev, WIN0_CBR_MST, win->area[0].uv_addr);
+		if(win->area[0].y_addr)
+			rk3288_win_0_1_reg_update(&lcdc_dev->driver,0);
 		/*lcdc_cfg_done(lcdc_dev);*/
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
@@ -1486,6 +1507,8 @@ static int win1_display(struct lcdc_device *lcdc_dev,
 	if (likely(lcdc_dev->clk_on)) {
 		win->area[0].y_addr = y_addr;
 		win->area[0].uv_addr = uv_addr;	
+		if(win->area[0].y_addr)
+			rk3288_win_0_1_reg_update(&lcdc_dev->driver,1);
 		lcdc_writel(lcdc_dev, WIN1_YRGB_MST, win->area[0].y_addr); 
 		lcdc_writel(lcdc_dev, WIN1_CBR_MST, win->area[0].uv_addr);
 	}
@@ -1542,7 +1565,7 @@ static int win3_display(struct lcdc_device *lcdc_dev,
 static int hwc_display(struct lcdc_device *lcdc_dev,
 			struct rk_lcdc_win *win)
 {
-	u32 i,y_addr;
+	u32 y_addr;
 	y_addr = win->area[0].smem_start + win->area[0].y_offset;
 	DBG(2, "lcdc%d>>%s>>y_addr:0x%x>>\n",
 	    lcdc_dev->id, __func__, y_addr);
@@ -2113,7 +2136,9 @@ static int win0_set_par(struct lcdc_device *lcdc_dev,
 		xvir = win->area[0].xvir;
 		yvir = win->area[0].yvir;
 	}
-	rk3288_win_0_1_reg_update(&lcdc_dev->driver,0);
+	if(win->area[0].y_addr)
+		rk3288_win_0_1_reg_update(&lcdc_dev->driver,0);
+		
 	spin_unlock(&lcdc_dev->reg_lock);
 
 	DBG(1, "lcdc%d>>%s\n>>format:%s>>>xact:%d>>yact:%d>>xsize:%d>>ysize:%d\n"
@@ -2202,7 +2227,8 @@ static int win1_set_par(struct lcdc_device *lcdc_dev,
 		xvir = win->area[0].xvir;
 		yvir = win->area[0].yvir;
 	}
-	rk3288_win_0_1_reg_update(&lcdc_dev->driver,1);
+	if(win->area[0].y_addr)
+		rk3288_win_0_1_reg_update(&lcdc_dev->driver,1);
 	spin_unlock(&lcdc_dev->reg_lock);
 
 	DBG(1, "lcdc%d>>%s\n>>format:%s>>>xact:%d>>yact:%d>>xsize:%d>>ysize:%d\n"

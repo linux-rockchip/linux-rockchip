@@ -167,14 +167,16 @@
 	//could add other pinctrl definition such as gpio
 
 };
-/*$_rbox_$_modify_$_begin_huangzhibao for nandflash*/
-&nandc0{
-	status = "okay";
+&nandc0 {
+	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
 };
-&nandc1{
-	status = "disabled";
+&nandc1 {
+	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+};   
+
+&nandc0reg {
+	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
 };
-/*$_rbox_$_modify_$_end_huangzhibao*/
 &emmc {
 	clock-frequency = <100000000>;
 	clock-freq-min-max = <400000 100000000>;
@@ -194,7 +196,7 @@
     
 &sdmmc {
 		clock-frequency = <50000000>;
-		lock-freq-min-max = <400000 50000000>;
+		clock-freq-min-max = <400000 50000000>;
 		supports-highspeed;
 		supports-sd;
 		broken-cd;
@@ -527,10 +529,10 @@
 	operating-points = <
 		/* KHz    uV */
 		126000 900000
-		216000 900000
-		312000 900000
-		408000 900000
-		600000 900000
+		216000 925000
+		312000 925000
+		408000 925000
+		600000 950000
 		696000 950000
 		816000 1000000
 		1008000 1050000
@@ -566,7 +568,7 @@
 		/*status		freq(KHz)*/
 		SYS_STATUS_NORMAL	456000
 		SYS_STATUS_SUSPEND	200000
-		SYS_STATUS_VIDEO_1080P  240000
+		//SYS_STATUS_VIDEO_1080P  240000
 		SYS_STATUS_VIDEO_4K     456000
 		SYS_STATUS_PERFORMANCE  528000
 		SYS_STATUS_BOOST	324000

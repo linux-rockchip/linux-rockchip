@@ -1719,6 +1719,12 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg
         
 			usr_fd = yuv_phy[0];
 			offset = yuv_phy[1] - yuv_phy[0];
+			
+			if(!usr_fd) {
+				fix->smem_start = 0;
+				fix->mmio_start = 0;
+				break;
+			}	
 //			if(dev_drv->enable) {
 				hdl = ion_import_dma_buf(rk_fb->ion_client, usr_fd);
 				ion_map_iommu(dev_drv->dev, rk_fb->ion_client, hdl,
@@ -2205,8 +2211,8 @@ static int rk_fb_set_par(struct fb_info *info)
 	win->area[0].xsize = screen->mode.xres*xsize/screen_primary.mode.xres;
 	win->area[0].ysize = screen->mode.yres*ysize/screen_primary.mode.yres;
 	//$_rbox_$_modify_$_zhengyang end
-	win->area[0].smem_start = fix->smem_start;
-	win->area[0].cbr_start = fix->smem_start+stride*yvir;//fix->mmio_start;
+//	win->area[0].smem_start = fix->smem_start;
+//	win->area[0].cbr_start = fix->smem_start+stride*yvir;//fix->mmio_start;
 	win->area[0].xact = var->xres;              /*winx active window height,is a wint of vir*/
 	win->area[0].yact = var->yres;
 	win->area[0].xvir =  var->xres_virtual;	   /*virtual resolution	 stride --->LCDC_WINx_VIR*/
