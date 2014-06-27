@@ -35,28 +35,35 @@
 #include <linux/firmware.h>
 #include <linux/suspend.h>
 
+#define CONFIG_BLUEDROID		1 /* bleuz 0, bluedroid 1 */
 
-#define CONFIG_BLUEDROID        1 //bleuz 0 ;  bluedroid 1
+/* Some Android system may use standard Linux kernel, while
+ * standard Linux may also implement early suspend feature.
+ * So exclude earysuspend.h from CONFIG_BLUEDROID.
+ */
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
 
-#if CONFIG_BLUEDROID //for 4.2
-#else //for blueZ	
-	#include <net/bluetooth/bluetooth.h>
-	#include <net/bluetooth/hci_core.h>
-	#include <net/bluetooth/hci.h>
+#if CONFIG_BLUEDROID
+#else
+#include <net/bluetooth/bluetooth.h>
+#include <net/bluetooth/hci_core.h>
+#include <net/bluetooth/hci.h>
 #endif
 
 
 /***********************************
 ** Realtek - For rtk_btusb driver **
 ***********************************/
-#define BTUSB_RPM		0* USB_RPM 	//	1 SS enable; 0 SS disable
-#define LOAD_CONFIG		1         // set 1 if need to reconfig bt efuse  
-#define URB_CANCELING_DELAY_MS	10  	 // Added by Realtek
-//when os suspend, module is still powered,usb is not powered, 
-//this may set to 1 ,and must comply with special patch code
-#define CONFIG_RESET_RESUME		1
+#define URB_CANCELING_DELAY_MS          10
+/* when OS suspended, module is still powered,usb is not powered,
+ * this may set to 1, and must comply with special patch code.
+ */
+#define CONFIG_RESET_RESUME		0
 #define PRINT_CMD_EVENT			0
 #define PRINT_ACL_DATA			0
+#define PRINT_SCO_DATA			0
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
 #define HDEV_BUS		hdev->bus
@@ -76,82 +83,68 @@
 #define GET_DRV_DATA(x)		x->driver_data
 #endif
 
-static int patch_add(struct usb_interface* intf);
-static void patch_remove(struct usb_interface* intf);
-static int download_patch(struct usb_interface* intf);
-static int set_btoff(struct usb_interface* intf);
-static void print_event(struct sk_buff *skb);
-static void print_command(struct sk_buff *skb);
-static void print_acl (struct sk_buff *skb,int dataOut);
-static void hci_fake_hardware_error();
-
+#define BTUSB_RPM		(0 * USB_RPM) /* 1 SS enable; 0 SS disable */
 #define BTUSB_MAX_ISOC_FRAMES	10
 #define BTUSB_INTR_RUNNING		0
 #define BTUSB_BULK_RUNNING		1
 #define BTUSB_ISOC_RUNNING		2
 #define BTUSB_SUSPENDING		3
 #define BTUSB_DID_ISO_RESUME	4
-/*******************************/
-// Test (Realtek)
-#define BTUSB_NEXT_RX_URB_SUBMITTING		5
-/*******************************/
+#define BTUSB_NEXT_RX_URB_SUBMITTING	5
 
-struct btusb_data {
-	struct hci_dev       *hdev;
-	struct usb_device    *udev;
-	struct usb_interface *intf;
-	struct usb_interface *isoc;
+#define HCI_CMD_READ_BD_ADDR 0x1009
+#define HCI_VENDOR_CHANGE_BDRATE 0xfc17
+#define HCI_VENDOR_READ_RTK_ROM_VERISION 0xfc6d
+#define HCI_VENDOR_READ_LMP_VERISION 0x1001
 
-	spinlock_t lock;
+#define ROM_LMP_8723a               0x1200
+#define ROM_LMP_8723b               0x8723
+#define ROM_LMP_8821a               0X8821
+#define ROM_LMP_8761a               0X8761
 
-	unsigned long flags;
+/* signature: Realtek */
+const uint8_t RTK_EPATCH_SIGNATURE[8] = {0x52,0x65,0x61,0x6C,0x74,0x65,0x63,0x68};
+/* Extension Section IGNATURE:0x77FD0451 */
+const uint8_t EXTENSION_SECTION_SIGNATURE[4] = {0x51,0x04,0xFD,0x77};
 
-	struct work_struct work;
-	struct work_struct waker;
-
-	struct usb_anchor tx_anchor;
-	struct usb_anchor intr_anchor;
-	struct usb_anchor bulk_anchor;
-	struct usb_anchor isoc_anchor;
-	struct usb_anchor deferred;
-	int tx_in_flight;
-	spinlock_t txlock;
-
-	struct usb_endpoint_descriptor *intr_ep;
-	struct usb_endpoint_descriptor *bulk_tx_ep;
-	struct usb_endpoint_descriptor *bulk_rx_ep;
-	struct usb_endpoint_descriptor *isoc_tx_ep;
-	struct usb_endpoint_descriptor *isoc_rx_ep;
-
-	__u8 cmdreq_type;
-
-	unsigned int sco_num;
-	int isoc_altsetting;
-	int suspend_count;
-
-#if CONFIG_BLUEDROID //for 4.2
-	wait_queue_head_t read_wait;
-	struct sk_buff_head readq;
-#endif
+uint16_t project_id[] = {
+	ROM_LMP_8723a,
+	ROM_LMP_8723b,
+	ROM_LMP_8821a,
+	ROM_LMP_8761a
 };
+struct rtk_eversion_evt {
+	uint8_t status;
+	uint8_t version;
+} __attribute__ ((packed));
 
+struct rtk_epatch_entry {
+	uint16_t chip_id;
+	uint16_t patch_length;
+	uint32_t start_offset;
+	uint32_t coex_version;
+	uint32_t svn_version;
+	uint32_t fw_version;
+} __attribute__ ((packed));
+
+struct rtk_epatch {
+	uint8_t signature[8];
+	uint32_t fw_version;
+	uint16_t number_of_total_patch;
+	struct rtk_epatch_entry entry[0];
+} __attribute__ ((packed));
+
+struct rtk_extension_entry {
+	uint8_t opcode;
+	uint8_t length;
+	uint8_t *data;
+} __attribute__ ((packed));
 /* Realtek - For rtk_btusb driver end */
 
-//========================================================================
-
-#if CONFIG_BLUEDROID //for 4.2
-#define SUCCESS               0 /* Linux success code */
-#define ERROR                -1 /* Linux error code */
+#if CONFIG_BLUEDROID
 #define QUEUE_SIZE 500
-static int btfcd_init(void);
-static void btfcd_exit(void);
-static int btfcd_open(struct inode *inode_p, struct file *file_p);
-static int btfcd_close(struct inode *inode_p, struct file *file_p);
-static ssize_t btfcd_read(struct file *file_p, char *buf_p, size_t count, loff_t *pos_p);
-static ssize_t btfcd_write(struct file *file_p, const char *buf_p, size_t count, loff_t *pos_p);
-static unsigned int btfcd_poll(struct file *file, poll_table *wait);
 
-/*****************************************
+/***************************************
 ** Realtek - Integrate from bluetooth.h **
 *****************************************/
 /* Reserv for core and drivers use */
@@ -172,6 +165,7 @@ struct bt_skb_cb {
 	__u8 sar;
 	__u8 force_active;
 };
+
 #define bt_cb(skb) ((struct bt_skb_cb *)((skb)->cb))
 
 static inline struct sk_buff *bt_skb_alloc(unsigned int len, gfp_t how)
@@ -358,7 +352,7 @@ struct hci_dev {
 
 	struct hci_dev_stats	stat;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 4, 0)
 	atomic_t        refcnt;
 	struct module           *owner;
 	void                    *driver_data;
@@ -375,24 +369,27 @@ struct hci_dev {
 	int (*close)(struct hci_dev *hdev);
 	int (*flush)(struct hci_dev *hdev);
 	int (*send)(struct sk_buff *skb);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 4, 0)
 	void (*destruct)(struct hci_dev *hdev);
+#endif
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3, 7, 1)
+	__u16               voice_setting;
 #endif
 	void (*notify)(struct hci_dev *hdev, unsigned int evt);
 	int (*ioctl)(struct hci_dev *hdev, unsigned int cmd, unsigned long arg);
 };
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 4, 0)
 static inline struct hci_dev *__hci_dev_hold(struct hci_dev *d)
 {
-        atomic_inc(&d->refcnt);
-        return d;
+	atomic_inc(&d->refcnt);
+	return d;
 }
 
 static inline void __hci_dev_put(struct hci_dev *d)
 {
-        if (atomic_dec_and_test(&d->refcnt))
-                d->destruct(d);
+	if (atomic_dec_and_test(&d->refcnt))
+		d->destruct(d);
 }
 #endif
 
@@ -401,33 +398,20 @@ static inline void *hci_get_drvdata(struct hci_dev *hdev)
 	return dev_get_drvdata(&hdev->dev);
 }
 
-static inline void hci_set_drvdata(struct hci_dev *hdev, void *data)
+static inline int hci_set_drvdata(struct hci_dev *hdev, void *data)
 {
-	dev_set_drvdata(&hdev->dev, data);
+	return dev_set_drvdata(&hdev->dev, data);
 }
-
-static struct hci_dev *hci_dev_get(int index);
-
-static struct hci_dev *hci_alloc_dev(void);
-static void hci_free_dev(struct hci_dev *hdev);
-static int hci_register_dev(struct hci_dev *hdev);
-static void hci_unregister_dev(struct hci_dev *hdev);
-static int hci_dev_open(__u16 dev);
-static int hci_dev_close(__u16 dev);
-
-static int hci_recv_frame(struct sk_buff *skb);
-static int hci_recv_fragment(struct hci_dev *hdev, int type, void *data, int count);
 
 #define SET_HCIDEV_DEV(hdev, pdev) ((hdev)->parent = (pdev))
 /* Realtek - Integrate from hci_core.h end */
-
-
 
 /* -----  HCI Commands ---- */
 #define HCI_OP_INQUIRY			0x0401
 #define HCI_OP_INQUIRY_CANCEL		0x0402
 #define HCI_OP_EXIT_PERIODIC_INQ	0x0404
 #define HCI_OP_CREATE_CONN		0x0405
+#define HCI_OP_DISCONNECT				0x0406
 #define HCI_OP_ADD_SCO			0x0407
 #define HCI_OP_CREATE_CONN_CANCEL	0x0408
 #define HCI_OP_ACCEPT_CONN_REQ		0x0409
@@ -499,5 +483,4 @@ static int hci_recv_fragment(struct hci_dev *hdev, int type, void *data, int cou
 #define HCI_EV_SIMPLE_PAIR_COMPLETE	0x36
 #define HCI_EV_REMOTE_HOST_FEATURES	0x3d
 
-
-#endif //if bluedroid 4.2
+#endif /* CONFIG_BLUEDROID */
