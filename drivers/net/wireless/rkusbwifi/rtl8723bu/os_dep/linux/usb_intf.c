@@ -1878,7 +1878,7 @@ _func_exit_;
 extern int console_suspend_enabled;
 #endif
 
-static int __init rtw_drv_entry(void)
+static int rtw_drv_entry(void)
 {
 	int ret = 0;
 
@@ -1919,7 +1919,7 @@ exit:
 	return ret;
 }
 
-static void __exit rtw_drv_halt(void)
+static void rtw_drv_halt(void)
 {
 	DBG_871X_LEVEL(_drv_always_, "module exit start\n");
 

@@ -16,21 +16,21 @@
 
 /*
 ** If you select the macro of CONFIG_SDMMC0_RK29_WRITE_PROTECT, You must define the following values.
-** Otherwise, there is no need to define the following values。
+** Otherwise, there is no need to define the following values!#
 */
 //#define SDMMC0_WRITE_PROTECT_PIN	            RK30_PIN3_PB2	//According to your own project to set the value of write-protect-pin.
 //#define SDMMC0_WRITE_PROTECT_ENABLE_VALUE     GPIO_HIGH
 
 /*
 ** If you select the macro of CONFIG_SDMMC1_RK29_WRITE_PROTECT, You must define the following values.
-** Otherwise, there is no need to define the following values。
+** Otherwise, there is no need to define the following values!#
 */
 //#define SDMMC1_WRITE_PROTECT_PIN	            RK30_PIN3_PB3	//According to your own project to set the value of write-protect-pin.
 //#define SDMMC1_WRITE_PROTECT_ENABLE_VALUE     GPIO_HIGH
     
 /*
 ** If you select the macro of CONFIG_RK29_SDIO_IRQ_FROM_GPIO, You must define the following values.
-** Otherwise, there is no need to define the following values。
+** Otherwise, there is no need to define the following values!#
 */
 //#define RK29SDK_WIFI_SDIO_CARD_INT         RK30_PIN3_PD2
 
@@ -48,8 +48,8 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
     /**************************************************************************************
     **  Please tell me how much voltage of your SDMMC0-pin in your project. 
     **
-    **     例如: 有的项目，它的SDMMC0所在的RK主控的IO组，想用1.8V, 而卡本身用3.3V, 
-    **  而中间通过个电平转换.那么，您此时，应该设置下面的voltage值为 1.8V(即1800mv)
+    **     @}Hg: SP5DOnD?#,K|5DSDMMC0KyTZ5DRKVw?X5DIOWi#,OkSC1.8V, 6x?(1>ImSC3.3V, 
+    **  6xVP<dM(9}8v5gF=W*;;.DGC4#,Dz4KJ1#,S&8CIhVCOBCf5DvoltageV5N* 1.8V(<41800mv)
     ***************************************************************************************/
     voltage = 3300;  //default the voltage 3300mv. 
 
@@ -70,7 +70,7 @@ int rk31sdk_get_sdmmc0_pin_io_voltage(void)
 * Otherwise, you do not define this macro, eliminate it.
 *
 */          
-#if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) || defined(CONFIG_RTL8723AU) \
+#if defined(CONFIG_RTL8192CU) || defined(CONFIG_RTL8188EU) ||defined(CONFIG_RTL8723BU) || defined(CONFIG_RTL8723AU) \
 	|| defined(CONFIG_RTL8192DU)
     #define RK30SDK_WIFI_GPIO_POWER_N               RK30_PIN3_PD0            
     #define RK30SDK_WIFI_GPIO_POWER_ENABLE_VALUE    GPIO_LOW//GPIO_HIGH        
@@ -159,7 +159,7 @@ int rk31sdk_get_sdio_wifi_voltage(void)
     voltage = 2800 ; //power 1800V
 #elif defined(CONFIG_MT6620) 
     voltage = 2800 ; //power 2800V
-#elif defined(CONFIG_RDA5990)||defined(CONFIG_RTL8723AS) || defined(CONFIG_RTL8189ES)  \
+#elif defined(CONFIG_RDA5990)||defined(CONFIG_RTL8723AS) ||defined(CONFIG_RTL8723BU) || defined(CONFIG_RTL8189ES)  \
 	|| defined(CONFIG_RTL8723BS)
     voltage = 3300 ; //power 3300V
 #else
