@@ -650,9 +650,8 @@ static void rk_fb_update_reg(struct rk_lcdc_device_driver * dev_drv,struct rk_re
 	if(dev_drv->wait_fs == 0){
 		ret = wait_event_interruptible_timeout(dev_drv->vsync_info.wait,
 			!ktime_equal(timestamp, dev_drv->vsync_info.timestamp),msecs_to_jiffies(dev_drv->cur_screen->ft+5));
-	}else{
-		kfree(regs);
 	}
+
 	sw_sync_timeline_inc(dev_drv->timeline, 1);
 
 	if(dev_drv->win_data.acq_fence_fd[0] >= 0)
@@ -881,7 +880,6 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 
 			break;			
 		case RK_FBIOSET_CONFIG_DONE:
-			regs = kzalloc(sizeof(struct rk_reg_data), GFP_KERNEL);
 			ret = copy_from_user(&(dev_drv->win_data),(struct rk_fb_win_config_data __user *)argp,sizeof(dev_drv->win_data));
 			dev_drv->wait_fs = dev_drv->win_data.wait_fs;
 			fence_wait_begin = dev_drv->win_data.fence_begin;
@@ -916,26 +914,29 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 				retire_sync_pt = sw_sync_pt_create(dev_drv->timeline, dev_drv->timeline_max);
 				retire_fence = sync_fence_create("ret_fence", retire_sync_pt);
 				sync_fence_install(retire_fence, dev_drv->win_data.ret_fence_fd);
-				if(dev_drv->wait_fs == 1){
+
+				regs = kzalloc(sizeof(struct rk_reg_data), GFP_KERNEL);
+				if (dev_drv->wait_fs == 1) {
 					rk_fb_update_reg(dev_drv,regs);
+					kfree(regs);
 					mutex_unlock(&dev_drv->update_regs_list_lock);
-				}else{
+				} else {
 					list_add_tail(&regs->list,&dev_drv->update_regs_list);
 					mutex_unlock(&dev_drv->update_regs_list_lock);
 
 					queue_kthread_work(&dev_drv->update_regs_worker,
 						&dev_drv->update_regs_work);
 				}		
-			}else{
+			} else {
 				if(dev_drv->lcdc_reg_update)
 					dev_drv->lcdc_reg_update(dev_drv);	
 			}
 			if (copy_to_user((struct rk_fb_win_config_data __user *)arg,
 				 &dev_drv->win_data,
 				 sizeof(dev_drv->win_data))) {
-			ret = -EFAULT;
-			break;
-		}	
+				ret = -EFAULT;
+				break;
+			}
 	#if defined(CONFIG_RK_HDMI)
 		#if defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
 			if((hdmi_get_hotplug() == HDMI_HPD_ACTIVED) && (hdmi_switch_complete))
