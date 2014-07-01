@@ -1329,7 +1329,7 @@ static int rk29_sdmmc_get_cd(struct mmc_host *mmc)
     if(RK29_CTRL_SDMMC_ID == host->pdev->id)
     #endif
     {
-        set_bit(RK29_SDMMC_CARD_PRESENT, &host->flags);
+        //set_bit(RK29_SDMMC_CARD_PRESENT, &host->flags);
         return 1;
     }
 #endif
