@@ -1078,7 +1078,7 @@
 		clocks = <&clk_gates13 4>, <&clk_gates7 4>;
 		clock-names = "clk_usbphy0", "hclk_usb0";
 		/*0 - Normal, 1 - Force Host, 2 - Force Device*/
-		rockchip,usb-mode = <1>;
+		rockchip,usb-mode = <2>;
 	};
 
 	usb1: usb@ff540000 {
