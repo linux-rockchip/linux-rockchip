@@ -2800,9 +2800,9 @@ static int btusb_probe(struct usb_interface *intf, const struct usb_device_id *i
 #if CONFIG_BLUEDROID
 	mutex_lock(&btchr_mutex);
 #endif
-	err = download_patch(fw_info, 0);
-	/* If download failed, we just throw out a warning */
-	if (err < 0)
+//	err = download_patch(fw_info, 0);
+//	/* If download failed, we just throw out a warning */
+//	if (err < 0)
 		RTKBT_WARN("%s: Failed to download fw patch", __func__);
 #if CONFIG_BLUEDROID
 	mutex_unlock(&btchr_mutex);
