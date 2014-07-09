@@ -948,6 +948,11 @@
 #include "precomp.h"
 #include "mgmt/ais_fsm.h"
 
+#define USE_CUSTOM_MAC_ADDR
+#ifdef USE_CUSTOM_MAC_ADDR
+extern int rk29sdk_wifi_mac_addr(unsigned char *buf);
+#endif
+
 /*******************************************************************************
 *                              C O N S T A N T S
 ********************************************************************************
@@ -3798,6 +3803,7 @@ wlanUpdateNetworkAddress (
 #if CFG_SHOW_MACADDR_SOURCE
             DBGLOG(INIT, STATE, ("WIFI_CONFIG:Using dynamically generated MAC address\n"));
 #endif
+#ifndef USE_CUSTOM_MAC_ADDR
             // dynamic generate
             u4SysTime = (UINT_32) kalGetTimeTick();
 
@@ -3806,6 +3812,9 @@ wlanUpdateNetworkAddress (
             rMacAddr[2] = 0x22;
 
             kalMemCopy(&rMacAddr[3], &u4SysTime, 3);
+#else
+            rk29sdk_wifi_mac_addr(rMacAddr);
+#endif
         }
     }
     else {
@@ -4446,8 +4455,17 @@ wlanQueryNicCapability(
     prAdapter->fgIsHw5GBandDisabled       = (BOOLEAN)prEventNicCapability->ucHw5GBandDisabled;
     prAdapter->fgIsEepromUsed             = (BOOLEAN)prEventNicCapability->ucEepromUsed;
     prAdapter->fgIsEfuseValid             = (BOOLEAN)prEventNicCapability->ucEfuseValid;
+#ifndef USE_CUSTOM_MAC_ADDR
     prAdapter->fgIsEmbbededMacAddrValid   = (BOOLEAN)prEventNicCapability->ucMacAddrValid;
-
+#else
+{
+    PARAM_MAC_ADDRESS rMacAddr;
+    if(rk29sdk_wifi_mac_addr(rMacAddr) == 0)
+        prAdapter->fgIsEmbbededMacAddrValid   = (BOOLEAN)0;//
+    else
+        prAdapter->fgIsEmbbededMacAddrValid   = (BOOLEAN)prEventNicCapability->ucMacAddrValid;
+}
+#endif
 
 #if CFG_ENABLE_CAL_LOG
     DBGLOG(INIT, INFO, (" RF CAL FAIL  = (%d),BB CAL FAIL  = (%d)\n",
