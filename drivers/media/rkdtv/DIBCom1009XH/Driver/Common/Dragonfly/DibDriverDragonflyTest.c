@@ -9,7 +9,7 @@
  *
  ****************************************************************************/
 
-#if (mSDK==0)
+
 /**************************************************************************************************
 * @file "DibDriverDragonflyTest.c"
 * @brief Dragonfly specific debugging functions.
@@ -17,12 +17,16 @@
 ***************************************************************************************************/
 #include "DibDriverDragonflyTest.h"
 
-#if (USE_DRAGONFLY == 1)
+
 
 
 #include "DibDriverDragonflyMessages.h"
 
 #include "DibDriverConfig.h" /* Must be first include of all SDK files - Defines compilation options */
+
+#if (mSDK==0)
+
+#if (USE_DRAGONFLY == 1)
 
 /*******************************************
  *                TEST MDMA

@@ -298,7 +298,7 @@ enum DibDemodType
    eSTANDARD_ATSCMH,
    eMAX_STANDARD_DEMOD,          /**< must be the last one */
    eFAST = 0x80,                  /* exception this is used as a flag */
-   eALWAYS_TUNE_SUCCESS = 0x40                  /* exception this is used as a flag */
+   eALWAYS_TUNE_SUCCESS = 0x40,                  /* exception this is used as a flag */          
 };
 
 /**

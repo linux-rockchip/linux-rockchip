@@ -104,9 +104,6 @@ struct rk29_hsadc_device {
 	struct hsadc_host_t		*hsadc_host;
 };
 
-static struct rk29_dma_client rk29_dma_hsadc_client;// = {
-        //.name = "rk29-dma-hsadc",
-//};
 static struct hsadc_host_t *g_hsadc = NULL;
 
 //#define RK29_HSADC_IRQ_REQUEST
@@ -116,12 +113,8 @@ static int rk29_hsadc_debug = 1;
 #define dprintk if (rk29_hsadc_debug) printk
 
 extern int hsadc_dma_kmalloc_buf_head; 
-extern int rk29_dma_getposition(struct dma_chan *chan, dma_addr_t *src, dma_addr_t *dst);
+extern int pl330_dma_getposition(struct dma_chan *chan, dma_addr_t *src, dma_addr_t *dst);
 
-static void rk29_hsadc_dma_cleanup(struct hsadc_host_t *hsadc_host)
-{
-	struct rk29_hsadc_device *hsadc_dev  = hsadc_priv(hsadc_host);
-}
 
 static void rk29_hsadc_stop_dma(struct hsadc_host_t *hsadc_host)
 {
@@ -133,22 +126,11 @@ static void rk29_hsadc_stop_dma(struct hsadc_host_t *hsadc_host)
 	dmaengine_terminate_all(hsadc_dev->dmach);
 }
 
-/* This function is called by the DMA driver from tasklet context. */
-static void rk29_hsadc_dma_complete(void *arg, int size)  ///(int chn, dma_irq_type_t type, void *arg)
-{
-	struct rk29_hsadc_device *hsadc_dev  = hsadc_priv(g_hsadc);
-	unsigned int			i, dma_len=0, *src, *dest;
-	int ret = 0;
-	dma_addr_t		dest_dma_addr;;	
-	
-	dprintk("%s: hsadc dma complete!!!!!!!!!!!!!!!!!!!\n",__FUNCTION__);
-}
-
 static void rk29_hsadc_start(struct hsadc_host_t *hsadc_host)
 {
 	struct rk29_hsadc_device *hsadc_dev  = hsadc_priv(hsadc_host);
-	unsigned int			i, dma_len=0, *src, *dest;
-	int ret = 0,temp;
+	unsigned int	dma_len=0;
+	int ret = 0;
 	dma_addr_t		dest_dma_addr;
 	struct dma_slave_config slave_config;
 	
@@ -171,15 +153,13 @@ static void rk29_hsadc_start(struct hsadc_host_t *hsadc_host)
        /* HSADC interrupt enable/mask register */
 	iowrite32((HSADC_EMPTY_INTERRUPT_DISABLE | HSADC_EMPTY_INTERRUPT_DISABLE),  hsadc_dev->regs + HSADC_IER);
        hsadc_dev->dma_addr = (hsadc_dev->reg_start + HSADC_DATA);
-	dest_dma_addr = virt_to_dma(NULL, hsadc_dma_kmalloc_buf_head);
+	dest_dma_addr = virt_to_dma(NULL, (void *)hsadc_dma_kmalloc_buf_head);
 	
-	memset(hsadc_dma_kmalloc_buf_head, 0, 1024*2048);	
+	memset((void *)hsadc_dma_kmalloc_buf_head, 0, 1024*2048);	
 
 #if 0
        ret = rk29_dma_devconfig(hsadc_dev->dmach, RK29_DMASRC_HW, (unsigned long )(hsadc_dev->dma_addr));	   
 	 ret = rk29_dma_config(hsadc_dev->dmach, 4, 1);
-	 //ret = rk29_dma_set_buffdone_fn(hsadc_dev->dmach, rk29_hsadc_dma_complete);	 
- 	 //ret = rk29_dma_setflags(hsadc_dev->dmach, RK29_DMAF_CIRCULAR);	//RK29_DMAF_AUTOSTART  	//RK29_DMAF_CIRCULAR	
         ret = rk29_dma_ctrl(hsadc_dev->dmach, RK29_DMAOP_FLUSH);
     	 ret = rk29_dma_enqueue_ring(hsadc_dev->dmach, hsadc_host, dest_dma_addr, 1024*2048/128, 128, false);  
 	 ret = rk29_dma_ctrl(hsadc_dev->dmach, RK29_DMAOP_START);	
@@ -229,27 +209,16 @@ static void rk29_hsadc_stop(struct hsadc_host_t *hsadc_host)
 	iowrite32((HSADC_EMPTY_INTERRUPT_DISABLE | HSADC_FULL_INTERRUPT_DISABLE),  hsadc_dev->regs + HSADC_IER);   
 }
 
-static u32 rk29_hsadc_read(struct hsadc_host_t *hsadc_host)
+static int rk29_hsadc_read(struct hsadc_host_t *hsadc_host)
 {
 	struct rk29_hsadc_device *hsadc_dev  = hsadc_priv(hsadc_host);
-       dma_addr_t src, dst,addr;
-	 unsigned int hsadc_isr = 0, hsadc_ier = 0, hsadc_data = 0, hsadc_ctrl = 0;
+       dma_addr_t src, dst;
+    void *addr;       
 
-	  rk29_dma_getposition(hsadc_dev->dmach, &src, &dst);
-	 
-       addr = dma_to_virt(NULL, dst);	
+	  pl330_dma_getposition(hsadc_dev->dmach, &src, &dst);
+    addr = (void *)dma_to_virt(NULL, dst);	
 	   	   
-#if 0  
-       /* inputerrupt status register */	
-	hsadc_isr = ioread32(hsadc_dev->regs + HSADC_ISR);	
-	hsadc_ier = ioread32(hsadc_dev->regs + HSADC_IER);	
-	//hsadc_data = ioread32(hsadc_dev->regs + HSADC_DATA);	
-	hsadc_ctrl = ioread32(hsadc_dev->regs + HSADC_CTRL);       	
-        dprintk("%s[%d]:dst dma addr:%x,  hsadc CTRL register: %x, hsadc ISR register: %x, IER register: %x\n",__FUNCTION__,__LINE__, addr, hsadc_ctrl, hsadc_isr, hsadc_ier);		
-#endif
-       //dprintk("hsadc_dev->dmach:%x---",  hsadc_dev->dmach);
-
-	return addr;
+	return (u32)addr;
 }
 
 //------------------------------------------
@@ -264,8 +233,7 @@ EXPORT_SYMBOL(rk29_hsadc_start_transmit);
 int rk29_hsadc_stop_transmit(void)
 {
     int i;
-    int diff_flag = 0;	
-    char *data_addr = hsadc_dma_kmalloc_buf_head;
+    char *data_addr = (char *)hsadc_dma_kmalloc_buf_head;
     char data;
 	
     rk29_hsadc_stop(g_hsadc);
@@ -293,14 +261,16 @@ int rk29_hsadc_get_cur_transmit_addr(void)
 EXPORT_SYMBOL(rk29_hsadc_get_cur_transmit_addr);
 //------------------------------------------
 
+	
+#ifdef RK29_HSADC_IRQ_REQUEST	
 static irqreturn_t rk29_hsadc_irq(int irq, void *data)
 {
-	struct rk29_hsadc_device *hsadc_dev = data;
-
 	dprintk( "%s[%d]\n",__FUNCTION__,__LINE__);	
 	
 	return IRQ_HANDLED;
 }
+#endif
+
 static const struct hsadc_ops rk29_hsadc_ops = {
 	.start		= rk29_hsadc_start,
 	.stop		= rk29_hsadc_stop,
@@ -331,7 +301,7 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 {
 	struct hsadc_host_t *hsadc_host= NULL;
 	struct rk29_hsadc_device *hsadc_dev;
-	struct resource *res, *dma_res;
+	struct resource *res;
 	int ret;
 	struct device *dev;
 
@@ -356,13 +326,11 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 	if (hsadc_dev->irq <= 0) {
 		printk("failed to get hsadc irq\n");
 		ret = -ENOENT;
-		goto err_alloc;
 	}
 
 	ret = request_irq(hsadc_dev->irq, rk29_hsadc_irq, 0, pdev->name, NULL);
 	if (ret < 0) {
 		printk("failed to attach hsadc irq\n");
-		goto err_alloc;
 	}	
 #endif	
 
@@ -372,7 +340,6 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 	if (IS_ERR(hsadc_dev->clk_hsadc)) {
 		printk("failed to get hsadc_ext clock\n");
 		ret = PTR_ERR(hsadc_dev->clk_hsadc);
-		//goto err_ahb_clk;
 	}
 	else {
 	    printk("success to get hsadc_ext clock\n");
@@ -384,7 +351,6 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 	if (IS_ERR(hsadc_dev->clk_ahb)) {
 		printk("failed to get clk_hsadc_out clock\n");
 		ret = PTR_ERR(hsadc_dev->clk_ahb);
-		//goto err_irq;
 	}
 	else {
 	    printk("success to get clk_hsadc_out clock\n");
@@ -396,7 +362,6 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 	if (IS_ERR(hsadc_dev->clk_ahb)) {
 		printk("failed to get clk_hsadc_out clock\n");
 		ret = PTR_ERR(hsadc_dev->clk_ahb);
-		//goto err_irq;
 	}
 	else {
 	    printk("success to get hclk_hsadc clock\n");
@@ -408,26 +373,22 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 	if (!res) {
 		printk("cannot find IO resource\n");
 		ret = -ENOENT;
-		//goto err_clk;
 	}
 	hsadc_dev->reg_start = res->start;
 	hsadc_dev->ioarea = request_mem_region(res->start, (res->end - res->start) + 1,  pdev->name);
 	if(hsadc_dev->ioarea == NULL) {
 		printk("cannot request IO\n");
 		ret = -ENXIO;
-		//goto err_clk;
 	}
 	hsadc_dev->regs = ioremap(res->start, (res->end - res->start) + 1);
 	if (!hsadc_dev->regs) {
 		printk("cannot map IO\n");
 		ret = -ENXIO;
-		//goto err_ioarea;
 	}
 	hsadc_dev->dmach = dma_request_slave_channel(dev, "data");	
 	if (!hsadc_dev->dmach)
 	{
 		printk( "Failed to get hsadc DMA channel\n");
-		//goto err_ioarea;
 	}
 
 	
@@ -436,24 +397,17 @@ static int  rk29_hsadc_probe(struct platform_device *pdev)
 
 	return 0;
 
- err_iomap:
 	iounmap(hsadc_dev->regs);
 
- err_ioarea:
 	release_mem_region(res->start,  (res->end - res->start) + 1);  //releae resource hsadc_dev->ioarea
 
- err_clk:
  	clk_put(hsadc_dev->clk_hsadc);
-err_ahb_clk:	
 	clk_put(hsadc_dev->clk_ahb);
 			
-
- err_irq:
- #ifdef RK29_HSADC_IRQ_REQUEST		
-	free_irq(hsadc_dev->irq, hsadc_dev);
+ #ifdef RK29_HSADC_IRQ_REQUEST	
+ free_irq(hsadc_dev->irq, hsadc_dev);
  #endif
 
- err_alloc:
 	hsadc_free_host(hsadc_dev->hsadc_host);
 	
 	return ret;
@@ -485,6 +439,7 @@ static int rk29_hsadc_suspend(struct platform_device *pdev, pm_message_t state)
 	struct rk29_hsadc_device *hsadc_dev = platform_get_drvdata(pdev);
 
 	hsadc_dev->hsadc_host->is_suspended = 1;
+	
 	return 0;
 }
 
@@ -493,12 +448,9 @@ static int rk29_hsadc_resume(struct platform_device *pdev)
 	struct rk29_hsadc_device *hsadc_dev = platform_get_drvdata(pdev);
 
 	hsadc_dev->hsadc_host->is_suspended = 0;
+	
 	return 0;
 }
-
-#else
-#define rk29_hsadc_suspend NULL
-#define rk29_hsadc_resume NULL
 
 #endif
 
@@ -515,10 +467,12 @@ static struct platform_driver rk29_hsadc_driver = {
 	.driver		= {
 		.name	= "rockchip-hsadc",
 		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(rockchip_hsadc_dt_match),		
+		.of_match_table = of_match_ptr(rockchip_hsadc_dt_match),			
 	},
 	.probe		= rk29_hsadc_probe,
 	.remove		= rk29_hsadc_remove,
+	.suspend	= rk29_hsadc_suspend,
+	.resume		= rk29_hsadc_resume,	
 };
 //MODULE_ALIAS("platform:rockchip-hsadc");
 

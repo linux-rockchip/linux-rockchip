@@ -421,10 +421,10 @@ static uint32_t DibBridgeDragonflyReceiveMsg(struct DibBridgeContext *pContext, 
    /* Check if there is space in msgbox */
    if((Status = DibBridgeReadReg32(pContext, pContext->DragonflyRegisters.HostMbxRdPtrReg, &rdptr) != DIBSTATUS_SUCCESS))
       goto End;
-
+   DibMSleep(25);
    if((Status = DibBridgeRead32Reg32(pContext, pContext->DragonflyRegisters.HostMbxWrPtrReg, &wrptr) != DIBSTATUS_SUCCESS))
       goto End;
-
+   DibMSleep(25);
 //   DIB_ASSERT((wrptr & 3) == 0);
 
    NbBytes = IntBridgeDragonflyMailboxBytes(rdptr, wrptr, pContext->DragonflyRegisters.HostMbxSize);

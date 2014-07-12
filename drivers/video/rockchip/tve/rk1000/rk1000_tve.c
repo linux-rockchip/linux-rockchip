@@ -207,7 +207,8 @@ static int rk1000_tve_initial(void)
 }
 
 //#ifdef CONFIG_HAS_EARLYSUSPEND
-static void rk1000_early_suspend(struct early_suspend *h)
+
+static void rk1000_early_suspend(void *h)
 {
 	printk("rk1000_early_suspend\n");
 	if(rk1000_tve.ypbpr) {
@@ -221,7 +222,8 @@ static void rk1000_early_suspend(struct early_suspend *h)
 	return;
 }
 
-static void rk1000_early_resume(struct early_suspend *h)
+
+static void rk1000_early_resume(void *h)
 {
 	printk("rk1000 tve exit early resume\n");
 	if( rk1000_tve.cvbs) {

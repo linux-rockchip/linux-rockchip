@@ -139,6 +139,7 @@ static struct rkxx_remote_key_table remote_key_table_meiyu_202[] = {
     {0x82,   0x175},
 };
 
+/*
 static struct rkxx_remote_key_table remote_key_table_df[] = {
     {0xf8, KEY_REPLY},
     {0xc0, KEY_BACK}, 
@@ -157,7 +158,7 @@ static struct rkxx_remote_key_table remote_key_table_df[] = {
     {0x50, KEY_POWER},     //power off
     {0x40, KEY_SEARCH},     //search
 };
-
+*/
 static struct rkxx_remote_key_table remote_key_table_sunchip_ff[] = {
 
    {0x60, KEY_HOME},     // home

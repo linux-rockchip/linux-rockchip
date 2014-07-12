@@ -209,14 +209,14 @@
 };
 
 &nandc0 {
-	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+	status = "disabled"; // used nand set "disabled" ,used emmc set "okay"
 };
 &nandc1 {
-	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+	status = "disabled"; // used nand set "disabled" ,used emmc set "okay"
 };   
 
 &nandc0reg {
-	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+	status = "okay"; // used nand set "disabled" ,used emmc set "okay"
 };
 
 &emmc {
@@ -231,9 +231,10 @@
 	//caps2-mmc-hs200;
 
         ignore-pm-notify;
-		keep-power-in-suspend;
-		//poll-hw-reset 
-		status = "okay";
+	keep-power-in-suspend;
+	
+	//poll-hw-reset 
+	status = "okay";
 };
     
 &sdmmc {
@@ -502,7 +503,23 @@
               poll_delay_ms = <30>;
               layout = <1>;
        };
-	
+
+    nfc-bcm2079x@76 {
+        compatible = "nfc-bcm2079x.ap6441";
+        reg = <0x76>;
+        en_gpio = <&gpio4 GPIO_D3 GPIO_ACTIVE_HIGH>;
+        wake_gpio = <&gpio5 GPIO_C0 GPIO_ACTIVE_HIGH>;
+        irq_gpio = <&gpio5 GPIO_B7 IRQ_TYPE_EDGE_RISING>;
+        status = "disabled";
+    };
+    nfc-bcm2079x@77 {
+        compatible = "nfc-bcm2079x.ap6493";
+        reg = <0x77>;
+        en_gpio = <&gpio4 GPIO_D3 GPIO_ACTIVE_HIGH>;
+        wake_gpio = <&gpio5 GPIO_C0 GPIO_ACTIVE_HIGH>;
+        irq_gpio = <&gpio5 GPIO_B7 IRQ_TYPE_EDGE_RISING>;
+        status = "disabled";
+    };
 };
 
 &i2c2 {

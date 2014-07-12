@@ -148,37 +148,55 @@ static void stmmac_exit_fs(void);
 
 #define STMMAC_COAL_TIMER(x) (jiffies + usecs_to_jiffies(x))
 
-static int gmac_clk_enable(struct stmmac_priv *priv)
-{
-	if (!priv->clk_enable) {
+static int gmac_clk_enable(struct stmmac_priv *priv) {
+	int phy_iface = -1;
 
-		clk_prepare_enable(priv->clk_mac);
-		clk_prepare_enable(priv->mac_clk_tx);
-#ifndef CONFIG_GMAC_CLK_IN
-		clk_prepare_enable(priv->mac_clk_rx);
-		clk_prepare_enable(priv->clk_mac_ref);
-		clk_prepare_enable(priv->clk_mac_refout);
-#endif
+	if ((priv->plat) && (priv->plat->bsp_priv)) {
+		struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
+		phy_iface = bsp_priv->phy_iface;
+	} else {
+		pr_err("%s:get PHY interface type failed!", __func__);
+	}
+
+	if (!priv->clk_enable) {
+		if (phy_iface == PHY_INTERFACE_MODE_RMII) {
+			clk_set_rate(priv->stmmac_clk, 50000000);
+			clk_prepare_enable(priv->mac_clk_rx);
+			clk_prepare_enable(priv->clk_mac_ref);
+			clk_prepare_enable(priv->clk_mac_refout);
+		}
+
 		clk_prepare_enable(priv->aclk_mac);
 		clk_prepare_enable(priv->pclk_mac);
+		clk_prepare_enable(priv->mac_clk_tx);
+
 		priv->clk_enable = true;
 	}
 	
 	return 0;
 }
 
-static int gmac_clk_disable(struct stmmac_priv *priv)
-{
+static int gmac_clk_disable(struct stmmac_priv *priv) {
+	int phy_iface = -1;
+
+	if ((priv->plat) && (priv->plat->bsp_priv)) {
+		struct bsp_priv * bsp_priv = priv->plat->bsp_priv;
+		phy_iface = bsp_priv->phy_iface;
+	} else {
+		pr_err("%s:get PHY interface type failed!", __func__);
+	}
+
 	if (priv->clk_enable) {
-		clk_disable_unprepare(priv->clk_mac);
-		clk_disable_unprepare(priv->mac_clk_tx);
-#ifndef CONFIG_GMAC_CLK_IN
-		clk_disable_unprepare(priv->mac_clk_rx);
-		clk_disable_unprepare(priv->clk_mac_ref);
-		clk_disable_unprepare(priv->clk_mac_refout);
-#endif
+		if (phy_iface == PHY_INTERFACE_MODE_RMII) {
+			clk_disable_unprepare(priv->mac_clk_rx);
+			clk_disable_unprepare(priv->clk_mac_ref);
+			clk_disable_unprepare(priv->clk_mac_refout);
+		}
+
 		clk_disable_unprepare(priv->aclk_mac);
 		clk_disable_unprepare(priv->pclk_mac);
+		clk_disable_unprepare(priv->mac_clk_tx);
+
 		priv->clk_enable = false;
 	}
 	
@@ -688,6 +706,7 @@ static int stmmac_hwtstamp_ioctl(struct net_device *dev, struct ifreq *ifr)
  * This is done by looking at the HW cap. register.
  * Also it registers the ptp driver.
  */
+/*
 static int stmmac_init_ptp(struct stmmac_priv *priv)
 {
 	if (!(priv->dma_cap.time_stamp || priv->dma_cap.atime_stamp))
@@ -711,7 +730,7 @@ static int stmmac_init_ptp(struct stmmac_priv *priv)
 
 	return stmmac_ptp_register(priv);
 }
-
+*/
 static void stmmac_release_ptp(struct stmmac_priv *priv)
 {
 	stmmac_ptp_unregister(priv);
@@ -2771,15 +2790,6 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 
 	priv->mdio_registered = false;
 	priv->clk_enable = false;
-#ifdef CONFIG_GMAC_CLK_IN
-	priv->clk_mac = clk_get(priv->device,"gmac_clkin");
-#else
-	priv->clk_mac = clk_get(priv->device,"clk_mac_pll");
-#endif
-	if (IS_ERR(priv->clk_mac)) {
-		pr_warn("%s: warning: cannot get clk_mac clock\n", __func__);
-		goto error_clk_get;
-	}
 
 	priv->mac_clk_rx = clk_get(priv->device,"mac_clk_rx");
 	if (IS_ERR(priv->mac_clk_rx)) {
@@ -2816,16 +2826,31 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 		pr_warn("%s: warning: cannot get pclk_mac clock\n", __func__);
 		goto error_clk_get;
 	}
-#ifdef CONFIG_GMAC_CLK_IN
-	priv->stmmac_clk = clk_get(priv->device, "gmac_clkin"/*STMMAC_RESOURCE_NAME*/);
-#else
-	priv->stmmac_clk = clk_get(priv->device, "clk_mac_pll"/*STMMAC_RESOURCE_NAME*/);
-#endif
+
+	priv->clk_mac_pll = clk_get(priv->device,"clk_mac_pll");
+	if (IS_ERR(priv->clk_mac_pll)) {
+		pr_warn("%s: warning: cannot get clk_mac_pll clock\n", __func__);
+		goto error_clk_get;
+	}
+
+	priv->gmac_clkin = clk_get(priv->device,"gmac_clkin");
+	if (IS_ERR(priv->gmac_clkin)) {
+		pr_warn("%s: warning: cannot get gmac_clkin clock\n", __func__);
+		goto error_clk_get;
+	}
+
+	priv->stmmac_clk = clk_get(priv->device, "clk_mac");
 
 	if (IS_ERR(priv->stmmac_clk)) {
 		pr_warn("%s: warning: cannot get CSR clock\n", __func__);
 		goto error_clk_get;
 	}
+
+#ifdef CONFIG_GMAC_CLK_IN
+	clk_set_parent(priv->stmmac_clk, priv->gmac_clkin);
+#else
+	clk_set_parent(priv->stmmac_clk, priv->clk_mac_pll);
+#endif
 
 	/* If a specific clk_csr value is passed from the platform
 	 * this means that the CSR Clock Range selection cannot be

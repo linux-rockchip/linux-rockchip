@@ -344,7 +344,7 @@ static ssize_t set_dsp_bcsh(struct device *dev, struct device_attribute *attr,
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct rk_lcdc_driver *dev_drv =
 	    (struct rk_lcdc_driver *)fbi->par;
-	int brightness, contrast, sat_con, hue, ret, open, sin_hue, cos_hue;
+	int brightness, contrast, sat_con, ret, sin_hue, cos_hue;
 	if (!strncmp(buf, "open", 4)) {
 		ret = dev_drv->ops->open_bcsh(dev_drv, 1);
 	} else if (!strncmp(buf, "close", 5)) {
@@ -491,10 +491,8 @@ static struct device_attribute rkfb_attrs[] = {
 	__ATTR(dsp_lut, S_IRUGO | S_IWUSR, show_dsp_lut, set_dsp_lut),
 	__ATTR(cabc, S_IRUGO | S_IWUSR, show_dsp_cabc, set_dsp_cabc),
 	__ATTR(bcsh, S_IRUGO | S_IWUSR, show_dsp_bcsh, set_dsp_bcsh),
-//$_rbox_$_modify_$_zhengyang modified for box
 	__ATTR(scale, S_IRUGO | S_IWUSR, show_scale, set_scale),
 	__ATTR(lcdcid, S_IRUGO, show_lcdc_id, NULL),
-//$_rbox_$_modify_$_end
 };
 
 int rkfb_create_sysfs(struct fb_info *fbi)

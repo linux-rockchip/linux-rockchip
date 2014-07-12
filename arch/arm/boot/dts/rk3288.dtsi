@@ -207,8 +207,8 @@
 		reg = <0xff800000 0x100>;
 		clocks = <&pclk_pd_alive>;
 		clock-names = "pclk_wdt";
-		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
-		rockchip,irq = <0>;
+		interrupts = <GIC_SPI 79 IRQ_TYPE_LEVEL_HIGH>;
+		rockchip,irq = <1>;
 		rockchip,timeout = <60>;
 		rockchip,atboot = <1>;
 		rockchip,debug = <0>;
@@ -1061,6 +1061,7 @@
 			compatible = "synopsys,phy";
 					/* offset bit mask */
 			rk_usb,bvalid     = <0x288 14 1>;
+			rk_usb,iddig      = <0x288 17 1>;
 			rk_usb,dcdenb     = <0x328 14 1>;
 			rk_usb,vdatsrcenb = <0x328  7 1>;
 			rk_usb,vdatdetenb = <0x328  6 1>;
@@ -1078,7 +1079,7 @@
 		clocks = <&clk_gates13 4>, <&clk_gates7 4>;
 		clock-names = "clk_usbphy0", "hclk_usb0";
 		/*0 - Normal, 1 - Force Host, 2 - Force Device*/
-		rockchip,usb-mode = <2>;
+		rockchip,usb-mode = <1>;
 	};
 
 	usb1: usb@ff540000 {
@@ -1227,13 +1228,13 @@
 	rockchip_suspend {
 		rockchip,ctrbits = <
 			(0
-		//	 |RKPM_CTR_PWR_DMNS
-		//	 |RKPM_CTR_GTCLKS
-		//	 |RKPM_CTR_PLLS
-		//	 |RKPM_CTR_SYSCLK_DIV
-		//	 |RKPM_CTR_IDLEAUTO_MD
-		//	 |RKPM_CTR_ARMOFF_LPMD
-		//	 |RKPM_CTR_ARMOFF_LOGDP_LPMD
+			 //|RKPM_CTR_PWR_DMNS
+			 //|RKPM_CTR_GTCLKS
+			 //|RKPM_CTR_PLLS
+			 //|RKPM_CTR_SYSCLK_DIV
+			 //|RKPM_CTR_IDLEAUTO_MD
+			 //|RKPM_CTR_ARMOFF_LPMD
+			 //|RKPM_CTR_ARMOFF_LOGDP_LPMD
 			)
 			>;
 		rockchip,pmic-gpios = <

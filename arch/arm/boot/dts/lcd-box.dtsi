@@ -52,8 +52,8 @@
 				swap-rb = <0>;
 				swap-rg = <0>;
 				swap-gb = <0>;
-                     	};
-                     	timing1: timing1 {
+			};
+			timing1: timing1 {
 				screen-type = <SCREEN_RGB>;
 				out-face    = <OUT_P888>;
 				clock-frequency = <148500000>;
@@ -72,8 +72,8 @@
 				swap-rb = <0>;
 				swap-rg = <0>;
 				swap-gb = <0>;
-                     	};
-                     	timing2: timing2 {
+			};
+			timing2: timing2 {
 				screen-type = <SCREEN_RGB>;
 				out-face    = <OUT_P888>;
 				clock-frequency = <297000000>;
@@ -92,6 +92,6 @@
 				swap-rb = <0>;
 				swap-rg = <0>;
 				swap-gb = <0>;
-                     	};
-               };
+			};
+	   };
 };

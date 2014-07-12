@@ -147,7 +147,7 @@ int rk_fb_pixel_width(int data_format)
 	case YUV422_A:
 	case YUV420_A:
 	case YUV444_A:
-		pixel_width = 10;
+		pixel_width = 8;
 		break;
 	default:
 		printk(KERN_WARNING "%s:un supported format:0x%x\n",
@@ -231,7 +231,6 @@ int rk_disp_pwr_ctr_parse_dt(struct rk_lcdc_driver *dev_drv)
 	enum of_gpio_flags flags;
 	u32 val = 0;
 	u32 debug = 0;
-	u32 mirror = 0;
 	int ret;
 
 	INIT_LIST_HEAD(&dev_drv->pwrlist_head);
@@ -271,22 +270,6 @@ int rk_disp_pwr_ctr_parse_dt(struct rk_lcdc_driver *dev_drv)
 		of_property_read_u32(child, "rockchip,delay", &val);
 		pwr_ctr->pwr_ctr.delay = val;
 		list_add_tail(&pwr_ctr->list, &dev_drv->pwrlist_head);
-	}
-
-	of_property_read_u32(root, "rockchip,mirror", &mirror);
-
-	if (mirror == NO_MIRROR) {
-		dev_drv->screen0->x_mirror = 0;
-		dev_drv->screen0->y_mirror = 0;
-	} else if (mirror == X_MIRROR) {
-		dev_drv->screen0->x_mirror = 1;
-		dev_drv->screen0->y_mirror = 0;
-	} else if (mirror == Y_MIRROR) {
-		dev_drv->screen0->x_mirror = 0;
-		dev_drv->screen0->y_mirror = 1;
-	} else if (mirror == X_Y_MIRROR) {
-		dev_drv->screen0->x_mirror = 1;
-		dev_drv->screen0->y_mirror = 1;
 	}
 
 	of_property_read_u32(root, "rockchip,debug", &debug);
@@ -512,29 +495,78 @@ static struct rk_lcdc_driver *rk_get_prmry_lcdc_drv(void)
 	return dev_drv;
 }
 
-int rk_fb_get_prmry_screen_ft(void)
+/*
+ * get one frame time of the prmry screen, unit: us
+ */
+u32 rk_fb_get_prmry_screen_ft(void)
 {
 	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
-	uint32_t htotal, vtotal, pix_total, ft_us, pixclock_ns;
+	uint32_t htotal, vtotal, pixclock_ps;
+	u64 pix_total, ft_us;
 
 	if (unlikely(!dev_drv))
 		return 0;
 
-	pixclock_ns = dev_drv->pixclock / 1000;
+	pixclock_ps = dev_drv->pixclock;
 
-	htotal = (dev_drv->cur_screen->mode.upper_margin +
+	vtotal = (dev_drv->cur_screen->mode.upper_margin +
 		 dev_drv->cur_screen->mode.lower_margin +
 		 dev_drv->cur_screen->mode.yres +
 		 dev_drv->cur_screen->mode.vsync_len);
-	vtotal = (dev_drv->cur_screen->mode.left_margin +
+	htotal = (dev_drv->cur_screen->mode.left_margin +
 		 dev_drv->cur_screen->mode.right_margin +
 		 dev_drv->cur_screen->mode.xres +
 		 dev_drv->cur_screen->mode.hsync_len);
-	pix_total = htotal * vtotal / 1000;
-	ft_us = pix_total * pixclock_ns;
-	return ft_us;
+	pix_total = htotal * vtotal;
+	ft_us = pix_total * pixclock_ps;
+	do_div(ft_us, 1000000);
+	if (dev_drv->frame_time.ft == 0)
+		dev_drv->frame_time.ft = ft_us;
+
+	ft_us = dev_drv->frame_time.framedone_t - dev_drv->frame_time.last_framedone_t;
+	do_div(ft_us, 1000);
+	dev_drv->frame_time.ft = min(dev_drv->frame_time.ft, (u32)ft_us);
+	return dev_drv->frame_time.ft;
 }
 
+/*
+ * get the vblanking time of the prmry screen, unit: us
+ */
+u32 rk_fb_get_prmry_screen_vbt(void)
+{
+	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	uint32_t htotal, vblank, pixclock_ps;
+	u64 pix_blank, vbt_us;
+
+	if (unlikely(!dev_drv))
+		return 0;
+
+	pixclock_ps = dev_drv->pixclock;
+
+	htotal = (dev_drv->cur_screen->mode.left_margin +
+		 dev_drv->cur_screen->mode.right_margin +
+		 dev_drv->cur_screen->mode.xres +
+		 dev_drv->cur_screen->mode.hsync_len);
+	vblank = (dev_drv->cur_screen->mode.upper_margin +
+		 dev_drv->cur_screen->mode.lower_margin +
+		 dev_drv->cur_screen->mode.vsync_len);
+	pix_blank = htotal * vblank;
+	vbt_us = pix_blank * pixclock_ps;
+	do_div(vbt_us, 1000000);
+	return (u32)vbt_us;
+}
+
+/*
+ * get the frame done time of the prmry screen, unit: us
+ */
+u64 rk_fb_get_prmry_screen_framedone_t(void)
+{
+	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
+
+	return dev_drv->frame_time.framedone_t;
+}
+
+#if 0
 static struct rk_lcdc_driver *rk_get_extend_lcdc_drv(void)
 {
 	struct rk_fb *inf = NULL;
@@ -555,6 +587,7 @@ static struct rk_lcdc_driver *rk_get_extend_lcdc_drv(void)
 
 	return dev_drv;
 }
+#endif
 
 u32 rk_fb_get_prmry_screen_pixclock(void)
 {
@@ -591,12 +624,10 @@ bool rk_fb_poll_wait_frame_complete(void)
 		}
 		return false;
 	}
-
 	while (!(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_FR) && --timeout)
 		;
 	while (!(rk_fb_poll_prmry_screen_vblank() == RK_LF_STATUS_FC) && --timeout)
 		;
-
 	if (likely(dev_drv)) {
 		if (dev_drv->ops->set_irq_to_cpu)
 			dev_drv->ops->set_irq_to_cpu(dev_drv, 1);
@@ -630,12 +661,6 @@ static int get_extend_fb_id(struct fb_info *info)
 		fb_id = 1;
 	else if (!strcmp(id, "fb2") && (dev_drv->lcdc_win_num > 2))
 		fb_id = 2;
-	else if (!strcmp(id, "fb3") && (dev_drv->lcdc_win_num > 3))
-		fb_id = 3;
-	else if (!strcmp(id, "fb4") && (dev_drv->lcdc_win_num > 4))
-		fb_id = 4;
-	else
-		dev_err(dev_drv->dev,"get_extend_fb_id info error\n");
 	return fb_id;
 }
 
@@ -675,6 +700,8 @@ static int rk_fb_close(struct fb_info *info, int user)
 
 	return 0;
 }
+
+#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
 
 #if defined(CONFIG_RK29_IPP)
 static int get_ipp_format(int fmt)
@@ -1009,7 +1036,6 @@ static void fb_copy_by_rga(struct fb_info *dst_info, struct fb_info *src_info,
 
 #endif
 
-#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
 static int rk_fb_rotate(struct fb_info *dst_info,
 			struct fb_info *src_info, int offset)
 {
@@ -1409,7 +1435,6 @@ static void rk_fb_update_reg(struct rk_lcdc_driver *dev_drv,
 	struct rk_lcdc_driver *ext_dev_drv;
 	struct rk_lcdc_win *ext_win;
 	struct rk_fb_reg_win_data *win_data;
-	struct rk_fb_reg_win_data *last_win_data;
 	bool wait_for_vsync;
 	int count = 100;
 	unsigned int dsp_addr[4];
@@ -1500,9 +1525,14 @@ static void rk_fb_update_reg(struct rk_lcdc_driver *dev_drv,
 		}
 
 		if (ext_win->area[0].xact < ext_win->area[0].yact) {
+			int pixel_width, vir_width_bit, stride;
 			ext_win->area[0].xact = win->area[0].yact;
 			ext_win->area[0].yact = win->area[0].xact;
 			ext_win->area[0].xvir = win->area[0].yact;
+			pixel_width = rk_fb_pixel_width(ext_win->format);
+			vir_width_bit = pixel_width * ext_win->area[0].xvir;
+			stride = ALIGN_N_TIMES(vir_width_bit, 32) / 8;
+			ext_win->area[0].y_vir_stride = stride >> 2;
 		}
 #if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
 		rk_fb_win_rotate(ext_win, win);
@@ -1563,8 +1593,6 @@ ext_win_exit:
 	g_last_win_num = regs->win_num;
 	g_first_buf = 0;
 
-	if (dev_drv->wait_fs == 1)
-		kfree(regs);
 }
 
 static void rk_fb_update_regs_handler(struct kthread_work *work)
@@ -1584,6 +1612,9 @@ static void rk_fb_update_regs_handler(struct kthread_work *work)
 		list_del(&data->list);
 		kfree(data);
 	}
+
+	if (dev_drv->wait_fs && list_empty(&dev_drv->update_regs_list))
+		wake_up(&dev_drv->update_regs_wait);
 }
 
 static int rk_fb_check_config_var(struct rk_fb_area_par *area_par,
@@ -1849,7 +1880,8 @@ static int rk_fb_set_win_config(struct fb_info *info,
 	struct sync_pt *retire_sync_pt;
 	char fence_name[20];
 #endif
-	int ret, i, j = 0;
+	int ret = 0, i, j = 0;
+	int list_is_empty = 0;
 
 	regs = kzalloc(sizeof(struct rk_fb_reg_data), GFP_KERNEL);
 	if (!regs) {
@@ -1885,6 +1917,7 @@ static int rk_fb_set_win_config(struct fb_info *info,
 	mutex_lock(&dev_drv->output_lock);
 	if (!(dev_drv->suspend_flag == 0)) {
 		rk_fb_update_reg(dev_drv, regs);
+		kfree(regs);
 		printk(KERN_INFO "suspend_flag = 1\n");
 		goto err;
 	}
@@ -1936,7 +1969,22 @@ static int rk_fb_set_win_config(struct fb_info *info,
 		queue_kthread_work(&dev_drv->update_regs_worker,
 				   &dev_drv->update_regs_work);
 	} else {
-		rk_fb_update_reg(dev_drv, regs);
+		mutex_lock(&dev_drv->update_regs_list_lock);
+		list_is_empty = list_empty(&dev_drv->update_regs_list) &&
+					list_empty(&saved_list);
+		mutex_unlock(&dev_drv->update_regs_list_lock);
+		if (!list_is_empty) {
+			ret = wait_event_timeout(dev_drv->update_regs_wait,
+				list_empty(&dev_drv->update_regs_list) && list_empty(&saved_list),
+				msecs_to_jiffies(60));
+			if (ret > 0)
+				rk_fb_update_reg(dev_drv, regs);
+			else
+				printk("%s: wait update_regs_wait timeout\n", __func__);
+		} else if (ret == 0) {
+			rk_fb_update_reg(dev_drv, regs);
+		}
+		kfree(regs);
 	}
 
 err:
@@ -1952,23 +2000,25 @@ static int cfgdone_lasttime;
 
 int rk_get_real_fps(int before)
 {
-	if (before > 100)
-		before = 100;
-	if (before < 0)
-		before = 0;
-
 	struct timespec now;
-	getnstimeofday(&now);
-	int dist_curr =
-	    (now.tv_sec * 1000000 + now.tv_nsec / 1000) - cfgdone_lasttime;
+	int dist_curr;
 	int dist_total = 0;
 	int dist_count = 0;
 	int dist_first = 0;
 
 	int index = cfgdone_index;
 	int i = 0, fps = 0;
-	int total = dist_curr;
+	int total;
 
+	if (before > 100)
+		before = 100;
+	if (before < 0)
+		before = 0;
+
+	getnstimeofday(&now);
+	dist_curr = (now.tv_sec * 1000000 + now.tv_nsec / 1000) -
+			cfgdone_lasttime;
+	total = dist_curr;
 	/*
 	   printk("fps: ");
 	 */
@@ -3167,6 +3217,7 @@ static int rk_fb_alloc_buffer(struct fb_info *fbi, int fb_id)
 	return ret;
 }
 
+#if 0
 static int rk_release_fb_buffer(struct fb_info *fbi)
 {
 	/* buffer for fb1 and fb3 are alloc by android */
@@ -3177,6 +3228,7 @@ static int rk_release_fb_buffer(struct fb_info *fbi)
 	return 0;
 
 }
+#endif
 
 static int init_lcdc_win(struct rk_lcdc_driver *dev_drv,
 			 struct rk_lcdc_win *def_win)
@@ -3203,6 +3255,7 @@ static int init_lcdc_win(struct rk_lcdc_driver *dev_drv,
 static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 				   struct rk_lcdc_win *def_win, int index)
 {
+	u32 mirror = 0;
 	struct rk_lcdc_driver *dev_drv = rk_fb->lcdc_dev_drv[index];
 	struct rk_screen *screen = devm_kzalloc(dev_drv->dev,
 						sizeof(struct rk_screen),
@@ -3219,6 +3272,12 @@ static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 	screen->overscan.top = 100;
 	screen->overscan.right = 100;
 	screen->overscan.bottom = 100;
+	if (of_property_read_u32(dev_drv->dev->of_node, "rockchip,mirror", &mirror))
+		mirror = NO_MIRROR;
+
+	screen->x_mirror = mirror & X_MIRROR;
+	screen->y_mirror = mirror & Y_MIRROR;
+
 	dev_drv->screen0 = screen;
 	dev_drv->cur_screen = screen;
 	/* devie use one lcdc + rk61x scaler for dual display */
@@ -3244,6 +3303,7 @@ static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 	dev_drv->first_frame = 1;
 	rk_disp_pwr_ctr_parse_dt(dev_drv);
 	if (dev_drv->prop == PRMRY) {
+		dev_drv->ops->set_dsp_cabc(dev_drv, dev_drv->cabc_mode);
 		rk_fb_set_prmry_screen(screen);
 		rk_fb_get_prmry_screen(screen);
 	}
@@ -3360,6 +3420,7 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 
 		if (i == 0) {
 			init_waitqueue_head(&dev_drv->vsync_info.wait);
+			init_waitqueue_head(&dev_drv->update_regs_wait);
 			ret = device_create_file(fbi->dev, &dev_attr_vsync);
 			if (ret)
 				dev_err(fbi->dev,

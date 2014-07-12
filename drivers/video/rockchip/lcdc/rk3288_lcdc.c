@@ -1379,7 +1379,7 @@ static int rk3288_lcdc_enable_irq(struct rk_lcdc_driver *dev_drv)
 	val = v_FS_INTR_CLR(1) | v_FS_INTR_EN(1) | v_LINE_FLAG_INTR_CLR(1) |
 	    v_LINE_FLAG_INTR_EN(1) | v_BUS_ERROR_INTR_CLR(1) | v_BUS_ERROR_INTR_EN(0) |
 	    v_DSP_LINE_FLAG_NUM(screen->mode.vsync_len + screen->mode.upper_margin +
-	    screen->mode.yres -1);
+	    screen->mode.yres);
 	lcdc_msk_reg(lcdc_dev, INTR_CTRL0, mask, val);	
 #if 0
 		 mask = m_WIN0_EMPTY_INTR_EN | m_WIN1_EMPTY_INTR_EN | m_WIN2_EMPTY_INTR_EN |
@@ -2672,7 +2672,9 @@ static ssize_t rk3288_lcdc_get_disp_info(struct rk_lcdc_driver *dev_drv,
 	u16 left_margin = screen->mode.left_margin;
 	u16 vsync_len = screen->mode.vsync_len;
 	u16 upper_margin = screen->mode.upper_margin;
-	u32 fmt_id,h_pw_bp,v_pw_bp;
+	u32 h_pw_bp = hsync_len + left_margin;
+	u32 v_pw_bp = vsync_len + upper_margin;
+	u32 fmt_id;
 	char format_w0[9] = "NULL";
 	char format_w1[9] = "NULL";
 	char format_w2[9] = "NULL";
@@ -2682,8 +2684,6 @@ static ssize_t rk3288_lcdc_get_disp_info(struct rk_lcdc_driver *dev_drv,
 	u8 w0_state,w1_state,w2_state,w3_state;
 	u8 w2_0_state,w2_1_state,w2_2_state,w2_3_state;
 	u8 w3_0_state,w3_1_state,w3_2_state,w3_3_state;
-	h_pw_bp = hsync_len + left_margin;
-	v_pw_bp = vsync_len + upper_margin;
 
 	u32 w0_vir_y,w0_vir_uv,w0_act_x,w0_act_y,w0_dsp_x,w0_dsp_y,w0_st_x=h_pw_bp,w0_st_y=v_pw_bp;
 	u32 w1_vir_y,w1_vir_uv,w1_act_x,w1_act_y,w1_dsp_x,w1_dsp_y,w1_st_x=h_pw_bp,w1_st_y=v_pw_bp;
@@ -3326,6 +3326,9 @@ int rk3288_lcdc_poll_vblank(struct rk_lcdc_driver *dev_drv)
 	if (lcdc_dev->clk_on &&(!dev_drv->suspend_flag)){
 		int_reg = lcdc_readl(lcdc_dev, INTR_CTRL0);
 		if (int_reg & m_LINE_FLAG_INTR_STS) {
+			lcdc_dev->driver.frame_time.last_framedone_t =
+					lcdc_dev->driver.frame_time.framedone_t;
+			lcdc_dev->driver.frame_time.framedone_t = cpu_clock(0);
 			lcdc_msk_reg(lcdc_dev, INTR_CTRL0, m_LINE_FLAG_INTR_CLR,
 				     v_LINE_FLAG_INTR_CLR(1));
 			ret = RK_LF_STATUS_FC;
@@ -3352,42 +3355,70 @@ static int rk3288_lcdc_get_dsp_addr(struct rk_lcdc_driver *dev_drv,unsigned int 
 	return 0;
 }
 
-static int rk3288_lcdc_set_dsp_cabc(struct rk_lcdc_driver *dev_drv,int mode)
+static struct lcdc_cabc_mode cabc_mode[4] = {
+/* pixel_num, stage_up, stage_down */
+	{5,	128,	0},	/*mode 1*/
+	{10,	128,	0},	/*mode 2*/
+	{15,	128,	0},	/*mode 3*/
+	{20,	128,	0},	/*mode 4*/
+};
+
+static int rk3288_lcdc_set_dsp_cabc(struct rk_lcdc_driver *dev_drv, int mode)
 {
 	struct lcdc_device *lcdc_dev =
 	    container_of(dev_drv, struct lcdc_device, driver);
 	struct rk_screen *screen = dev_drv->cur_screen;
-	int total_pixel,calc_pixel,stage_up,stage_down;
-	u32 mask=0, val=0;
+	u32 total_pixel, calc_pixel, stage_up, stage_down, pixel_num;
+	u32 mask = 0, val = 0, cabc_en = 0;
+	u32 max_mode_num = sizeof(cabc_mode) / sizeof(struct lcdc_cabc_mode);
 
-	u32 cabc_mode[5][3]={
-		/*num ,up,  down*/
-		{2,   10, 10},  /*mode 1*/
-		{4,   10, 10},  /*mode 2*/
-		{6,   10, 10},  /*mode 3*/
-		{8,   10, 10},  /*mode 4*/
-		{10,  10, 10},  /*mode 5*/
-	};
-	/*iomux connect to vop or pwm*/
-	if(mode == 0){
-		DBG(3,"close cabc\n");
+	dev_drv->cabc_mode = mode;
+
+	/* iomux connect to vop or pwm */
+	if (mode == 0) {
+		DBG(3, "close cabc and select rk pwm\n");
 		val = 0x30001;
-		writel_relaxed(val, RK_GRF_VIRT + RK3288_GRF_GPIO7A_IOMUX);/*pwm sel*/
-		lcdc_set_bit(lcdc_dev, SYS_CTRL, 0<<23);/*disable auto gating*/
-		mask = m_CABC_EN;
-		val = v_CABC_EN(0);
-		lcdc_set_bit(lcdc_dev, SYS_CTRL, m_AUTO_GATING_EN);
-		/*lcdc_msk_reg(lcdc_dev, CABC_CTRL0, mask, val);*/
+		writel_relaxed(val, RK_GRF_VIRT + RK3288_GRF_GPIO7A_IOMUX);
+		cabc_en = 0;
+	} else if (mode > 0 && mode <= max_mode_num) {
+		DBG(3, "open cabc and select vop pwm\n");
+		val = (dev_drv->id == 0) ? 0x30002 : 0x30003;
+		writel_relaxed(val, RK_GRF_VIRT + RK3288_GRF_GPIO7A_IOMUX);
+		cabc_en = 1;
+	} else if (mode > 0x10 && mode <= (max_mode_num + 0x10)) {
+		DBG(3, "open cabc and select rk pwm\n");
+		val = 0x30001;
+		writel_relaxed(val, RK_GRF_VIRT + RK3288_GRF_GPIO7A_IOMUX);
+		cabc_en = 1;
+		mode -= 0x10;
+	} else if (mode == 0xff) {
+		DBG(3, "close cabc and select vop pwm\n");
+		val = (dev_drv->id == 0) ? 0x30002 : 0x30003;
+		writel_relaxed(val, RK_GRF_VIRT + RK3288_GRF_GPIO7A_IOMUX);
+		cabc_en = 0;
+	} else {
+		dev_err(lcdc_dev->dev, "invalid cabc mode value:%d", mode);
 		return 0;
 	}
+
+	if (cabc_en == 0) {
+		spin_lock(&lcdc_dev->reg_lock);
+		if(lcdc_dev->clk_on) {
+			lcdc_msk_reg(lcdc_dev, CABC_CTRL0, m_CABC_EN, v_CABC_EN(0));
+			lcdc_cfg_done(lcdc_dev);
+		}
+		spin_unlock(&lcdc_dev->reg_lock);
+		return 0;
+	}
+
 	total_pixel = screen->mode.xres * screen->mode.yres;
-	calc_pixel = total_pixel * (100 - cabc_mode[mode-1][0])/100;
-	stage_up = cabc_mode[mode-1][1];
-	stage_down = cabc_mode[mode-1][2];
+        pixel_num = 1000 - (cabc_mode[mode - 1].pixel_num);
+	calc_pixel = (total_pixel * pixel_num) / 1000;
+	stage_up = cabc_mode[mode - 1].stage_up;
+	stage_down = cabc_mode[mode - 1].stage_down;
 	
 	spin_lock(&lcdc_dev->reg_lock);
-	if(lcdc_dev->clk_on){
-		lcdc_msk_reg(lcdc_dev, CABC_CTRL0, mask, val);
+	if(lcdc_dev->clk_on) {
 		mask = m_CABC_TOTAL_NUM | m_CABC_STAGE_DOWN;
 		val = v_CABC_TOTAL_NUM(total_pixel) | v_CABC_STAGE_DOWN(stage_down);
 		lcdc_msk_reg(lcdc_dev, CABC_CTRL1, mask, val);
@@ -3400,8 +3431,7 @@ static int rk3288_lcdc_set_dsp_cabc(struct rk_lcdc_driver *dev_drv,int mode)
 		lcdc_cfg_done(lcdc_dev);
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
-	val = 0x30003;
-	writel_relaxed(val, RK_GRF_VIRT + RK3288_GRF_GPIO7A_IOMUX);/*pwm sel*/
+
 	return 0;
 }
 /*
@@ -3616,6 +3646,8 @@ static struct rk_lcdc_drv_ops lcdc_drv_ops = {
 	.cfg_done		= rk3288_lcdc_config_done,
 	.set_irq_to_cpu  	= rk3288_lcdc_set_irq_to_cpu,
 };
+
+#ifdef LCDC_IRQ_DEBUG
 static int rk3288_lcdc_parse_irq(struct lcdc_device *lcdc_dev,unsigned int reg_val)
 {
 	if (reg_val & m_WIN0_EMPTY_INTR_STS) {
@@ -3650,6 +3682,8 @@ static int rk3288_lcdc_parse_irq(struct lcdc_device *lcdc_dev,unsigned int reg_v
 
 	return 0;
 }
+#endif
+
 static irqreturn_t rk3288_lcdc_isr(int irq, void *dev_id)
 {
 	struct lcdc_device *lcdc_dev =
@@ -3675,6 +3709,9 @@ static irqreturn_t rk3288_lcdc_isr(int irq, void *dev_id)
 		wake_up_interruptible_all(&lcdc_dev->driver.vsync_info.wait);
 
 	}else if(intr0_reg & m_LINE_FLAG_INTR_STS){
+		lcdc_dev->driver.frame_time.last_framedone_t =
+				lcdc_dev->driver.frame_time.framedone_t;
+		lcdc_dev->driver.frame_time.framedone_t = cpu_clock(0);
 		lcdc_msk_reg(lcdc_dev, INTR_CTRL0, m_LINE_FLAG_INTR_CLR,
 			     v_LINE_FLAG_INTR_CLR(1));
 	}else if(intr0_reg & m_BUS_ERROR_INTR_STS){
@@ -3684,12 +3721,12 @@ static irqreturn_t rk3288_lcdc_isr(int irq, void *dev_id)
 	}
 
 	/*for debug*/
-	#if 0
-		intr1_reg = lcdc_readl(lcdc_dev, INTR_CTRL1);
-		if(intr1_reg != 0){
-			rk3288_lcdc_parse_irq(lcdc_dev,intr1_reg);
-		}
-	#endif	
+#ifdef LCDC_IRQ_DEBUG
+	intr1_reg = lcdc_readl(lcdc_dev, INTR_CTRL1);
+	if (intr1_reg != 0) {
+		rk3288_lcdc_parse_irq(lcdc_dev,intr1_reg);
+	}
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -3712,10 +3749,21 @@ static int rk3288_lcdc_parse_dt(struct lcdc_device *lcdc_dev)
 {
 	struct device_node *np = lcdc_dev->dev->of_node;
 	int val;
+
 	if (of_property_read_u32(np, "rockchip,prop", &val))
 		lcdc_dev->prop = PRMRY;	/*default set it as primary */
 	else
 		lcdc_dev->prop = val;
+
+	if (of_property_read_u32(np, "rockchip,mirror", &val))
+		lcdc_dev->driver.rotate_mode = NO_MIRROR;
+	else
+		lcdc_dev->driver.rotate_mode = val;
+
+	if (of_property_read_u32(np, "rockchip,cabc_mode", &val))
+		lcdc_dev->driver.cabc_mode = 0;	/* default set close cabc */
+	else
+		lcdc_dev->driver.cabc_mode = val;
 
 	if (of_property_read_u32(np, "rockchip,pwr18", &val))
 		lcdc_dev->pwr18 = false;	/*default set it as 3.xv power supply */

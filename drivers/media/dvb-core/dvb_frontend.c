@@ -1121,6 +1121,7 @@ static int dtv_property_cache_sync(struct dvb_frontend *fe,
 		break;
 	case DVBV3_OFDM:
 	case DVBV3_ISDB_FULLSEG:	
+	case DVBV3_ISDB_ONESEG:			
 		dev_dbg(fe->dvb->device, "%s: Preparing OFDM req\n", __func__);
 
 		switch (p->u.ofdm.bandwidth) {
@@ -1203,6 +1204,7 @@ static int dtv_property_legacy_params_sync(struct dvb_frontend *fe,
 		break;
 	case DVBV3_OFDM:
 	case DVBV3_ISDB_FULLSEG:	
+	case DVBV3_ISDB_ONESEG:
 		dev_dbg(fe->dvb->device, "%s: Preparing OFDM req\n", __func__);
 		switch (c->bandwidth_hz) {
 		case 10000000:

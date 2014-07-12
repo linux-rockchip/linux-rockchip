@@ -22,6 +22,7 @@
 #include <linux/rockchip/dvfs.h>
 #include <linux/rockchip/common.h>
 #include <linux/fb.h>
+#include <linux/reboot.h>
 #include "../../../drivers/clk/rockchip/clk-pd.h"
 
 extern int rockchip_tsadc_get_temp(int chn);
@@ -34,40 +35,53 @@ static struct dvfs_node *clk_cpu_dvfs_node;
 static unsigned int target_temp = 80;
 static int temp_limit_enable = 1;
 
-static int pd_gpu_off=0, early_suspend=0;
+static int pd_gpu_off, early_suspend;
 static DEFINE_MUTEX(switch_vdd_gpu_mutex);
 struct regulator *vdd_gpu_regulator;
 
-static int clk_pd_gpu_notifier_call(struct notifier_block *nb, unsigned long event, void *ptr)
+static int vdd_gpu_reboot_notifier_event(struct notifier_block *this,
+	unsigned long event, void *ptr)
 {
-	int ret = 0;
+	int ret;
+
+	DVFS_DBG("%s: enable vdd_gpu\n", __func__);
+	mutex_lock(&switch_vdd_gpu_mutex);
+	if (!regulator_is_enabled(vdd_gpu_regulator))
+		ret = regulator_enable(vdd_gpu_regulator);
+	mutex_unlock(&switch_vdd_gpu_mutex);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block vdd_gpu_reboot_notifier = {
+	.notifier_call = vdd_gpu_reboot_notifier_event,
+};
+
+static int clk_pd_gpu_notifier_call(struct notifier_block *nb,
+	unsigned long event, void *ptr)
+{
+	int ret;
 
 	mutex_lock(&switch_vdd_gpu_mutex);
 	switch (event) {
 	case RK_CLK_PD_PREPARE:
 		pd_gpu_off = 0;
 		if (early_suspend) {
-			if (!regulator_is_enabled(vdd_gpu_regulator)) {
+			if (!regulator_is_enabled(vdd_gpu_regulator))
 				ret = regulator_enable(vdd_gpu_regulator);
-			}
 		}
 		break;
 	case RK_CLK_PD_UNPREPARE:
 		pd_gpu_off = 1;
 		if (early_suspend) {
-			if (regulator_is_enabled(vdd_gpu_regulator)) {
+			if (regulator_is_enabled(vdd_gpu_regulator))
 				ret = regulator_disable(vdd_gpu_regulator);
-			}
 		}
 		break;
 	default:
 		break;
 	}
 	mutex_unlock(&switch_vdd_gpu_mutex);
-
-	if (ret) {
-		pr_err("%s: enable/disable regulator return:%d\n", __func__, ret);
-	}
 
 	return NOTIFY_OK;
 }
@@ -82,7 +96,7 @@ static int early_suspend_notifier_call(struct notifier_block *self,
 {
 	struct fb_event *event = data;
 	int blank_mode = *((int *)event->data);
-	int ret = 0;
+	int ret;
 
 	mutex_lock(&switch_vdd_gpu_mutex);
 	if (action == FB_EARLY_EVENT_BLANK) {
@@ -90,23 +104,22 @@ static int early_suspend_notifier_call(struct notifier_block *self,
 		case FB_BLANK_UNBLANK:
 			early_suspend = 0;
 			if (pd_gpu_off) {
-				if (!regulator_is_enabled(vdd_gpu_regulator)) {
-					ret = regulator_enable(vdd_gpu_regulator);
-				}
+				if (!regulator_is_enabled(vdd_gpu_regulator))
+					ret = regulator_enable(
+					vdd_gpu_regulator);
 			}
 			break;
 		default:
 			break;
 		}
-	}
-	else if (action == FB_EVENT_BLANK) {
+	} else if (action == FB_EVENT_BLANK) {
 		switch (blank_mode) {
 		case FB_BLANK_POWERDOWN:
 			early_suspend = 1;
 			if (pd_gpu_off) {
-				if (regulator_is_enabled(vdd_gpu_regulator)) {
-					ret = regulator_disable(vdd_gpu_regulator);
-				}
+				if (regulator_is_enabled(vdd_gpu_regulator))
+					ret = regulator_disable(
+					vdd_gpu_regulator);
 			}
 
 			break;
@@ -115,10 +128,6 @@ static int early_suspend_notifier_call(struct notifier_block *self,
 		}
 	}
 	mutex_unlock(&switch_vdd_gpu_mutex);
-
-	if (ret) {
-		pr_err("%s: enable/disable regulator return:%d\n", __func__, ret);
-	}
 
 	return NOTIFY_OK;
 }
@@ -778,7 +787,6 @@ int clk_enable_dvfs(struct dvfs_node *clk_dvfs_node)
 {
 	struct cpufreq_frequency_table clk_fv;
 	int volt_new;
-	int ret = 0;
 
 	if (!clk_dvfs_node)
 		return -EINVAL;
@@ -802,7 +810,6 @@ int clk_enable_dvfs(struct dvfs_node *clk_dvfs_node)
 				clk_enable_dvfs_regulator_check(clk_dvfs_node->vd);
 				dvfs_get_vd_regulator_volt_list(clk_dvfs_node->vd);
 				dvfs_vd_get_regulator_volt_time_info(clk_dvfs_node->vd);
-				ret = regulator_enable(clk_dvfs_node->vd->regulator);
 			} else {
 				clk_dvfs_node->enable_count = 0;
 				DVFS_ERR("%s: vd(%s) can't get regulator(%s)!\n", 
@@ -1496,11 +1503,12 @@ static int __init dvfs_init(void)
 	vdd_gpu_regulator = dvfs_get_regulator("vdd_gpu");
 	if (!IS_ERR_OR_NULL(vdd_gpu_regulator)) {
 		struct clk *clk = clk_get(NULL, "pd_gpu");
-		if (clk) {
+
+		if (clk)
 			rk_clk_pd_notifier_register(clk, &clk_pd_gpu_notifier);
-		}
 
 		fb_register_client(&early_suspend_notifier);
+		register_reboot_notifier(&vdd_gpu_reboot_notifier);
 	}
 
 	return ret;

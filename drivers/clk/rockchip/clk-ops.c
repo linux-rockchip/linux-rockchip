@@ -564,7 +564,7 @@ static long clk_3288_dclk_lcdc0_determine_rate(struct clk_hw *hw, unsigned long 
 		unsigned long *best_parent_rate,
 		struct clk **best_parent_p)
 {
-	struct clk *gpll = clk_get(NULL, "clk_gpll");
+	//struct clk *gpll = clk_get(NULL, "clk_gpll");
 	struct clk *cpll = clk_get(NULL, "clk_cpll");
 	unsigned long best, div, prate;
 
@@ -625,7 +625,7 @@ static long clk_3288_dclk_lcdc1_determine_rate(struct clk_hw *hw, unsigned long 
 		unsigned long *best_parent_rate,
 		struct clk **best_parent_p)
 {
-	struct clk *gpll = clk_get(NULL, "clk_gpll");
+	//struct clk *gpll = clk_get(NULL, "clk_gpll");
 	struct clk *cpll = clk_get(NULL, "clk_cpll");
 	unsigned long best, div, prate;
 

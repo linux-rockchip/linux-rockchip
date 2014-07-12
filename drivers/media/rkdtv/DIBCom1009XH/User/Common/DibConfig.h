@@ -54,6 +54,8 @@
 #define     DIB_BOARD_NIM30092MD3      0
 #define     DIB_BOARD_NIM30092MD4      0
 #define     DIB_BOARD_NIM3006X         0
+#define     DIB_BOARD_NIM1009xM2D2P2   0
+#define     DIB_BOARD_NIM3009xM2D2P2   0
 
 #else
 
@@ -115,7 +117,7 @@
 #define     DIB_DVBSH_STD    1   /* DVB-SH               */
 #define     DIB_DAB_STD      1   /* DAB/TDMB/DABPacket/EDAB  */
 #define     DIB_ISDBT_STD    1   /* Not yet supported    */
-#define     DIB_ANALOD_STD   0   /* Not yet supported    */
+#define     DIB_ANALOG_STD   0   /* Not yet supported    */
 #define     DIB_ATSC_STD     0   /* Not yet supported    */
 #define     DIB_FM_STD       0   /* Not yet supported    */
 #define     DIB_CMMB_STD     1   /* CMMB                 */
@@ -188,5 +190,7 @@
    #define    WRITE_FLASH_SUPPORT   eWRFL_NONE   
 #endif
 #define     DIB_INTERNAL_DEBUG      0   /* Internal use only */ /* NDEV */
+
+#define     DIB_INTERNAL_MONITORING  0
 
 #endif  /* DIB_CONFIG_H */

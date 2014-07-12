@@ -24,7 +24,9 @@
 
 typedef uint32_t uint32;
 
+#ifdef CONFIG_FB_ROCKCHIP
 //#define DDR_CHANGE_FREQ_IN_LCDC_VSYNC
+#endif
 /***********************************
  * Global Control Macro
  ***********************************/
@@ -1446,7 +1448,9 @@ static __sramdata uint32 clkr;
 static __sramdata uint32 clkf;
 static __sramdata uint32 clkod;
 uint32 DEFINE_PIE_DATA(ddr_select_gpll_div); // 0-Disable, 1-1:1, 2-2:1, 4-4:1
+#if defined(ENABLE_DDR_CLCOK_GPLL_PATH)
 static uint32 *p_ddr_select_gpll_div;
+#endif
 
 static void __sramfunc ddr_delayus(uint32 us);
 
@@ -2102,8 +2106,8 @@ static noinline uint32 ddr_get_parameter(uint32 nMHz)
     uint32 cwl;
     PCTL_TIMING_T *p_pctl_timing=&(p_ddr_reg->pctl.pctl_timing);
     PHY_TIMING_T  *p_publ_timing=&(p_ddr_reg->publ.phy_timing);
-    NOC_TIMING_T  *p_noc_timing=&(p_ddr_reg->noc[0].ddrtiming);
-    NOC_ACTIVATE_T  *p_noc_activate=&(p_ddr_reg->noc[0].activate);
+    volatile NOC_TIMING_T  *p_noc_timing=&(p_ddr_reg->noc[0].ddrtiming);
+    volatile NOC_ACTIVATE_T  *p_noc_activate=&(p_ddr_reg->noc[0].activate);
     uint32 ch;
     uint32 mem_type;
     uint32 ddr_speed_bin=DDR3_DEFAULT;
@@ -3271,8 +3275,8 @@ static uint32 __sramfunc ddr_update_timing(uint32 ch)
     uint32 i,bl_tmp=0;
     PCTL_TIMING_T *p_pctl_timing=&(DATA(ddr_reg).pctl.pctl_timing);
     PHY_TIMING_T  *p_publ_timing=&(DATA(ddr_reg).publ.phy_timing);
-    NOC_TIMING_T  *p_noc_timing=&(DATA(ddr_reg).noc[0].ddrtiming);    
-    NOC_ACTIVATE_T  *p_noc_activate=&(DATA(ddr_reg).noc[0].activate);
+    volatile NOC_TIMING_T  *p_noc_timing=&(DATA(ddr_reg).noc[0].ddrtiming);
+    volatile NOC_ACTIVATE_T  *p_noc_activate=&(DATA(ddr_reg).noc[0].activate);
     pDDR_REG_T    pDDR_Reg = DATA(ddr_ch[ch]).pDDR_Reg;
     pDDRPHY_REG_T pPHY_Reg = DATA(ddr_ch[ch]).pPHY_Reg;
     pMSCH_REG     pMSCH_Reg= DATA(ddr_ch[ch]).pMSCH_Reg;
@@ -3652,7 +3656,7 @@ static noinline uint32 ddr_change_freq_sram(void *arg)
     uint32 gpllvaluel;
     freq_t *p_freq_t=(freq_t *)arg;    
     uint32 nMHz=p_freq_t->nMHz;
-    struct ddr_freq_t *p_ddr_freq_t=p_freq_t->p_ddr_freq_t;
+    //struct ddr_freq_t *p_ddr_freq_t=p_freq_t->p_ddr_freq_t;
 
 
 #if defined(CONFIG_ARCH_RK3066B)
@@ -3710,7 +3714,7 @@ static noinline uint32 ddr_change_freq_sram(void *arg)
         }
         else
         {
-            rk_fb_poll_wait_frame_complete();
+	     rk_fb_poll_wait_frame_complete();
         }
     }
 #endif
@@ -3986,32 +3990,62 @@ static int __ddr_change_freq(uint32_t nMHz, struct ddr_freq_t ddr_freq_t)
 static int _ddr_change_freq(uint32 nMHz)
 {
 	struct ddr_freq_t ddr_freq_t;
-	int test_count=0;
+	//unsigned long remain_t, vblank_t;//, pass_t;
+	//static unsigned long reserve_t = 800;//us
+	//unsigned long long tmp;
+	int ret;//, test_count=0;
 
-	ddr_freq_t.screen_ft_us = 0;
-	ddr_freq_t.t0 = 0;
-	ddr_freq_t.t1 = 0;
+	memset(&ddr_freq_t, 0x00, sizeof(ddr_freq_t));
+
 #if defined (DDR_CHANGE_FREQ_IN_LCDC_VSYNC)
 	do
 	{
-		if(rk_fb_poll_wait_frame_complete() == true)
-		{
-			ddr_freq_t.t0 = cpu_clock(0);
-			ddr_freq_t.screen_ft_us = rk_fb_get_prmry_screen_ft();
+		ddr_freq_t.screen_ft_us = rk_fb_get_prmry_screen_ft();
+		ddr_freq_t.t0 = rk_fb_get_prmry_screen_framedone_t();
+		tmp = cpu_clock(0) - ddr_freq_t.t0;
+		do_div(tmp, 1000);
+		pass_t = tmp;
+		//lost frame interrupt
+		while (pass_t > ddr_freq_t.screen_ft_us){
+			int n = pass_t/ddr_freq_t.screen_ft_us;
 
-			test_count++;
-                        if(test_count > 10) //test 10 times
-                        {
-				ddr_freq_t.screen_ft_us = 0xfefefefe;
-                        }
-			usleep_range(ddr_freq_t.screen_ft_us-test_count*1000,ddr_freq_t.screen_ft_us-test_count*1000);
-
-			flush_tlb_all();
+			//printk("lost frame int, pass_t:%lu\n", pass_t);
+			pass_t -= n*ddr_freq_t.screen_ft_us;
+			ddr_freq_t.t0 += n*ddr_freq_t.screen_ft_us*1000;
 		}
-	}while(__ddr_change_freq(nMHz, ddr_freq_t)==0);
+
+		remain_t = ddr_freq_t.screen_ft_us - pass_t;
+		if (remain_t < reserve_t) {
+			//printk("remain_t(%lu) < reserve_t(%lu)\n", remain_t, reserve_t);
+			vblank_t = rk_fb_get_prmry_screen_vbt();
+			usleep_range(remain_t+vblank_t, remain_t+vblank_t);
+			continue;
+		}
+
+		//test 10 times
+		test_count++;
+                if(test_count > 10)
+                {
+			ddr_freq_t.screen_ft_us = 0xfefefefe;
+                }
+		//printk("ft:%lu, pass_t:%lu, remaint_t:%lu, reservet_t:%lu\n",
+		//	ddr_freq_t.screen_ft_us, (unsigned long)pass_t, remain_t, reserve_t);
+		usleep_range(remain_t-reserve_t, remain_t-reserve_t);
+		flush_tlb_all();
+
+		ret = __ddr_change_freq(nMHz, ddr_freq_t);
+		if (ret) {
+			return ret;
+		} else {
+			if (reserve_t < 10000)
+				reserve_t += 200;
+		}
+	}while(1);
 #else
-	return __ddr_change_freq(nMHz, ddr_freq_t);
+	ret = __ddr_change_freq(nMHz, ddr_freq_t);
 #endif
+
+	return ret;
 }
 
 static long _ddr_round_rate(uint32 nMHz)
@@ -4033,10 +4067,10 @@ static void _ddr_set_auto_self_refresh(bool en)
 
 #define PERI_PCLK_DIV_MASK 0x3
 #define PERI_PCLK_DIV_OFF 12
+#if 0
 static __sramdata u32 cru_sel32_sram;
 static void __sramfunc ddr_suspend(void)
 {
-#if 0
     u32 i;
     volatile u32 n;
     volatile unsigned int * temp=(volatile unsigned int *)SRAM_CODE_OFFSET;
@@ -4079,12 +4113,10 @@ static void __sramfunc ddr_suspend(void)
     				   |CRU_W_MSK_SETBITS(0, PERI_PCLK_DIV_OFF, PERI_PCLK_DIV_MASK);
     }
     pPHY_Reg->DSGCR = pPHY_Reg->DSGCR&(~((0x1<<28)|(0x1<<29)));  //CKOE
-#endif
 }
 
 static void __sramfunc ddr_resume(void)
 {
-#if 0
     int delay=1000;
     int pll_id;
 
@@ -4109,8 +4141,8 @@ static void __sramfunc ddr_resume(void)
     dsb();
 
     ddr_selfrefresh_exit();
-#endif
 }
+#endif
 
 //pArg:指针内容表示pll pd or not。
 void ddr_reg_save(uint32 *pArg)

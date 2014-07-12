@@ -4,6 +4,7 @@
 #include <linux/io.h>
 #include <linux/scatterlist.h>
 #include <linux/dmaengine.h>
+#include <linux/interrupt.h>
 
 
 #if 1

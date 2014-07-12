@@ -45,11 +45,9 @@
 #include <linux/usb/audio.h>
 #include <linux/usb/audio-v2.h>
 #include <linux/module.h>
-/*$_rbox_$_modify_$_zhangxueguang_begin$_20120409_$*/
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
-/*$_rbox_$_modify_$_zhangxueguang_end$_20120409_$*/
 
 #include <sound/control.h>
 #include <sound/core.h>
@@ -118,7 +116,6 @@ static DEFINE_MUTEX(register_mutex);
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 static struct usb_driver usb_audio_driver;
 
-/*$_rbox_$_modify_$_zhangxueguang_begin$_20120409_$*/
 #ifdef CONFIG_SWITCH
 //usb audio card will begin from RBASE_USB_AUDIO_IDX.
 #define RBASE_USB_AUDIO_IDX		(3)
@@ -147,7 +144,6 @@ static struct usb_audio_switch sUsbaudio_Switch = {
     },
 };
 #endif
-/*$_rbox_$_modify_$_zhangxueguang_end$_20120409_$*/
 
 /*
  * disconnect streams
@@ -494,7 +490,6 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 	return 0;
 }
 
-/*$_rbox_$_modify_$_zhangxueguang_begin$_20120409_$*/
 #ifdef CONFIG_SWITCH
 static int usb_audio_card_switch_state_update(struct snd_card *card, bool force){
 	struct snd_device *dev;
@@ -549,7 +544,6 @@ static void usb_audio_switch_state_update_all(void){
     switch_set_state(&sUsbaudio_Switch.sUsbaudio_Capture, sUsbaudio_Switch.capture_switch_cur_state);    
 }
 #endif
-/*$_rbox_$_modify_$_zhangxueguang_end$_20120409_$*/
 
 
 /*
@@ -606,7 +600,6 @@ snd_usb_audio_probe(struct usb_device *dev,
 		/* it's a fresh one.
 		 * now look for an empty slot and create a new card instance
 		 */
-/*$_rbox_$_modify_$_zhangxueguang*/
 		// use RBASE_USB_AUDIO_IDX instead of zero, modify by zxg.
 		for (i = RBASE_USB_AUDIO_IDX; i < SNDRV_CARDS; i++)
 			if (enable[i] && ! usb_chip[i] &&
@@ -653,14 +646,12 @@ snd_usb_audio_probe(struct usb_device *dev,
 	if (snd_card_register(chip->card) < 0) {
 		goto __error;
 	}
-    /*$_rbox_$_modify_$_zhangxueguang_begin$_20120409_$*/
 	#ifdef CONFIG_SWITCH
     if(usb_audio_card_switch_state_update(chip->card, true) < 0){
         printk(KERN_ERR "usb_audio_card_switch_state_update failed!!!\n");
         goto __error;
     }
 	#endif
-    /*$_rbox_$_modify_$_zhangxueguang_end$_20120409_$*/
 	usb_chip[chip->index] = chip;
 	chip->num_interfaces++;
 	chip->probing = 0;
@@ -722,11 +713,9 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 	} else {
 		mutex_unlock(&register_mutex);
 	}
-    /*$_rbox_$_modify_$_zhangxueguang_begin$_20120409_$*/
 	#ifdef CONFIG_SWITCH
     usb_audio_switch_state_update_all();
 	#endif
-    /*$_rbox_$_modify_$_zhangxueguang_end$_20120409_$*/
 }
 
 /*
@@ -862,7 +851,6 @@ static struct usb_driver usb_audio_driver = {
 	.supports_autosuspend = 1,
 };
 
-/*$_rbox_$_modify_$_zhangxueguang_begin$_20120329_$*/
 static int __init snd_usb_audio_init(void)
 {
     int ret;
@@ -912,5 +900,4 @@ static void __exit snd_usb_audio_cleanup(void)
  * added by zxg@rock-chips.com
  */
 late_initcall_sync(snd_usb_audio_init);
-/*$_rbox_$_modify_$_zhangxueguang_end$_20120329_$*/
 module_exit(snd_usb_audio_cleanup);

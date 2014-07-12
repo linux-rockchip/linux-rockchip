@@ -21,8 +21,14 @@
 #include "DibDriverCommon.h"     /* for DibDriverGpio structures */
 #include "DibDriverCtx.h"        /* for DibDriverContext         */
 
-DIBSTATUS DibDriverError();
-DIBSTATUS DibDriverSuccess();
+
+
+struct DibDriverEventInfoUp;
+struct DibStream;
+
+
+extern DIBSTATUS DibDriverError(void);
+extern DIBSTATUS DibDriverSuccess(void);
 
 DIBSTATUS DibDriverInit(struct DibDriverContext *pContext, enum DibBoardType BoardType, BOARD_HDL BoardHdl);
 DIBSTATUS DibDriverDeinit(struct DibDriverContext *pContext);
@@ -67,7 +73,6 @@ uint32_t  IntDriverGetCrc32(void *pTable, uint32_t bufferLength, uint32_t crc32b
 
 /****************************** chip specific functions ***************************************/
 #define HBM_SELECT_SET(flag_int,hbm)      ( flag_int = ((flag_int & 0xFF7FFFFF) | (((hbm)<<23) &0x00800000)) )
-
 
 /*----------------------------- Mac initialisation --------------------------------------------*/
 #define  DibDriverResetCpu(pContext)                                   pContext->ChipOps.MacResetCpu(pContext)

@@ -32,6 +32,8 @@
 #include "DibDriverDowncalls.h"
 #include "DibDriverMessages.h"
 
+#include "DibDriver.h"
+
 /* This file makes a link between the high level and the low level driver */
 
 /*******************************************************************************

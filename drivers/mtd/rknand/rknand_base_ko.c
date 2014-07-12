@@ -677,9 +677,9 @@ MODULE_ALIAS(DRIVER_NAME);
 static int __init rknand_init(void)
 {
 	int ret;
-	NAND_DEBUG(NAND_DEBUG_LEVEL0,"rknand_init: \n");
+	NAND_DEBUG(NAND_DEBUG_LEVEL0,"####rknand_init: \n");
 	ret = platform_driver_register(&rknand_driver);
-	NAND_DEBUG(NAND_DEBUG_LEVEL0,"platform_driver_register:ret = %x \n",ret);
+	NAND_DEBUG(NAND_DEBUG_LEVEL0,"#####platform_driver_register:ret = %x \n",ret);
 	return ret;
 }
 

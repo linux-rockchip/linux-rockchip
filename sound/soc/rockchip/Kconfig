@@ -248,7 +248,13 @@ config SND_RK_SOC_RK1000
 	help
 	  Say Y if you want to add support for SoC audio on rockchip
 	  with the RK1000.
-
+	
+#config SND_RK_SOC_HDMI_I2S
+#		depends on !RK616_USE_MCLK_12M || !SND_RK_SOC_RK616
+#		tristate  "SoC I2S Audio support for rockchip--HDMI_I2S"
+#		select SND_RK_SOC_I2S
+#		select SND_SOC_HDMI_I2S
+		
 config SND_RK_SOC_RK610
 	tristate "SoC I2S Audio support for rockchip - RK610"
 	depends on SND_RK_SOC && MFD_RK610

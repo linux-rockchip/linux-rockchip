@@ -200,7 +200,7 @@ static DIBSTATUS DibDriverCheckParamChannel(struct DibTuneChan *pDesc, enum DibD
 {
    DIBSTATUS Status = DIBSTATUS_INVALID_PARAMETER;
 
-   switch(Type)
+   switch((int)Type)
    {
    case eSTANDARD_DVB:
    case (eSTANDARD_DVB | eFAST):
@@ -1748,7 +1748,7 @@ DIBSTATUS DibDriverCreateFilter(struct DibDriverContext *pContext, CHANNEL_HDL C
          goto End;
    }
    /** the Type of filter corresponds correctly to the demodulation of this channel ? */
-   switch(pContext->ChannelInfo[ChannelHdl].Type)
+   switch((int)pContext->ChannelInfo[ChannelHdl].Type)
    {
    case eSTANDARD_DVB:
    case eSTANDARD_ISDBT:

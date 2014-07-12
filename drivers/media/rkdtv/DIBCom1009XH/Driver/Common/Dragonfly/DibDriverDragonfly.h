@@ -22,7 +22,8 @@
 
 #include "DibDriverDragonflyTest.h" 
 
-/* Specific Build Option */
+/* Specific Build Option */ 
+#define DF_PROFILE                  0
 #define SUPPORT_CRYPTED_DOWNLOAD    0
 #define FAST_DOWNLOAD               1
 #define CHECK_FIRMWARE_DOWNLOAD     0

@@ -183,7 +183,9 @@ static inline void rk1000_codec_write_reg_cache(struct snd_soc_codec *codec,
 static int rk1000_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int value)
 {
+#ifdef CONFIG_MODEM_SOUND
 	struct rk1000_codec_priv *rk1000_codec = snd_soc_codec_get_drvdata(rk1000_codec_codec);
+#endif
 	u8 data[2];
 	struct i2c_client *i2c = to_i2c_client(codec->dev);
 #ifdef CONFIG_MODEM_SOUND	
@@ -381,7 +383,9 @@ static struct snd_pcm_hw_constraint_list constraints_12 = {
 static int rk1000_codec_set_bias_level(struct snd_soc_codec *codec,
 				 enum snd_soc_bias_level level)
 {
+#if RESUME_PROBLEM	
 	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
+#endif
 	DBG("Enter::%s----%d now_level =%d  old_level = %d\n",__FUNCTION__,__LINE__,level,codec->dapm.bias_level);
 	switch (level) {
 	case SND_SOC_BIAS_ON:
@@ -538,14 +542,14 @@ static int rk1000_codec_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_codec *codec = rtd->codec;
-	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
+//	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
 	unsigned int dai_fmt = rtd->card->dai_link[0].dai_fmt;
 
    //rk1000_codec_write(codec, ACCELCODEC_R0A, 0xa0);
     //dgl return 0;//hzb test
 	u16 iface = rk1000_codec_read_reg_cache(codec, ACCELCODEC_R09) & 0x1f3;
-	u16 srate = rk1000_codec_read_reg_cache(codec, ACCELCODEC_R00) & 0x180;
-	int coeff;
+//	u16 srate = rk1000_codec_read_reg_cache(codec, ACCELCODEC_R00) & 0x180;
+	int coeff = 0;
 
 /*
 	coeff = get_coeff(rk1000_codec->sysclk, params_rate(params));
@@ -708,8 +712,9 @@ static int rk1000_codec_suspend(struct snd_soc_codec *codec)
 
 static int rk1000_codec_resume(struct snd_soc_codec *codec)
 {
+#if RESUME_PROBLEM
 	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
-
+#endif
 	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
 	/* Sync reg_cache with the hardware */
 	
@@ -981,7 +986,7 @@ void rk1000_codec_reg_read(void)
 
 
 static ssize_t rk1000_codec_proc_write(struct file *file, const char __user *buffer,
-			   unsigned long len, void *data)
+			   size_t len, loff_t *data)
 {
 	char *cookie_pot; 
 	char *p;
@@ -1072,10 +1077,10 @@ static ssize_t rk1000_codec_proc_write(struct file *file, const char __user *buf
 	return len;
 }
 
-static int proc_rk1000_codec_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, rk1000_codec_reg_read, NULL);
-}
+//static int proc_rk1000_codec_open(struct inode *inode, struct file *file)
+//{
+//	return single_open(file, (void *)rk1000_codec_reg_read, NULL);
+//}
 
 static const struct file_operations rk1000_codec_proc_fops = {
 	.owner		= THIS_MODULE,

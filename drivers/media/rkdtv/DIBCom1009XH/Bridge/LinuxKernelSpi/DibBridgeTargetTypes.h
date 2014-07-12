@@ -104,7 +104,7 @@ static __inline uint8_t DibWaitForEvent(DIB_EVENT *Event, uint32_t timeout)
 {
 #if 1
   //down((struct semaphore *) Event);
-  down_timeout((struct semaphore *)Event, (unsigned long)msecs_to_jiffies(timeout));  
+  int rc = down_timeout((struct semaphore *)Event, (unsigned long)msecs_to_jiffies(timeout));  
 #else
   int rc = down_interruptible((struct semaphore *) Event);
 
@@ -114,7 +114,7 @@ static __inline uint8_t DibWaitForEvent(DIB_EVENT *Event, uint32_t timeout)
   }
 #endif
 
-  return DIBSTATUS_SUCCESS;
+  return (uint8_t)rc;
 }
 
 /*****************************************************************************/

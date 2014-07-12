@@ -24,7 +24,7 @@
 #include "dw_mmc-pltfm.h"
 #include "../../clk/rockchip/clk-ops.h"
 
-#include "rk_sdmmc_of.h"
+#include "rk_sdmmc_dbg.h"
 
 /*CRU SDMMC TUNING*/
 /*
@@ -211,22 +211,8 @@ static inline u8 dw_mci_rockchip_move_next_clksmpl(struct dw_mci *host, u8 con_i
 }
 
 
-static u8 dw_mci_rockchip_get_best_clksmpl(u8 *candiates)
-{
-        u8 pos, i;
-        u8 bestval =0;
     
-        for(pos = 31; pos > 0; pos--){
-                if(candiates[pos] != 0) {
-                        for(i = 7; i > 0; i--){
-                                if(candiates[pos]& (1<<i))
-                                bestval = pos*8+i; 
-                        }          
-                }
-        }
         
-        return bestval;
-}
 
 static int inline __dw_mci_rockchip_execute_tuning(struct dw_mci_slot *slot, u32 opcode,
 					u8 *blk_test, unsigned int blksz)
@@ -281,11 +267,11 @@ static int dw_mci_rockchip_execute_tuning(struct dw_mci_slot *slot, u32 opcode,
 	u8 index = 0;
 	u8 start_degree = 0;
 	u32 start_delayline = 0;
-	u8 *blk_pattern = tuning_data->blk_pattern;
-        u8 *blk_test;
-        int ret = -1;
-        int ref = 0;
-        unsigned int blksz = tuning_data->blksz;
+	const u8 *blk_pattern = tuning_data->blk_pattern;
+	u8 *blk_test;
+	int ret = -1;
+	int ref = 0;
+	unsigned int blksz = tuning_data->blksz;
 
         MMC_DBG_INFO_FUNC(host->mmc,"execute tuning:  [%s]", mmc_hostname(host->mmc));
        
@@ -478,10 +464,12 @@ static int dw_mci_rockchip_execute_tuning(struct dw_mci_slot *slot, u32 opcode,
 		goto done;  
                 #endif            
         }else{
-              MMC_DBG_ERR_FUNC(host->mmc,
+                MMC_DBG_ERR_FUNC(host->mmc,
                                 "execute tuning: candidates_degree beyong limited case! [%s]",
-                                mmc_hostname(host->mmc)); 
-              BUG();
+                                mmc_hostname(host->mmc));
+                if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_EMMC)
+                        BUG();
+                return -EAGAIN;
         }
 
 delayline:
@@ -554,32 +542,11 @@ static const struct of_device_id dw_mci_rockchip_match[] = {
 };
 MODULE_DEVICE_TABLE(of, dw_mci_rockchip_match);
 
-#if DW_MMC_OF_PROBE
-extern void rockchip_mmc_of_probe(struct device_node *np,struct rk_sdmmc_of *mmc_property);
-#endif
-
 static int dw_mci_rockchip_probe(struct platform_device *pdev)
 {
 	const struct dw_mci_drv_data *drv_data;
 	const struct of_device_id *match;
 	
-	#if DW_MMC_OF_PROBE
-    struct device_node *np = pdev->dev.of_node;
-	struct rk_sdmmc_of *rk_mmc_property = NULL;
-
-    rk_mmc_property = (struct rk_sdmmc_of *)kmalloc(sizeof(struct rk_sdmmc_of),GFP_KERNEL);
-    if(NULL == rk_mmc_property)
-    {
-        kfree(rk_mmc_property);
-        rk_mmc_property = NULL;
-        printk("rk_mmc_property malloc space failed!\n");
-        return 0;
-    }
-    
-    rockchip_mmc_of_probe(np,rk_mmc_property);
-    #endif /*DW_MMC_OF_PROBE*/
-    
-
 	match = of_match_node(dw_mci_rockchip_match, pdev->dev.of_node);
 	drv_data = match->data;
 	return dw_mci_pltfm_register(pdev, drv_data);
@@ -598,6 +565,7 @@ static struct platform_driver dw_mci_rockchip_pltfm_driver = {
 module_platform_driver(dw_mci_rockchip_pltfm_driver);
 
 MODULE_DESCRIPTION("Rockchip Specific DW-SDMMC Driver Extension");
-MODULE_AUTHOR("Bangwang Xie < xbw@rock-chips.com>");
+MODULE_AUTHOR("Shawn Lin <lintao@rock-chips.com>");
+MODULE_AUTHOR("Bangwang Xie <xbw@rock-chips.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:dwmmc-rockchip");

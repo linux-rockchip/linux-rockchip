@@ -269,6 +269,14 @@ struct hdmi_edid {
 	unsigned char audio_latency;
 	unsigned char interlaced_video_latency;
 	unsigned char interlaced_audio_latency;
+	//for hdmi 2.0
+	unsigned char hf_vsdb_version;
+	unsigned char scdc_present;
+	unsigned char rr_capable;
+	unsigned char lte_340mcsc_scramble;
+	unsigned char independent_view;
+	unsigned char dual_view;
+	unsigned char osd_disparity_3d;
 	
 	struct fb_monspecs	*specs;			//Device spec
 	struct list_head modelist;			//Device supported display mode list
@@ -304,6 +312,14 @@ struct hdmi_property {
 	void *priv;
 };
 
+struct hdmi_scdc {
+	unsigned char hf_vsdb_version;
+	unsigned char scdc_present;
+	unsigned char rr_capable;
+	unsigned char lte_340mcsc_scramble;
+};
+
+
 // HDMI Information
 struct hdmi {
 	int id;						//HDMI id
@@ -331,8 +347,8 @@ struct hdmi {
 	int sleep;					// Sleep flag
 	int vic;					// HDMI output video information code
 	int mode_3d;					// HDMI output video 3d mode
-	struct hdmi_audio audio;			// HDMI output audio information.	
-	
+	struct hdmi_audio audio;			// HDMI output audio information.
+	struct hdmi_scdc scdc;				//HDMI scdc information
 };
 
 /* HDMI EDID Block Size */

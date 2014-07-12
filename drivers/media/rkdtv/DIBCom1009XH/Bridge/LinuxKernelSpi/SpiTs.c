@@ -120,7 +120,6 @@ int SpiTsRead(struct DibBridgeContext *pContext,unsigned int addr,unsigned char*
 
    unsigned char command[6];
    unsigned int commandsize;
-   unsigned int i;
 
    /****** Build Command ******
    - b31: 0     => Start Bit

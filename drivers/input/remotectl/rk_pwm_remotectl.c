@@ -309,7 +309,7 @@ static void rk_pwm_remotectl_do_something(unsigned long  data)
 static void rk_pwm_remotectl_timer(unsigned long _data)
 {
     struct rkxx_remotectl_drvdata *ddata =  (struct rkxx_remotectl_drvdata*)_data;
-    int val;
+    //int val;
     
     if(ddata->press != ddata->pre_press) {
         ddata->pre_press = ddata->press = 0;
@@ -344,11 +344,12 @@ static irqreturn_t rockchip_pwm_irq(int irq, void *dev_id)
         }
         return IRQ_HANDLED;
     }
+    return IRQ_NONE; 
 }
 
 static int rk_pwm_remotectl_hw_init(struct rkxx_remotectl_drvdata *ddata)
 {
-    int ret;
+    //int ret;
 	int val;
 	
 	//printk("rk_pwm_remotectl_hw_init,base=0x%x \n",ddata->base);
@@ -373,23 +374,24 @@ static int rk_pwm_remotectl_hw_init(struct rkxx_remotectl_drvdata *ddata)
     val = (val & 0xFFFFFFFE) | PWM_ENABLE;
     printk("pwm enable val=0x%x \n",val);
     writel_relaxed(val, ddata->base + PWM_REG_CTRL);
+    return 0;
 }
 
 
 static int rk_pwm_probe(struct platform_device *pdev)
 {
-    struct device_node *np = pdev->dev.of_node;
-    struct device *dev = &pdev->dev;
+    //struct device_node *np = pdev->dev.of_node;
+    //struct device *dev = &pdev->dev;
     struct rkxx_remotectl_drvdata *ddata;
     struct resource *r;
     struct input_dev *input;
     struct clk *clk;
     int irq;
     int ret;
-    int val;
+    //int val;
     int i,j;
     
-    printk("%s rk pwm remotectl v1.0 init\n");
+    printk(".. rk pwm remotectl v1.0 init\n");
     
     r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
     if (!r) {
@@ -505,6 +507,7 @@ static int remotectl_suspend(struct device *dev)
 	return 0;
 }
 
+
 static int remotectl_resume(struct device *dev)
 {
     struct platform_device *pdev = to_platform_device(dev);
@@ -520,8 +523,8 @@ static int remotectl_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops remotectl_pm_ops = {
-	.prepare	= remotectl_suspend,
-	.complete		= remotectl_resume,
+	.suspend = remotectl_suspend,
+	.resume	= remotectl_resume,
 };
 #endif
 

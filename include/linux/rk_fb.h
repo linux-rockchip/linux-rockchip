@@ -80,11 +80,22 @@
 #define RK_LF_MAX_TIMEOUT 			 (1600000UL << 6)	//>0.64s
 
 
-/*for x y mirror*/
+/* x y mirror or rotate mode */
 #define NO_MIRROR	0
-#define X_MIRROR    	1
-#define Y_MIRROR    	2
-#define X_Y_MIRROR    	3
+#define X_MIRROR    	1		/* up-down flip*/
+#define Y_MIRROR    	2		/* left-right flip */
+#define X_Y_MIRROR    	3		/* the same as rotate 180 degrees */
+#define ROTATE_90	4		/* clockwise rotate 90 degrees */
+#define ROTATE_180	8		/* rotate 180 degrees
+					 * It is recommended to use X_Y_MIRROR
+					 * rather than ROTATE_180
+					 */
+#define ROTATE_270	12		/* clockwise rotate 270 degrees */
+
+
+/**
+* pixel align value for gpu,align as 64 bytes in an odd number of times
+*/
 #define ALIGN_PIXEL_64BYTE_RGB565		32	/* 64/2*/
 #define ALIGN_PIXEL_64BYTE_RGB8888		16	/* 64/4*/
 #define ALIGN_N_TIMES(x, align)			(((x) % (align) == 0) ? (x) : (((x) + ((align) - 1)) & (~((align) - 1))))
@@ -97,7 +108,9 @@ extern struct ion_client *rockchip_ion_client_create(const char * name);
 #endif
 
 extern int rk_fb_poll_prmry_screen_vblank(void);
-extern int rk_fb_get_prmry_screen_ft(void);
+extern u32 rk_fb_get_prmry_screen_ft(void);
+extern u32 rk_fb_get_prmry_screen_vbt(void);
+extern u64 rk_fb_get_prmry_screen_framedone_t(void);
 extern bool rk_fb_poll_wait_frame_complete(void);
 
 /********************************************************************
@@ -238,6 +251,12 @@ struct rk_fb_rgb {
 	struct fb_bitfield green;
 	struct fb_bitfield blue;
 	struct fb_bitfield transp;
+};
+
+struct rk_fb_frame_time {
+	u64 last_framedone_t;
+	u64 framedone_t;
+	u32 ft;
 };
 
 struct rk_fb_vsync {
@@ -445,7 +464,7 @@ struct rk_fb_win_par {
 struct rk_fb_win_cfg_data {
 	int ret_fence_fd;
 	int rel_fence_fd[RK_MAX_BUF_NUM];
-	struct  rk_fb_win_par win_par[RK30_MAX_LAYER_SUPPORT];
+	struct  rk_fb_win_par win_par[RK30_MAX_LAYER_SUPPORT - 1];
 	struct  rk_lcdc_post_cfg post_cfg;
 	u8      wait_fs;
 	//u8      fence_begin;
@@ -503,8 +522,6 @@ struct rk_fb_reg_data {
 	//int     fence_wait_begin;
 };
 
-//$_rbox_$_modify_$_zhengyang modified for box
-//$_rbox_$_modify_$_end
 
 struct rk_lcdc_driver {
 	char name[6];
@@ -521,6 +538,7 @@ struct rk_lcdc_driver {
 	struct rk_screen *screen1;	//two display devices for dual display,such as rk2918,rk2928
 	struct rk_screen *cur_screen;	//screen0 is primary screen ,like lcd panel,screen1 is  extend screen,like hdmi
 	u32 pixclock;
+	u16 rotate_mode;
 
 	char fb0_win_id;
 	char fb1_win_id;
@@ -536,15 +554,18 @@ struct rk_lcdc_driver {
 	spinlock_t cpl_lock;	//lock for completion  frame done
 	int first_frame;
 	struct rk_fb_vsync vsync_info;
+	struct rk_fb_frame_time frame_time;
 	int wait_fs;		//wait for new frame start in kernel
 	struct sw_sync_timeline *timeline;
 	int			timeline_max;
 	int			suspend_flag;
+	int			cabc_mode;
 	struct list_head	update_regs_list;
 	struct mutex		update_regs_list_lock;
 	struct kthread_worker	update_regs_worker;
 	struct task_struct	*update_regs_thread;
 	struct kthread_work	update_regs_work;
+	wait_queue_head_t 	update_regs_wait;
 
 	struct mutex		output_lock;
 	struct rk29fb_info *screen_ctr_info;
@@ -554,11 +575,9 @@ struct rk_lcdc_driver {
 #ifdef CONFIG_DRM_ROCKCHIP
 	void (*irq_call_back)(struct rk_lcdc_driver *driver);
 #endif
-//$_rbox_$_modify_$_zhengyang modified for box
 	struct overscan overscan;
 	int enable;
 	struct device *mmu_dev;
-//$_rbox_$_modify_$_end
 };
 
 /*disp_mode: dual display mode

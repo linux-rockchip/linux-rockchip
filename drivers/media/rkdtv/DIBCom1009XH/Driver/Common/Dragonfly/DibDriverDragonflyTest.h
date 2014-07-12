@@ -9,7 +9,7 @@
  *
  ****************************************************************************/
 
-#if (mSDK==0)
+
 /**************************************************************************************************
 * @file "DibDriverDragonflyTest.h"
 * @brief Dragonfly specific debugging functions.
@@ -28,6 +28,8 @@
 #include "DibBoardSelection.h"
 
 #include "DibDriverCtx.h"
+
+#if (mSDK==0)
 
 #define TEST_MDMA   1
 #define TEST_API    2

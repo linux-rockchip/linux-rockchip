@@ -21,7 +21,7 @@
 #include <linux/uaccess.h>
 #include "../ion_priv.h"
 #include <linux/dma-buf.h>
-#include <asm-generic/dma-contiguous.h>
+#include <linux/dma-contiguous.h>
 #include <linux/memblock.h>
 
 #ifdef CONFIG_OF
@@ -265,6 +265,12 @@ static int rockchip_ion_probe(struct platform_device *pdev)
 	unsigned int pdata_needs_to_be_freed;
 	int err;
 	int i;
+
+	err = device_register(&rockchip_ion_cma_dev);
+	if (err) {
+		pr_err("Could not register %s\n", dev_name(&rockchip_ion_cma_dev));
+		return err;
+	}
 
 	if (pdev->dev.of_node) {
 		pdata = rockchip_ion_parse_dt(&pdev->dev);

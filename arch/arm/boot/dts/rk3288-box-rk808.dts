@@ -196,7 +196,7 @@
     
 &sdmmc {
 		clock-frequency = <50000000>;
-		clock-freq-min-max = <400000 50000000>;
+		lock-freq-min-max = <400000 50000000>;
 		supports-highspeed;
 		supports-sd;
 		broken-cd;
@@ -319,8 +319,6 @@
         pinctrl-0 = <&uart0_xfer &uart0_cts>;
 };
 
-
- 
 &i2c0 {
 	status = "okay";
 	rk808: rk808@1b {
@@ -430,16 +428,15 @@
 	status = "disabled";
 };
 
-/*$_rbox_$_modify_$_begin_huangzhibao for rk1000*/
 &i2s{
     pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&i2s_sclk &i2s_lrckrx &i2s_lrcktx &i2s_sdi &i2s_sdo0 &i2s_sdo1 &i2s_sdo2 &i2s_sdo3>;
 		pinctrl-1 = <&i2s_gpio>;
 };
-/*$_rbox_$_modify_$_end*/
 
 &fb {
 	rockchip,disp-mode = <DUAL>;
+	rockchip,uboot-logo-on = <1>;
 };
 
 &rk_screen {
@@ -529,9 +526,9 @@
 	operating-points = <
 		/* KHz    uV */
 		126000 900000
-		216000 925000
-		312000 925000
-		408000 925000
+		216000 900000
+		312000 900000
+		408000 900000
 		600000 950000
 		696000 950000
 		816000 1000000
@@ -572,7 +569,7 @@
 		SYS_STATUS_VIDEO_4K     456000
 		SYS_STATUS_PERFORMANCE  528000
 		SYS_STATUS_BOOST	324000
-		SYS_STATUS_ISP		400000
+		//SYS_STATUS_ISP		400000
 		>;
 	auto-freq-table = <
 		240000

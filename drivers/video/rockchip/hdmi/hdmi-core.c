@@ -170,6 +170,10 @@ static void hdmi_wq_parse_edid(struct hdmi *hdmi)
 			continue;
 		}
 	}
+	hdmi->scdc.hf_vsdb_version = pedid->hf_vsdb_version;
+	hdmi->scdc.lte_340mcsc_scramble = pedid->lte_340mcsc_scramble;
+	hdmi->scdc.rr_capable = pedid->rr_capable;
+	hdmi->scdc.scdc_present = pedid->scdc_present;	
 out:
 	if(buff)
 		kfree(buff);

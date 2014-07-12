@@ -91,8 +91,10 @@ struct stmmac_priv {
 	u32 msg_enable;
 	int wolopts;
 	int wol_irq;
-	struct clk *stmmac_clk;
 	struct clk *clk_mac;
+	struct clk *stmmac_clk;
+	struct clk *clk_mac_pll;
+	struct clk *gmac_clkin;
 	struct clk *mac_clk_rx;
 	struct clk *mac_clk_tx;
 	struct clk *clk_mac_ref;

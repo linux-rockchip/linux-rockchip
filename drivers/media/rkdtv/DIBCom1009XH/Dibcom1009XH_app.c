@@ -48,15 +48,15 @@ ELEM_HDL ElemHdl[NB_ELEM] = {DIB_UNSET};
 #define TUNER_ISDBT_T 	1		/*ISDB-T*/
 
 
-#if CONFIG_DIBCOM1009XH_DVB_CONTROL
+#ifdef CONFIG_DIBCOM1009XH_DVB_CONTROL
 unsigned char gDVBStandardInfo =  TUNER_DVB_T;
 #endif
 
-#if CONFIG_DIBCOM1009XH_ISDB_ONESEG_CONTROL 
+#ifdef CONFIG_DIBCOM1009XH_ISDB_ONESEG_CONTROL 
 unsigned char gDVBStandardInfo =  TUNER_ISDBT_T;
 #endif
 
-#if CONFIG_DIBCOM1009XH_ISDB_FULLSEG_CONTROL
+#ifdef CONFIG_DIBCOM1009XH_ISDB_FULLSEG_CONTROL
 unsigned char gDVBStandardInfo =  TUNER_ISDBT_T;
 #endif
 
@@ -167,11 +167,11 @@ static int Open(enum DibBoardType BoardType)
 
 static int Tune_DVB(unsigned int Frequency,  enum DibSpectrumBW Bw )
 {
-	DBG("TSTV:DIBCOM1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	DIBSTATUS Status = DIBSTATUS_SUCCESS;  
     /* Tuning parameters */
     struct DibChannel  ChDesc;
 
+	DBG("TSTV:DIBCOM1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 #if 0
 	/** Get the stream in DVBT mode**/
   	/Status = DibGetStream(pContext, globalInfo.Stream[1], eSTANDARD_DVB, MpegTsMode | (MpegTsSize << 1), ePOWER_ON);
@@ -230,12 +230,12 @@ static int Tune_DVB(unsigned int Frequency,  enum DibSpectrumBW Bw )
 
 static int Tune_ISDB(unsigned int Frequency,  enum DibSpectrumBW Bw )
 {
-	DBG("TSTV:DIBCOM1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	DIBSTATUS Status = DIBSTATUS_SUCCESS;  
 	/* Tuning parameters */
 	struct DibChannel  ChDesc;
 	int i;
 
+	DBG("TSTV:DIBCOM1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	#if 0
 	/*** Get Stream 1: MPEG_TS1 ***/
    	Status = DibGetStream(pContext, globalInfo.Stream[1], eSTANDARD_ISDBT_1SEG, MpegTsMode | (MpegTsSize<<1), ePOWER_ON);
@@ -326,15 +326,17 @@ static long ComputeRfPower(uint16_t agc_global, uint8_t LnaStatus, uint8_t Lock)
 
 char DVB_Module_Init(void)
 {
-	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	DIBSTATUS rc = DIBSTATUS_SUCCESS;
+	#ifdef CONFIG_DIBCOM1009XH_ISDB_BCAS		
 	unsigned int MsgBufLen = sizeof(MsgBuf);
 	union DibParamConfig ParamConfig;
+	#endif
 
+	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	/*** Open Driver ***/	
 	rc = Open(Board);
 
-	#if CONFIG_DIBCOM1009XH_ISDB_BCAS
+	#ifdef CONFIG_DIBCOM1009XH_ISDB_BCAS
 	 /* Register a callback for BCAS messages */
 	//rc = DibRegisterMessageCallback(pContext, MSG_API_TYPE_BCAS, MsgBuf, MsgBufLen, DibBCasDisplay, NULL);
 	memset(MsgBuf, 0, MsgBufLen);
@@ -367,12 +369,11 @@ char DVB_Module_Init(void)
 /*frequency单位Hz, bandwidth单位MHz*/
 void DVB_Module_Tune(unsigned int frequency_KHz, unsigned int  bandwidth_KHz)
 {
-	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
-	
 	int rf_khz = frequency_KHz;
 	int rf_bandwidth = (bandwidth_KHz/1000) * 10;
 	uint8_t Idx = 0;
 	
+	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);	
 	DBG("DVB_Module_Tune: Freq = %dKHz, Bandwidth = %dKHz \n",rf_khz, bandwidth_KHz);
 
 	#if 1	
@@ -427,9 +428,9 @@ if(pContext)
 
 void DVB_Module_Deinit(void)
 {
-	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	uint8_t Idx = 0;
 
+	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	if(pContext)
 	{
 		/*Remove Created Items*/
@@ -470,7 +471,6 @@ char DVB_Module_Lockstatus(void)
 	uint8_t NbDemod = 1;
 	DIBSTATUS Status = DIBSTATUS_SUCCESS;
 	unsigned int MpegLockA,MpegLockB,MpegLockC;
-	static unsigned int count = 0;
 
  	memset(&Monit, 0, sizeof(union DibDemodMonit)*NbDemod);
 
@@ -541,7 +541,7 @@ char DVB_Module_Lockstatus(void)
 	return 0;	
 }
 
-void DVB_Module_signal_strenth_quality(unsigned char *signal_quality, unsigned char *signal_strength)
+void DVB_Module_signal_strenth_quality( char *signal_quality,  char *signal_strength)
 {
 	//DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	
@@ -670,11 +670,10 @@ int DVB_demod_pid_filter(uint8_t id, uint16_t pid, uint8_t onoff)
 {
 	/* Add Pids to the partial TS stream */
 	/* Can be done in one shot or pid per pid */
-
-	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);
 	unsigned int iPidCount =0;
 	DIBSTATUS  Status;
 		
+	DBG("TSTV:DIBCOM!1009XH: \t%s[%d]\n", __FUNCTION__, __LINE__);		
 	if(onoff )
 	{
 		uint32_t i;

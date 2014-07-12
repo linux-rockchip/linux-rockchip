@@ -1084,7 +1084,6 @@ int vmac_open(struct net_device *dev)
 
 	vmac_hw_init(dev);
 
-//$_rbox_$_modify_$_chenxiao
 	if (is_valid_ether_addr(dev->dev_addr)){
 		strlcpy(current_mac,dev->dev_addr,6);
 	}
@@ -1723,7 +1722,6 @@ rk29_vmac_suspend(struct device *dev)
 			netif_stop_queue(ndev);
 			netif_device_detach(ndev);
 			if (ap->suspending == 0) {
-//$_rbox_$_modify_$_chenzhi: for ethernet sleep
 #if 0
 				vmac_shutdown(ndev);
 				rk29_vmac_power_off(ndev);
@@ -1746,12 +1744,9 @@ rk29_vmac_resume(struct device *dev)
 		if (ap->open_flag == 1) {
 			netif_device_attach(ndev);
 			netif_start_queue(ndev);
-//$_rbox_$_modify_$_chenzhi: 
-//$_rbox_$_modify_$_begin
 			if (ap->suspending == 1) {
 				ap->suspending = 0;
 			}
-//$_rbox_$_modify_$_end
 		}
 	}
 	return 0;

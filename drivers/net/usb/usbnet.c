@@ -1219,8 +1219,6 @@ netdev_tx_t usbnet_start_xmit (struct sk_buff *skb,
 	
 	}
 	
-//$_rbox_$_modify_$_chenzhi
-//$_rbox_$_modify_$_begin
 /* data must be 4-byte aligned */
         length = ((unsigned long)skb->data) & 0x3;
         if (length) {
@@ -1241,7 +1239,6 @@ netdev_tx_t usbnet_start_xmit (struct sk_buff *skb,
                         skb_reserve(skb, length);
                 }
         }
-//$_rbox_$_modify_$_end			
 	length = skb->len;
 
 	if (!(urb = usb_alloc_urb (0, GFP_ATOMIC))) {

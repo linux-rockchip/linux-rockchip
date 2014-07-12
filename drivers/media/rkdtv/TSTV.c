@@ -91,31 +91,31 @@
 
 //#define DRV_NAME "SIANO1130_CONTROL"
 
-#if CONFIG_NMI310_CONTROL
+#ifdef CONFIG_NMI310_CONTROL
 #define NMI310_I2C_ADDR    0xc0
 #define TSTV_FE_TYPE      FE_OFDM
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_NMI320_CONTROL
+#ifdef CONFIG_NMI320_CONTROL
 #define NMI320_I2C_ADDR    0x87
 #define TSTV_FE_TYPE      FE_ISDB_ONESEG
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_AU8524_CONTROL
+#ifdef CONFIG_AU8524_CONTROL
 #define AU8524_I2C_ADDR    0x8e
 #define TSTV_FE_TYPE      FE_ATSC//FE_OFDM//FE_ATSC
 #define TSTV_SYS_TYPE    SYS_ATSC
 #endif
 
-#if CONFIG_SIANO1130_CONTROL
+#ifdef CONFIG_SIANO1130_CONTROL
 #define SIANO1130_I2C_ADDR 0xd0
 #define TSTV_FE_TYPE      FE_ISDB_ONESEG
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_DIBCOM8070_CONTROL
+#ifdef CONFIG_DIBCOM8070_CONTROL
 #define DIBCOM8076_I2C_FIRST_ADDR  0x12
 #define DIBCOM8076_I2C_SECOND_ADDR 0x90
 #define DIBCOM8076_I2C_THIRD_ADDR 0x84 //0xc0, dibcom8076 tuner real address 0xc0
@@ -123,54 +123,56 @@
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_DIBCOM7090_CONTROL
+#ifdef CONFIG_DIBCOM7090_CONTROL
 #define TSTV_FE_TYPE      FE_OFDM
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
-#if CONFIG_DIBCOM8096_CONTROL
+
+#ifdef CONFIG_DIBCOM8096_CONTROL
 //#define DIBCOM8096_I2C_FIRST_ADDR  0x12
 //#define DIBCOM8096_I2C_SECOND_ADDR 0x90
 //#define DIBCOM8096_I2C_THIRD_ADDR 0x84 //0xc0, dibcom8096 tuner real address 0xc0
 #define TSTV_FE_TYPE      FE_ISDB_FULLSEG
 #define TSTV_SYS_TYPE     SYS_ISDBT
 #endif
-#if CONFIG_MTV818_CONTROL
+
+#ifdef CONFIG_MTV818_CONTROL
 #define MTV818_I2C_ADDR 0x86
 #define TSTV_FE_TYPE      FE_ISDB_ONESEG
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_GX1131_CONTROL
+#ifdef CONFIG_GX1131_CONTROL
 #define GX1131_I2C_ADDR 0xD0
 #define TSTV_FE_TYPE    FE_QPSK
 #define TSTV_SYS_TYPE     SYS_DVBS
 #endif
 
-#if CONFIG_GX1001_CONTROL
+#ifdef CONFIG_GX1001_CONTROL
 #define GX1001_I2C_ADDR 0x18
 #define TSTV_FE_TYPE    FE_OFDM
 #define TSTV_SYS_TYPE     SYS_DVBC
 #endif
 
-#if CONFIG_ITE9133_CONTROL
+#ifdef CONFIG_ITE9133_CONTROL
 #define ITE9133_I2C_ADDR (0x38 << 0)
 #define TSTV_FE_TYPE      FE_OFDM
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_DIBCOM1009XH_DVB_CONTROL
+#ifdef CONFIG_DIBCOM1009XH_DVB_CONTROL
 #define DIBCOM1009XH_ADDR 0x80
 #define TSTV_FE_TYPE      FE_OFDM
 #define TSTV_SYS_TYPE     SYS_DVBT
 #endif
 
-#if CONFIG_DIBCOM1009XH_ISDB_ONESEG_CONTROL 
+#ifdef CONFIG_DIBCOM1009XH_ISDB_ONESEG_CONTROL 
 #define DIBCOM1009XH_ADDR 0x80
 #define TSTV_FE_TYPE      FE_ISDB_ONESEG
 #define TSTV_SYS_TYPE     SYS_ISDBT
 #endif
 
-#if CONFIG_DIBCOM1009XH_ISDB_FULLSEG_CONTROL
+#ifdef CONFIG_DIBCOM1009XH_ISDB_FULLSEG_CONTROL
 #define DIBCOM1009XH_ADDR 0x80
 #define TSTV_FE_TYPE      FE_ISDB_FULLSEG
 #define TSTV_SYS_TYPE     SYS_ISDBT
@@ -213,7 +215,6 @@ static const unsigned short normal_i2c[] = {
 	I2C_CLIENT_END
 };
 
-I2C_CLIENT_INSMOD;			/* defines addr_data */
 
 #define HSADC_DMA_TRAN_LENGTH  (2048) 
 #define HSADC_INPUT_BUFFER_NUM  1024
@@ -338,7 +339,7 @@ extern int rk29_hsadc_get_cur_transmit_addr(void);
 
 static void tstv_timer_handler( unsigned long data);
 static void tstv_timer_shedule_work(struct work_struct *work);
-static int tstv_control_probe(struct i2c_client *client, const struct i2c_device_id *id);
+int tstv_control_probe(struct i2c_client *client, const struct i2c_device_id *id);
 
 #if (defined(DIBCOM8076_I2C_FIRST_ADDR) && defined(DIBCOM8076_I2C_SECOND_ADDR))
 static int dibcom_i2c_detach_client(void);
@@ -401,8 +402,6 @@ power up && reset
  */
 void tstv_power_up_and_reset(void)
 {
-	int err;
-
 	DBG("***rkdtv***\t%s[%d]\n",__FUNCTION__,__LINE__);
 
 //all pins to low
@@ -470,8 +469,6 @@ void tstv_power_down(void)
 	gpio_direction_output(TV_RESET_PIN, GPIO_LOW);
 	gpio_set_value(TV_RESET_PIN, GPIO_LOW);
 #endif
-
-	return 0;
 }
 
 /*********************************************************************************/
@@ -645,6 +642,7 @@ static int tstv_sleep(struct dvb_frontend *demod)
 	return 0;
 }
 
+#if 0
 static int dvbfe_dvbt_bandwidth_to_num[5][2] =
 {
 	{ BANDWIDTH_8_MHZ, 8000},
@@ -653,6 +651,7 @@ static int dvbfe_dvbt_bandwidth_to_num[5][2] =
 	{ BANDWIDTH_AUTO, 0},
 	{ -1, -1 }
 };
+
 
 static int dvblookupval(int val, int table[][2])
 {
@@ -666,6 +665,7 @@ static int dvblookupval(int val, int table[][2])
 	}
 	return -1;
 }
+#endif
 
 static int tstv_set_frontend(struct dvb_frontend* fe)
 {
@@ -733,8 +733,6 @@ static int tstv_read_status(struct dvb_frontend *fe, fe_status_t *stat)
 {
 	struct tstv_state *st = fe->demodulator_priv;
 	struct TSTV *pTSTV = st->pTSTV;
-	int port,i=0;
-	unsigned int config;
 	DVB_HSADC_Data_Trans_Info_t *info;
 	
 	//DBG("***rkdtv***\t%s[%d]\n",__FUNCTION__,__LINE__);	
@@ -756,16 +754,15 @@ static int tstv_read_status(struct dvb_frontend *fe, fe_status_t *stat)
 
 static int tstv_read_ber(struct dvb_frontend *fe, u32 *ber)
 {
-	struct dib7000m_state *state = fe->demodulator_priv;
 	DBG("***rkdtv***\t%s[%d]\n",__FUNCTION__,__LINE__);
+	
 	return 0;
 }
 
 
 static int tstv_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 {
-	struct dib7000m_state *state = fe->demodulator_priv;
-    char signal_quality = 0, signal_strength = 0;
+  char signal_quality = 0, signal_strength = 0;
 	
 	//DBG("***rkdtv***\t%s[%d]\n",__FUNCTION__,__LINE__);
 	gTSTVModule.signal_strenth_quality(&signal_quality, &signal_strength);
@@ -781,13 +778,7 @@ static int tstv_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 
 static int tstv_read_snr(struct dvb_frontend* fe, u16 *snr)
 {
-	struct tstv_state *st = fe->demodulator_priv;
-	struct TSTV *pTSTV = st->pTSTV;
-	int port;
-	unsigned int config;
-	DVB_HSADC_Data_Trans_Info_t *info;
-	info = pTSTV->hsadc_info;
-    char signal_quality = 0, signal_strength = 0;	
+  //  char signal_quality = 0, signal_strength = 0;	
 	
 	DBG("***rkdtv***\t%s[%d]\n",__FUNCTION__,__LINE__);
 
@@ -799,7 +790,8 @@ static int tstv_read_snr(struct dvb_frontend* fe, u16 *snr)
 
 static int tstv_read_unc_blocks(struct dvb_frontend *fe, u32 *unc)
 {
-	struct dib7000m_state *state = fe->demodulator_priv;
+	//struct dib7000m_state *state = fe->demodulator_priv;
+	
 	DBG("***rkdtv***\t%s[%d]\n",__FUNCTION__,__LINE__);
 	return 0;
 }
@@ -811,7 +803,7 @@ static struct dvb_frontend_ops tstv_ops = {
 		.name = "TSTV",
 		.type = TSTV_FE_TYPE,
 		.frequency_min		= 100,//44250000,
-		.frequency_max		= 2867250000,
+		.frequency_max		= 1867250000,
 		.frequency_stepsize = 62500,
 		.caps = FE_CAN_INVERSION_AUTO |
 			FE_CAN_FEC_1_2 | FE_CAN_FEC_2_3 | FE_CAN_FEC_3_4 |
@@ -839,7 +831,7 @@ static struct dvb_frontend_ops tstv_ops = {
 	.read_ucblocks		  = tstv_read_unc_blocks,
 };
 
-static inline struct dvb_frontend* tstv_attach()
+static inline struct dvb_frontend* tstv_attach(void)
 {
 	struct dvb_frontend *demod;
 	struct tstv_state *st;
@@ -861,10 +853,6 @@ static inline struct dvb_frontend* tstv_attach()
 	
 	DBG("000rkdtv000\t%s[%d]\n",__FUNCTION__,__LINE__);
 	return demod;
-	
-error:
-	kfree(st);
-	return NULL;
 }
 
 static int  frontend_init(struct TSTV *pTSTV)
@@ -968,6 +956,8 @@ int tstv_spi_set_reg(struct spi_device *spi, u8 buf[], unsigned len)
 	   printk("%s[%d]: spi_transfer error\n",__FUNCTION__,__LINE__);	
 	 }
 #endif
+
+    return 0;
 }
 EXPORT_SYMBOL(tstv_spi_set_reg);
 
@@ -979,10 +969,14 @@ int tstv_spi_read_reg(struct spi_device *spi, u8 buf[], unsigned len)
 	  printk("%s[%d]: spi_transfer error\n",__FUNCTION__,__LINE__);	
 	}
 #endif
+
+    return 0;
 }
 EXPORT_SYMBOL(tstv_spi_read_reg);
 
-
+#if (defined(CONFIG_SPI_MASTER) && defined(CONFIG_DIBCOM1009XH_CONTROL))
+	
+#else
 static int tstv_control_remove(struct i2c_client *client)
 {
 	struct TSTV *pTSTV = gpTSTV;
@@ -1035,21 +1029,11 @@ static int tstv_control_remove(struct i2c_client *client)
 #endif
 }
 
-static void tstv_control_suspend(struct early_suspend *h)
-{
-
-}
-
-static void tstv_control_resume(struct early_suspend *h)
-{
-
-}
-
-
 static const struct i2c_device_id tstv_control_id[] = {
 		{"tstv_control", 0},
 		{ }
 };
+
 
 static struct i2c_driver tstv_control_driver = {
 	.driver 	= {
@@ -1058,11 +1042,8 @@ static struct i2c_driver tstv_control_driver = {
 	.id_table 	= tstv_control_id,
 	.probe		= tstv_control_probe,
 	.remove		= tstv_control_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND	
-	.suspend = &tstv_control_suspend,
-	.resume = &tstv_control_resume,
-#endif	
 };
+#endif
 
 #define  MPEG_TS_PACKET_SIZE  188
 #define  MPEG_TS_SYN_BYTE     0x47
@@ -1081,10 +1062,8 @@ static void tstv_timer_shedule_work(struct work_struct *work)
 	unsigned int len = 0;
 	unsigned int left_size =0;
 	unsigned int test_read_address =0;
-	int i;
     static int timer_cnt = 0;
     static int timer_cnt1 = 0;	
-	int data_size = 0;
 
 	mutex_lock(&pTSTV->workque_mutex);	
 
@@ -1107,20 +1086,20 @@ static void tstv_timer_shedule_work(struct work_struct *work)
        if(gHsadc_reset_flag == 1) 
        {
        	gHsadc_reset_flag = 0;
-       	memset(info->data_base_addr, 0, HSADC_DMA_TRAN_LENGTH*HSADC_INPUT_BUFFER_NUM);
+       	memset((void *)info->data_base_addr, 0, HSADC_DMA_TRAN_LENGTH*HSADC_INPUT_BUFFER_NUM);
 	info->cur_data_addr = info->data_base_addr;
 	pTSTV->ts_read_addr = info->data_base_addr;
 	pTSTV->read_total_size =0;
         }   
 
-	len = DVB_TS_ReadData_Ptr_Estimat(info->cur_data_addr,pTSTV->ts_read_addr,info->data_base_addr,HSADC_DMA_TRAN_LENGTH*HSADC_INPUT_BUFFER_NUM);
+	len = DVB_TS_ReadData_Ptr_Estimat((u8 *)info->cur_data_addr,(u8 *)pTSTV->ts_read_addr,(u8 *)info->data_base_addr,HSADC_DMA_TRAN_LENGTH*HSADC_INPUT_BUFFER_NUM);
 	//DBG("pTSTV =%x LEN = %d ,cur =%x read = %x base =%x\n", gpTSTV,len,info->cur_data_addr,pTSTV->ts_read_addr,info->data_base_addr);
 
 	if(timer_cnt++ > 10*5)
 	{
 	    timer_cnt = 0;
 		DBG("***rkdtv available data len: %d ! ***\t%s\n",len, __FUNCTION__);
-		DBG("pTSTV =%x LEN = %d ,cur =%x read = %x base =%x\n", gpTSTV,len,info->cur_data_addr,pTSTV->ts_read_addr,info->data_base_addr);
+		DBG("LEN = %d ,cur =%x read = %x base =%x\n",len,info->cur_data_addr,pTSTV->ts_read_addr,info->data_base_addr);
 	}
 	
 	//if the len is valid
@@ -1129,7 +1108,7 @@ static void tstv_timer_shedule_work(struct work_struct *work)
 		if((pTSTV->ts_read_addr + len) < (info->data_base_addr + (HSADC_DMA_TRAN_LENGTH*HSADC_INPUT_BUFFER_NUM)))/* <= */
 		{
 			//if the data not cross the end and start,just read it as whole peace
-			dvb_dmx_swfilter(&pTSTV->demux,(pTSTV->ts_read_addr), len);
+			dvb_dmx_swfilter(&pTSTV->demux,(u8 *)(pTSTV->ts_read_addr), len);
 		
 			//cal the next read address
 			pTSTV->read_total_size += len;	
@@ -1141,12 +1120,12 @@ static void tstv_timer_shedule_work(struct work_struct *work)
 			left_size = (pTSTV->ts_read_addr + len)-(info->data_base_addr + (HSADC_DMA_TRAN_LENGTH*HSADC_INPUT_BUFFER_NUM));
 			
 			//read the last data
-			dvb_dmx_swfilter(&pTSTV->demux,(pTSTV->ts_read_addr), len-left_size);
+			dvb_dmx_swfilter(&pTSTV->demux,(u8 *)(pTSTV->ts_read_addr), len-left_size);
 	
 			//read the start part data			
                         if(left_size > 0)
                         {
-			    dvb_dmx_swfilter(&pTSTV->demux,(info->data_base_addr), left_size);
+			    dvb_dmx_swfilter(&pTSTV->demux,(u8 *)(info->data_base_addr), left_size);
                         }
 	
 			//cal the next read address
@@ -1178,6 +1157,10 @@ end:
 
 	return;
 }
+
+#if (defined(CONFIG_SPI_MASTER) && defined(CONFIG_DIBCOM1009XH_CONTROL))
+
+#else
 
 #if (defined(DIBCOM8076_I2C_FIRST_ADDR) && defined(DIBCOM8076_I2C_SECOND_ADDR))
 struct i2c_client dib_i2c_client0 = {
@@ -1215,9 +1198,9 @@ struct i2c_client dib_i2c_client2 = {
 
 static int tstv_control_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-
+#if (defined(DIBCOM8096_I2C_FIRST_ADDR) && defined(DIBCOM8096_I2C_SECOND_ADDR))
 	struct i2c_client * rc = 0;
-	u8 buff;
+#endif	
 	struct TSTV *pTSTV = NULL;
 	struct dvb_adapter *dvb_adapter;
 	struct dvb_demux *dvbdemux;
@@ -1260,7 +1243,7 @@ static int tstv_control_probe(struct i2c_client *client, const struct i2c_device
 	if (!pTSTV)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);	
-		rc = -ENOMEM;
+		err = ENOMEM;
 		goto out;
 	}
 
@@ -1394,12 +1377,12 @@ static int tstv_control_probe(struct i2c_client *client, const struct i2c_device
 		
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);
 		
-		rc = -ENODEV;
+		err = ENODEV;
 		
 		goto failout;
 	}
 	
-	memset(pTSTV->dma_kmalloc_buf_head, 0, HSADC_SHARE_MEM_MALLOC_SIZE);
+	memset((void *)pTSTV->dma_kmalloc_buf_head, 0, HSADC_SHARE_MEM_MALLOC_SIZE);
 
 
 	pTSTV->hsadc_info 		= (DVB_HSADC_Data_Trans_Info_t *)((pTSTV->dma_kmalloc_buf_head & 0xFFFFFC00) + 0x400);
@@ -1415,16 +1398,15 @@ static int tstv_control_probe(struct i2c_client *client, const struct i2c_device
 
 
 	DBG("TSTV: dma_kmalloc_buf_head =%x\n",pTSTV->dma_kmalloc_buf_head);
-	DBG("TSTV: hsadc_info = %x\n",pTSTV->hsadc_info );
 	DBG("TSTV: dma_start_addr =%x\n",pTSTV->dma_start_addr);
 
 	/* dvb */
 #ifdef DRV_NAME
-        rc = dvb_register_adapter(&pTSTV->dvb_adapter, DRV_NAME, THIS_MODULE, NULL, adapter_nr);
+        err = dvb_register_adapter(&pTSTV->dvb_adapter, DRV_NAME, THIS_MODULE, NULL, adapter_nr);
 #else
-	rc = dvb_register_adapter(&pTSTV->dvb_adapter, /*DRV_NAME*/gTSTVModule.name, THIS_MODULE, NULL, adapter_nr);
+	err = dvb_register_adapter(&pTSTV->dvb_adapter, /*DRV_NAME*/gTSTVModule.name, THIS_MODULE, NULL, adapter_nr);
 #endif
-	if (rc < 0)
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);	
 		goto err_i2c_del_adapter;
@@ -1442,8 +1424,8 @@ static int tstv_control_probe(struct i2c_client *client, const struct i2c_device
 	DMX_SECTION_FILTERING | DMX_MEMORY_BASED_FILTERING);
 	dvbdemux->priv = (void*)pTSTV;
 
-	rc = dvb_dmx_init(dvbdemux);
-	if (rc < 0)
+	err = dvb_dmx_init(dvbdemux);
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);	
 		goto err_dvb_unregister_adapter;
@@ -1458,42 +1440,42 @@ static int tstv_control_probe(struct i2c_client *client, const struct i2c_device
 	pTSTV->dmxdev.filternum = NHWFILTERS;
 	pTSTV->dmxdev.demux = dmx;
 
-	rc = dvb_dmxdev_init(&pTSTV->dmxdev, dvb_adapter);
-	if (rc < 0)
+	err = dvb_dmxdev_init(&pTSTV->dmxdev, dvb_adapter);
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);
 		goto err_dvb_dmx_release;
 	}
 
 
-	rc = dmx->add_frontend(dmx, &pTSTV->hw_frontend);
-	if (rc < 0)
+	err = dmx->add_frontend(dmx, &pTSTV->hw_frontend);
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);
 		goto err_dvb_dmxdev_release;
 	}
 
 
-	rc = dmx->add_frontend(dmx, &pTSTV->mem_frontend);
-	if (rc < 0)
+	err = dmx->add_frontend(dmx, &pTSTV->mem_frontend);
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);
 		goto err_remove_hw_frontend;
 	}
 
 
-	rc = dmx->connect_frontend(dmx, &pTSTV->hw_frontend);
-	if (rc < 0)
+	err = dmx->connect_frontend(dmx, &pTSTV->hw_frontend);
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);
 		goto err_remove_mem_frontend;
 	}
 
 
-	rc = frontend_init(pTSTV);
+	err = frontend_init(pTSTV);
 	
 
-	if (rc < 0)
+	if (err < 0)
 	{
 		printk("XXXrkdtvXXX\t%s[%d]\n",__FUNCTION__,__LINE__);
 		goto err_disconnect_frontend;
@@ -1531,7 +1513,7 @@ err_i2c_del_adapter:
 #else
 	i2c_release_client(client);
 #endif
-	kfree(pTSTV->dma_kmalloc_buf_head);
+	kfree((void *)pTSTV->dma_kmalloc_buf_head);
 
 failout:
 #if (!defined(DIBCOM8076_I2C_FIRST_ADDR) && !defined(DIBCOM8076_I2C_SECOND_ADDR))
@@ -1541,7 +1523,7 @@ failout:
 #endif
 	kfree(pTSTV);
 out:
-	return rc;
+	return err;
 }
 
 
@@ -1572,6 +1554,10 @@ static int dibcom_i2c_detach_client(void)
     return rc;
 }
 #endif //dibcom8096
+#endif
+
+
+#if (defined(CONFIG_SPI_MASTER) && defined(CONFIG_DIBCOM1009XH_CONTROL))
 
 #ifdef CONFIG_OF
 static struct dw_spi_chip *rockchip_spi_parse_dt(struct device *dev)
@@ -1618,7 +1604,6 @@ static struct spi_board_info *rockchip_spi_parse_dt(struct device *dev)
 	return dev->platform_data;
 }
 #endif
-
 
 static int tstv_spi_probe(struct spi_device *spi)
 {
@@ -1728,7 +1713,7 @@ static int tstv_spi_probe(struct spi_device *spi)
 			goto failout;
 		}
 		
-		memset(pTSTV->dma_kmalloc_buf_head, 0, HSADC_SHARE_MEM_MALLOC_SIZE);
+		memset((void *)pTSTV->dma_kmalloc_buf_head, 0, HSADC_SHARE_MEM_MALLOC_SIZE);
 	
 	
 		pTSTV->hsadc_info		= (DVB_HSADC_Data_Trans_Info_t *)((pTSTV->dma_kmalloc_buf_head & 0xFFFFFC00) + 0x400);
@@ -1744,7 +1729,6 @@ static int tstv_spi_probe(struct spi_device *spi)
 	
 	
 		DBG("TSTV: dma_kmalloc_buf_head =%x\n",pTSTV->dma_kmalloc_buf_head);
-		DBG("TSTV: hsadc_info = %x\n",pTSTV->hsadc_info );
 		DBG("TSTV: dma_start_addr =%x\n",pTSTV->dma_start_addr);
 	
 		/* dvb */
@@ -1862,7 +1846,7 @@ static int tstv_spi_probe(struct spi_device *spi)
 	
 	err_i2c_del_adapter:
 		
-		kfree(pTSTV->dma_kmalloc_buf_head);
+		kfree((void *)pTSTV->dma_kmalloc_buf_head);
 	
 	failout:
 		
@@ -1914,6 +1898,7 @@ static int tstv_spi_remove(struct spi_device *spi)
 	}
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_OF
 static const struct of_device_id rockchip_spi_test_dt_match[] = {

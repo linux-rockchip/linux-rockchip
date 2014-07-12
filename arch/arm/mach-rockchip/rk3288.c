@@ -108,16 +108,19 @@ static void __init rk3288_boot_mode_init(void)
 static void usb_uart_init(void)
 {
 	u32 soc_status2;
+
 	writel_relaxed(0x00c00000, RK_GRF_VIRT + RK3288_GRF_UOC0_CON3);
-#ifdef CONFIG_RK_USB_UART
 	soc_status2 = (readl_relaxed(RK_GRF_VIRT + RK3288_GRF_SOC_STATUS2));
-	if(!(soc_status2 & (1<<14)) && (soc_status2 & (1<<17)))
-	{
-		writel_relaxed(0x00040004, RK_GRF_VIRT + RK3288_GRF_UOC0_CON2); //software control usb phy enable 
-		writel_relaxed(0x003f002a, RK_GRF_VIRT + RK3288_GRF_UOC0_CON3); //usb phy enter suspend
+
+#ifdef CONFIG_RK_USB_UART
+	if (!(soc_status2 & (1<<14)) && (soc_status2 & (1<<17))) {
+		/* software control usb phy enable */
+		writel_relaxed(0x00040004, RK_GRF_VIRT + RK3288_GRF_UOC0_CON2);
+		/* usb phy enter suspend */
+		writel_relaxed(0x003f002a, RK_GRF_VIRT + RK3288_GRF_UOC0_CON3);
 		writel_relaxed(0x00c000c0, RK_GRF_VIRT + RK3288_GRF_UOC0_CON3);
 	}
-#endif // end of CONFIG_RK_USB_UART
+#endif
 }
 
 extern void secondary_startup(void);
@@ -152,6 +155,10 @@ static void __init rk3288_dt_map_io(void)
 	dsb();
 	writel_relaxed(1, RK3288_TIMER7_VIRT + 0x10);
 	dsb();
+
+	/* power up/down GPU domain wait 1us */
+	writel_relaxed(24, RK_PMU_VIRT + RK3288_PMU_GPU_PWRDWN_CNT);
+	writel_relaxed(24, RK_PMU_VIRT + RK3288_PMU_GPU_PWRUP_CNT);
 
 	rk3288_boot_mode_init();
 }
@@ -589,12 +596,12 @@ static void __init rk3288_init_suspend(void)
 {
     printk("%s\n",__FUNCTION__);
     rockchip_suspend_init();       
-    //rkpm_pie_init();
+    rkpm_pie_init();
     rk3288_suspend_init();
    rkpm_set_ops_pwr_dmns(rk_pm_soc_pd_suspend,rk_pm_soc_pd_resume);  
 }
 
-
+#if 0
 extern bool console_suspend_enabled;
 
 static int  __init rk3288_pm_dbg(void)
@@ -611,6 +618,7 @@ static int  __init rk3288_pm_dbg(void)
 }
 
 //late_initcall_sync(rk3288_pm_dbg);
+#endif
 
 
 #endif

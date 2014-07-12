@@ -359,7 +359,7 @@ void rk_display_device_enable(struct rk_display_device *ddev)
 #else
 	struct list_head *pos, *head;
 	struct rk_display_device *dev = NULL, *dev_enabled = NULL, *dev_enable = NULL;
-	int enable = 0,connect, has_connect = 0;
+	int enable = 0,connect;//, has_connect = 0;
 	
 	if(ddev->property == DISPLAY_MAIN)
 		head = &main_display_device_list;
@@ -503,20 +503,14 @@ struct rk_display_device *rk_display_device_register(struct rk_display_driver *d
 	if (unlikely(!driver))
 		return ERR_PTR(ret);
 
-	mutex_lock(&allocated_dsp_lock);
-	ret = idr_pre_get(&allocated_dsp, GFP_KERNEL);
-	mutex_unlock(&allocated_dsp_lock);
-	if (!ret)
-		return ERR_PTR(ret);
-
 	new_dev = kzalloc(sizeof(struct rk_display_device), GFP_KERNEL);
 	if (likely(new_dev) && unlikely(driver->probe(new_dev, devdata))) {
 		// Reserve the index for this display
 		mutex_lock(&allocated_dsp_lock);
-		ret = idr_get_new(&allocated_dsp, new_dev, &new_dev->idx);
+		new_dev->idx = idr_alloc(&allocated_dsp, new_dev, 0, 0, GFP_KERNEL);
 		mutex_unlock(&allocated_dsp_lock);
 
-		if (!ret) {
+		if (new_dev->idx >= 0) {
 			new_dev->dev = device_create(display_class, parent,
 						     MKDEV(0, 0), new_dev,
 						     "display%d.%s", new_dev->property, new_dev->type);

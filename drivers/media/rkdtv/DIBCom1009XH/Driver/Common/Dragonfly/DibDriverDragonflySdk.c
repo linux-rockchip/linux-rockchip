@@ -332,7 +332,7 @@ static void IntDriverDragonflyProcessMsgMonitDemod(struct DibDriverContext * pCo
              pContext->ChannelInfo[ChHdl].ChannelMonit.NbDemods,
              pContext->ChannelInfo[ChHdl].Type));
 
-   switch(pContext->ChannelInfo[ChHdl].Type)
+   switch((int)pContext->ChannelInfo[ChHdl].Type)
    {
       case eSTANDARD_DVBSH:
       case (eSTANDARD_DVBSH | eFAST):
@@ -340,8 +340,8 @@ static void IntDriverDragonflyProcessMsgMonitDemod(struct DibDriverContext * pCo
          break;
 
       case eSTANDARD_DVB:
-      case eSTANDARD_DVB | eFAST:
-      case eSTANDARD_DVB | eALWAYS_TUNE_SUCCESS:
+      case (eSTANDARD_DVB | eFAST):
+      case (eSTANDARD_DVB | eALWAYS_TUNE_SUCCESS):
          DibDriverDragonflyProcessMsgMonitDemodDvb(pContext, &Msg, pTotalMonitInfo);
          break;
 
@@ -378,7 +378,7 @@ static void IntDriverDragonflyProcessMsgMonitDemod(struct DibDriverContext * pCo
       uint32_t TmpExp, TmpDemId;
       pTotalMonitInfo->Type = pContext->ChannelInfo[ChHdl].Type;
 
-      switch(pContext->ChannelInfo[ChHdl].Type)
+      switch((int)pContext->ChannelInfo[ChHdl].Type)
       {
             case eSTANDARD_DVB:
             case eSTANDARD_DVB | eFAST:
@@ -408,7 +408,7 @@ static void IntDriverDragonflyProcessMsgMonitDemod(struct DibDriverContext * pCo
       for(TmpDemId=0; TmpDemId < pContext->ChannelInfo[ChHdl].ChannelMonit.NbDemods; TmpDemId++)
       {
          uint8_t IntTimeout = 0;
-         switch(pContext->ChannelInfo[ChHdl].Type)
+         switch((int)pContext->ChannelInfo[ChHdl].Type)
          {
             case eSTANDARD_DVBSH:
             case (eSTANDARD_DVBSH | eFAST):
@@ -770,7 +770,9 @@ void IntDriverDragonflyTransferFirmware(struct DibDriverContext *pContext)
    uint32_t MaxDmaTransfer = 255*1024, TransmittedBytes = 0;
    uint8_t * FirmwareText = NULL;
    uint32_t  FirmwareLength = 0;
+#if (WRITE_FLASH_SUPPORT == eWRFL_FILE)   
    uint32_t  FreeBuffer = 0;
+#endif   
    struct MsgDownloadConfirm ConfirmMsg;
 
    DIB_DEBUG(MSG_LOG, (CRB "IntDriverDragonflyTransferFirmware: at %08x max=%d bino=%s ack=%08x off=%d" CRA, pFirmware->Address, pFirmware->MaxLength, pFirmware->FirmwareName, pFirmware->LengthAck, pFirmware->FileOffset));
@@ -1792,7 +1794,7 @@ DIBSTATUS IntDriverDragonflyGetChannelEx(struct DibDriverContext *pContext, stru
 {
    DIBSTATUS ret = DIBSTATUS_ERROR;
 
-   struct MsgCreateChannel Msg;
+   static struct MsgCreateChannel Msg;
    struct MsgTuneIndication TuneMsg;
    struct DibTuneChan* pTc = &(pDescriptor->ChannelDescriptor);
    CHANNEL_HDL ii = 0;
@@ -1856,7 +1858,7 @@ DIBSTATUS IntDriverDragonflyGetChannelEx(struct DibDriverContext *pContext, stru
    Msg.Head.MsgSize = GetWords(MsgCreateChannelBits, 32);
    Msg.Head.ChipId  = MASTER_IDENT;
 
-   switch(pStream->Std)
+   switch((int)pStream->Std)
    {
    case eSTANDARD_DVB:
    case (eSTANDARD_DVB | eFAST):
@@ -2601,7 +2603,7 @@ static DIBSTATUS IntDriverDragonflyRemoveItem(struct DibDriverContext * pContext
 }
 void IntDriverDragonflyChannelStatus(struct DibDriverContext * pContext, uint32_t * pData)
 {
-	struct MsgUpdateChannelIndication Msg;
+	static struct MsgUpdateChannelIndication Msg;
 	uint16_t ChHdl;
 	struct DibTuneChan * pTc;
 
@@ -2610,7 +2612,7 @@ void IntDriverDragonflyChannelStatus(struct DibDriverContext * pContext, uint32_
 	pTc = &(pContext->ChannelInfo[ChHdl].ChannelDescriptor);
 	DIB_ASSERT(pTc);
 
-	switch(pContext->ChannelInfo[ChHdl].Type)
+	switch((int)pContext->ChannelInfo[ChHdl].Type)
 	{
 		case eSTANDARD_DVB:
 		case eSTANDARD_DVB | eFAST:

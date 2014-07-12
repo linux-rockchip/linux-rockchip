@@ -2,7 +2,7 @@
 # Makefile for the kernel multimedia device drivers.
 #
 
-obj-$(CONFIG_DIBCOM1009XH_CONTROL)	+= DibBoard29090.o  DibBoard9080.o  DibBoardMod29098SHA.o  DibBoardNim3006xxx.o  DibBoardNim9080md.o  DibBoardNim9090md.o   DibBoardSelection.o    DibFirmwareSelection.o DibBoard29098.o  DibBoard9090.o  DibBoardNim1009xxx.o   DibBoardNim3009xxx.o  DibBoardNim9090H.o   DibBoardParameters.o  DibBoardStk29098md4.o
+obj-$(CONFIG_DIBCOM1009XH_CONTROL)	+=  DibBoard9080.o  DibBoardMod29098SHA.o  DibBoardNim3006xxx.o  DibBoardNim9080md.o  DibBoardNim9090md.o   DibBoardSelection.o    DibFirmwareSelection.o DibBoard29098.o  DibBoard9090.o  DibBoardNim1009xxx.o   DibBoardNim3009xxx.o  DibBoardNim9090H.o   DibBoardParameters.o  DibBoardStk29098md4.o
 
 
 USER 	= drivers/media/rkdtv/DIBCom1009XH/User

@@ -197,7 +197,7 @@
     
 &sdmmc {
 		clock-frequency = <50000000>;
-		clock-freq-min-max = <400000 50000000>;
+		lock-freq-min-max = <400000 50000000>;
 		supports-highspeed;
 		supports-sd;
 		broken-cd;
@@ -435,13 +435,11 @@
 	status = "disabled";
 };
 
-/*$_rbox_$_modify_$_begin_huangzhibao for rk1000*/
 &i2s{
     pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&i2s_sclk &i2s_lrckrx &i2s_lrcktx &i2s_sdi &i2s_sdo0 &i2s_sdo1 &i2s_sdo2 &i2s_sdo3>;
 		pinctrl-1 = <&i2s_gpio>;
 };
-/*$_rbox_$_modify_$_end*/
 
 &fb {
 	rockchip,disp-mode = <DUAL>;
@@ -533,16 +531,18 @@
 &clk_core_dvfs_table {
 	operating-points = <
 		/* KHz    uV */
-		126000 850000
+		126000 900000
 		216000 900000
 		312000 900000
 		408000 900000
-		600000 900000
+		600000 950000
 		696000 950000
 		816000 1000000
 		1008000 1050000
 		1200000 1100000
 		1416000 1200000
+		1512000 1300000
+		1608000 1350000
 		>;
 	status="okay";
 };
@@ -555,7 +555,7 @@
 		300000 950000
 		400000 1100000
 		500000 1150000
-//		600000 1250000
+	//	600000 1250000
 		>;
 	status="okay";
 };
@@ -575,9 +575,9 @@
 		SYS_STATUS_SUSPEND	200000
 		//SYS_STATUS_VIDEO_1080P  240000
 		SYS_STATUS_VIDEO_4K     456000
-		SYS_STATUS_PERFORMANCE  528000
-		SYS_STATUS_BOOST	324000
-		SYS_STATUS_ISP		400000
+		SYS_STATUS_PERFORMANCE  533000
+		//SYS_STATUS_BOOST	324000
+		//SYS_STATUS_ISP		400000
 		>;
 	auto-freq-table = <
 		240000
