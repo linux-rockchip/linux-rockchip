@@ -13,7 +13,7 @@
 #include <plat/efuse.h>
 #include <linux/string.h>
 
-#if defined(CONFIG_ARCH_RK3188) || defined(CONFIG_SOC_RK3028) || defined(CONFIG_ARCH_RK3066B)
+#if defined(CONFIG_ARCH_RK3188) || defined(CONFIG_SOC_RK3028) || defined(CONFIG_ARCH_RK3066B) || defined(CONFIG_ARCH_RK30)
 #define efuse_readl(offset)		readl_relaxed(RK30_EFUSE_BASE + offset)
 #define efuse_writel(val, offset)	writel_relaxed(val, RK30_EFUSE_BASE + offset)
 #endif
