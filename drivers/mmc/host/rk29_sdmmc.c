@@ -571,13 +571,31 @@ static int rk29_sdmmc_reset_fifo(struct rk29_sdmmc *host)
 	return ret;
 	
 }
+#if defined(CONFIG_SDMMC2_RK29)
+extern struct mmc_card *this_card;
+#endif
 
 static int rk29_sdmmc_wait_unbusy(struct rk29_sdmmc *host)
 {
     int time_out = 500000;//250000; //max is 250ms; //adapt the value to the sick card.  modify at 2011-10-08
+    int sec_flag = 0;
     
-    if(RK29_SDMMC_EMMC_ID == host->host_dev_id)
-        time_out = 2500000;
+    if(RK29_SDMMC_EMMC_ID == host->host_dev_id){
+        if(host->cmd->opcode == 38) //erase op
+                if(this_card){
+                        if((host->cmd->arg & (0x1 << 31)) == 1) //secure erase
+                                sec_flag = 0x1;
+                        if(((this_card->ext_csd.erase_group_def)&0x1) == 1){
+                                if(sec_flag)
+                                        time_out = (this_card->ext_csd.hc_erase_timeout)
+                                                * 300000 * (this_card->ext_csd.sec_erase_mult);
+                                else
+                                        time_out = (this_card->ext_csd.hc_erase_timeout) * 300000;
+                        }
+                }
+        if(time_out < 2500000)
+                time_out = 2500000;//ensure minimal value
+    }
 
 #if SDMMC_USE_INT_UNBUSY
     if((24==host->cmd->opcode)||(25==host->cmd->opcode))
