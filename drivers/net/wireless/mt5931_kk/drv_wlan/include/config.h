@@ -1450,7 +1450,7 @@
  *------------------------------------------------------------------------------
  */
 #define CFG_SUPPORT_NVRAM                       1
-#define CFG_NVRAM_EXISTENCE_CHECK               1
+#define CFG_NVRAM_EXISTENCE_CHECK               0
 #define CFG_SW_NVRAM_VERSION_CHECK              1
 #define CFG_SUPPORT_NIC_CAPABILITY              1
 
