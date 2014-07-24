@@ -708,7 +708,7 @@ int rk30_hdmi_disable(struct hdmi *hdmi)
 {
 	struct rk30_hdmi *rk30_hdmi = hdmi->property->priv;
 	if(rk30_hdmi->enable) {
-		rk30_hdmi->enable = 1;
+		rk30_hdmi->enable = 0;
 		disable_irq(rk30_hdmi->irq);
 	}
 	return 0;
