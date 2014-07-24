@@ -937,7 +937,176 @@ static struct platform_device rk30_device_remotectl = {
 };
 #endif
 /*$_rbox_$_modify_$_huangzhibao_end$_20120508_$*/
-#ifdef CONFIG_RK30_PWM_REGULATOR
+
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+static int pwm_voltage_map[] = {
+	800000,825000,850000, 875000,900000, 925000 ,950000, 975000,1000000, 1025000, 1050000, 1075000, 1100000, 1125000, 1150000, 1175000, 1200000, 1225000, 1250000, 1275000, 1300000, 1325000, 1350000,1375000
+};
+
+static struct regulator_consumer_supply pwm_dcdc1_consumers[] = {
+		{
+				.supply = "vdd_cpu",
+		}
+};
+
+static struct regulator_consumer_supply pwm_dcdc2_consumers[] = {
+		{
+				.supply = "vdd_core",
+		}
+};
+
+
+struct regulator_init_data pwm_regulator_init_dcdc[ ] =
+{
+		{
+				.constraints = {
+						.name = "PWM_DCDC1",
+						.min_uV = 600000,
+						.max_uV = 1800000,	//0.6-1.8V
+						.apply_uV = true,
+						.valid_ops_mask = REGULATOR_CHANGE_STATUS | REGULATOR_CHANGE_VOLTAGE,
+				},
+				.num_consumer_supplies = ARRAY_SIZE(pwm_dcdc1_consumers),
+				.consumer_supplies = pwm_dcdc1_consumers,
+		},
+		{
+				.constraints = {
+						.name = "PWM_DCDC2",
+						.min_uV = 600000,
+						.max_uV = 1800000,	//0.6-1.8V
+						.apply_uV = true,
+						.valid_ops_mask = REGULATOR_CHANGE_STATUS | REGULATOR_CHANGE_VOLTAGE,
+				},
+				.num_consumer_supplies = ARRAY_SIZE(pwm_dcdc2_consumers),
+				.consumer_supplies = pwm_dcdc2_consumers,
+		},
+};
+
+
+static struct pwm_platform_data pwm_regulator_info[] = {
+		{
+				.pwm_id = 0,
+				.pwm_gpio = RK30_PIN3_PD3,
+				.pwm_iomux_pwm = PWM0,
+				.pwm_iomux_gpio = GPIO3_D3,
+				.pwm_voltage = 1100000,
+				.suspend_voltage = 1000000,
+				.min_uV = 800000,
+				.max_uV	= 1375000,
+				.coefficient = 575,	//57.5%
+				.pwm_voltage_map = pwm_voltage_map,
+				.init_data	= &pwm_regulator_init_dcdc[0],
+		},
+		{
+				.pwm_id = 1,
+				.pwm_gpio = RK30_PIN3_PD4,
+				.pwm_iomux_pwm = PWM1,
+				.pwm_iomux_gpio = GPIO3_D4,
+				.pwm_voltage = 1100000,
+				.suspend_voltage = 1000000,
+				.min_uV = 800000,
+				.max_uV = 1375000,
+				.coefficient = 575,     //57.5%
+				.pwm_voltage_map = pwm_voltage_map,
+				.init_data      = &pwm_regulator_init_dcdc[1],
+		},
+};
+
+
+struct platform_device pwm_regulator_device[ ] = {
+		{
+				.name = "pwm-voltage-regulator",
+				.id = 0,
+				.dev		= {
+						.platform_data = &pwm_regulator_info[0],
+				}
+		},
+		{
+				.name = "pwm-voltage-regulator",
+				.id = 1,
+				.dev            = {
+						.platform_data = &pwm_regulator_info[1],
+				}
+		},
+};
+
+
+extern void pwm_suspend_voltage(int id);
+extern void pwm_resume_voltage(int id);
+void  rk30_pwm_suspend_voltage_set(void)
+{
+    pwm_suspend_voltage(0);
+	  pwm_suspend_voltage(3);
+}
+void  rk30_pwm_resume_voltage_set(void)
+{
+    pwm_resume_voltage(3);
+    pwm_resume_voltage(0);
+}
+static void pwm_regulator_init(void)
+{
+		printk("pwm_regulator_init\n");
+		platform_device_register(&pwm_regulator_device[0]);
+		platform_device_register(&pwm_regulator_device[1]);
+}
+
+#define grf_readl(offset)	readl_relaxed(RK30_GRF_BASE + offset)
+#define grf_writel(v, offset)	do { writel_relaxed(v, RK30_GRF_BASE + offset); dsb(); } while (0)
+ 
+int __sramdata gpio3d3_iomux,gpio3d3_do,gpio3d3_dir,gpio3d3_en; 
+int __sramdata gpio3d4_iomux,gpio3d4_do,gpio3d4_dir,gpio3d4_en;
+void __sramfunc rk30_pwm_arm_suspend_voltage(void)
+{
+	sram_udelay(10000);
+	gpio3d3_iomux = grf_readl(GRF_GPIO3D_IOMUX);
+	gpio3d3_do = grf_readl(GRF_GPIO3H_DO);
+	gpio3d3_dir = grf_readl(GRF_GPIO3H_DIR);
+	gpio3d3_en = grf_readl(GRF_GPIO3H_EN);
+
+	grf_writel((1<<22), GRF_GPIO3D_IOMUX);
+	grf_writel((1<<27)|(1<<11), GRF_GPIO3H_DIR);
+	grf_writel((1<<27)|(1<<11), GRF_GPIO3H_DO);
+	grf_writel((1<<27)|(1<<11), GRF_GPIO3H_EN);
+
+}
+void __sramfunc rk30_pwm_arm_resume_voltage(void)
+{
+	grf_writel((1<<22)|gpio3d3_iomux, GRF_GPIO3D_IOMUX);
+	grf_writel((1<<27)|gpio3d3_en, GRF_GPIO3H_EN);
+	grf_writel((1<<27)|gpio3d3_dir, GRF_GPIO3H_DIR);
+	grf_writel((1<<27)|gpio3d3_do, GRF_GPIO3H_DO);
+	sram_udelay(10000);
+}
+
+ 
+void __sramfunc rk30_pwm_logic_suspend_voltage(void)
+{
+	sram_udelay(10000);
+	gpio3d4_iomux = grf_readl(GRF_GPIO3D_IOMUX);
+	gpio3d4_do = grf_readl(GRF_GPIO3H_DO);
+	gpio3d4_dir = grf_readl(GRF_GPIO3H_DIR);
+	gpio3d4_en = grf_readl(GRF_GPIO3H_EN);
+
+	grf_writel((1<<24 | 1<<25), GRF_GPIO3D_IOMUX);
+	grf_writel((1<<28)|(1<<12), GRF_GPIO3H_DIR);
+	grf_writel((1<<28)|(1<<12), GRF_GPIO3H_DO);
+	grf_writel((1<<28)|(1<<12), GRF_GPIO3H_EN);
+
+	rk30_pwm_arm_suspend_voltage();
+}
+
+void __sramfunc rk30_pwm_logic_resume_voltage(void)
+{
+  rk30_pwm_arm_resume_voltage();
+
+	grf_writel((1<<24 | 1<<25)|gpio3d4_iomux, GRF_GPIO3D_IOMUX);
+	grf_writel((1<<28)|gpio3d4_en, GRF_GPIO3H_EN);
+	grf_writel((1<<28)|gpio3d4_dir, GRF_GPIO3H_DIR);
+	grf_writel((1<<28)|gpio3d4_do, GRF_GPIO3H_DO);
+	sram_udelay(10000);
+}
+
+#elif CONFIG_RK30_PWM_REGULATOR
 static int pwm_voltage_map[] = {
 	800000,825000,850000, 875000,900000, 925000 ,950000, 975000,1000000, 1025000, 1050000, 1075000, 1100000, 1125000, 1150000, 1175000, 1200000, 1225000, 1250000, 1275000, 1300000, 1325000, 1350000,1375000
 };
@@ -988,7 +1157,23 @@ struct platform_device pwm_regulator_device[1] = {
 		}
 	},
 };
+
+extern void pwm_suspend_voltage(void);
+extern void pwm_resume_voltage(void);
+void  rk30_pwm_suspend_voltage_set(void)
+{
+#ifdef CONFIG_RK30_PWM_REGULATOR
+	pwm_suspend_voltage();
 #endif
+}
+void  rk30_pwm_resume_voltage_set(void)
+{
+#ifdef CONFIG_RK30_PWM_REGULATOR
+	pwm_resume_voltage();
+#endif
+}
+#endif
+
 
 #ifdef CONFIG_RFKILL_RK
 // bluetooth rfkill device, its driver in net/rfkill/rfkill-rk.c
@@ -1298,7 +1483,10 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_LEDS_GPIO_PLATFORM
 	&rk3188_device_gpio_leds,
 #endif
-/*$_rbox_$_modify_$_zhengyang_end$_20130407_$*/
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+		&pwm_regulator_device[0],
+		&pwm_regulator_device[1],
+#endif		
 };
 
 
@@ -1342,7 +1530,11 @@ static struct rkdisplay_platform_data tv_data = {
 	.property 		= DISPLAY_MAIN,
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 	.io_pwr_pin 	= INVALID_GPIO,
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC 	
+	.io_reset_pin 	= RK30_PIN3_PD5,
+#else
 	.io_reset_pin 	= RK30_PIN3_PD4,
+#endif	
 	.io_switch_pin	= RK30_PIN2_PD7,
 };
 #endif
@@ -1897,54 +2089,6 @@ void __sramfunc board_pmu_resume(void)
 #endif	
 }
 
- int __sramdata gpio3d6_iomux,gpio3d6_do,gpio3d6_dir,gpio3d6_en;
-
-#define grf_readl(offset)	readl_relaxed(RK30_GRF_BASE + offset)
-#define grf_writel(v, offset)	do { writel_relaxed(v, RK30_GRF_BASE + offset); dsb(); } while (0)
- 
-void __sramfunc rk30_pwm_logic_suspend_voltage(void)
-{
-#ifdef CONFIG_RK30_PWM_REGULATOR
-
-//	int gpio0d7_iomux,gpio0d7_do,gpio0d7_dir,gpio0d7_en;
-	sram_udelay(10000);
-	gpio3d6_iomux = grf_readl(GRF_GPIO3D_IOMUX);
-	gpio3d6_do = grf_readl(GRF_GPIO3H_DO);
-	gpio3d6_dir = grf_readl(GRF_GPIO3H_DIR);
-	gpio3d6_en = grf_readl(GRF_GPIO3H_EN);
-
-	grf_writel((1<<28), GRF_GPIO3D_IOMUX);
-	grf_writel((1<<30)|(1<<14), GRF_GPIO3H_DIR);
-	grf_writel((1<<30)|(1<<14), GRF_GPIO3H_DO);
-	grf_writel((1<<30)|(1<<14), GRF_GPIO3H_EN);
-#endif 
-}
-void __sramfunc rk30_pwm_logic_resume_voltage(void)
-{
-#ifdef CONFIG_RK30_PWM_REGULATOR
-	grf_writel((1<<28)|gpio3d6_iomux, GRF_GPIO3D_IOMUX);
-	grf_writel((1<<30)|gpio3d6_en, GRF_GPIO3H_EN);
-	grf_writel((1<<30)|gpio3d6_dir, GRF_GPIO3H_DIR);
-	grf_writel((1<<30)|gpio3d6_do, GRF_GPIO3H_DO);
-	sram_udelay(10000);
-
-#endif
-
-}
-extern void pwm_suspend_voltage(void);
-extern void pwm_resume_voltage(void);
-void  rk30_pwm_suspend_voltage_set(void)
-{
-#ifdef CONFIG_RK30_PWM_REGULATOR
-	pwm_suspend_voltage();
-#endif
-}
-void  rk30_pwm_resume_voltage_set(void)
-{
-#ifdef CONFIG_RK30_PWM_REGULATOR
-	pwm_resume_voltage();
-#endif
-}
 
 
 #ifdef CONFIG_I2C2_RK30
@@ -2220,19 +2364,16 @@ static void __init rk30_reserve(void)
  * @logic_volt	: logic voltage arm requests depend on frequency
  * comments	: min arm/logic voltage
  */
-#ifdef CONFIG_MACH_RK3188_BOX_COSTDOWN
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
 static struct cpufreq_frequency_table dvfs_arm_table[] = {
-
-        {.frequency = 312 * 1000,       .index = 900 * 1000},
-        {.frequency = 504 * 1000,       .index = 925 * 1000},
-        {.frequency = 816 * 1000,       .index = 1000 * 1000},
-        {.frequency = 1008 * 1000,      .index = 1075 * 1000},
-        {.frequency = 1200 * 1000,      .index = 1150 * 1000},
-        {.frequency = 1416 * 1000,      .index = 1250 * 1000},
-        {.frequency = 1608 * 1000,      .index = 1350 * 1000},
-
-
-	{.frequency = CPUFREQ_TABLE_END},
+		//{.frequency = 312 * 1000,       .index = 900 * 1000},
+		{.frequency = 504 * 1000,       .index = 925 * 1000},
+		{.frequency = 816 * 1000,       .index = 1000 * 1000},
+		{.frequency = 1008 * 1000,      .index = 1075 * 1000},
+		{.frequency = 1200 * 1000,      .index = 1150 * 1000},
+		{.frequency = 1416 * 1000,      .index = 1250 * 1000},
+		{.frequency = 1608 * 1000,      .index = 1350 * 1000},
+		{.frequency = CPUFREQ_TABLE_END},
 };
 
 static struct cpufreq_frequency_table dvfs_gpu_table[] = {

@@ -57,16 +57,31 @@ const static int pwm_voltage_map[] = {
 };
 #endif
 
-static struct rk_pwm_dcdc *g_dcdc;
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+		static struct rk_pwm_dcdc *g_dcdc0;
+		static struct rk_pwm_dcdc *g_dcdc1;
+    static struct mutex mutex_pwm;
+#else
+		static struct rk_pwm_dcdc *g_dcdc;
+#endif
 
 static int pwm_set_rate(struct pwm_platform_data *pdata,int nHz,u32 rate)
 {
 	u32 lrc, hrc;
 	int id = pdata->pwm_id;
 	unsigned long clkrate;
-
-	clkrate = clk_get_rate(g_dcdc->pwm_clk);
+	struct rk_pwm_dcdc *dcdc;
 	
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+	if (id==0)
+		dcdc = g_dcdc0;
+	else
+		dcdc = g_dcdc1;
+#else
+		dcdc = g_dcdc;
+#endif
+	
+	clkrate = clk_get_rate(dcdc->pwm_clk);
 	DBG("%s:id=%d,rate=%d,clkrate=%d\n",__func__,id,rate,clkrate); 
 
 	if(rate == 0)
@@ -153,17 +168,28 @@ static int pwm_regulator_get_voltage(struct regulator_dev *dev)
 static int pwm_regulator_set_voltage(struct regulator_dev *dev,
 		int min_uV, int max_uV, unsigned *selector)
 {	   
-	struct rk_pwm_dcdc *dcdc = rdev_get_drvdata(dev);
-	const int *voltage_map = dcdc->pdata->pwm_voltage_map;
-	int max = dcdc->pdata->max_uV;
-	int coefficient = dcdc->pdata->coefficient;
-	u32 size = dcdc->desc.n_voltages, i, vol,pwm_value;
+	struct rk_pwm_dcdc *dcdc = NULL;
+	int *voltage_map = NULL;
+	int max = 0;
+	int coefficient = 0;
+	u32 size = 0, i, vol,pwm_value;
 
 	DBG("%s:  min_uV = %d, max_uV = %d\n",__FUNCTION__, min_uV,max_uV);
-
+        #ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+        mutex_lock(&mutex_pwm);  //add by yyz@rock-chips.com
+        #endif
+        dcdc=rdev_get_drvdata(dev);
+        voltage_map=dcdc->pdata->pwm_voltage_map;
+        max = dcdc->pdata->max_uV;
+        coefficient = dcdc->pdata->coefficient;
+        size = dcdc->desc.n_voltages;
+    
 	if (min_uV < voltage_map[0] ||max_uV > voltage_map[size-1])
 	{
 		printk("%s:voltage is out of table\n",__func__);
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+               // mutex_unlock(&mutex_pwm);
+#endif
 		return -EINVAL;
 	}
 
@@ -180,15 +206,21 @@ static int pwm_regulator_set_voltage(struct regulator_dev *dev,
 
 	// VDD12 = 1.40 - 0.455*D , 其中D为PWM占空比, 
 	pwm_value = (max-vol)/coefficient/10;  // pwm_value %, coefficient *1000
-
 	if (pwm_set_rate(dcdc->pdata,1000*1000,pwm_value)!=0)
 	{
 		printk("%s:fail to set pwm rate,pwm_value=%d\n",__func__,pwm_value);
+                #ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+                mutex_unlock(&mutex_pwm);
+                #endif
 		return -1;
 
 	}
 
 	*selector = i;
+
+        #ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+        mutex_unlock(&mutex_pwm);//add by yyz@rock-chips.com
+        #endif
 
 	DBG("%s:ok,vol=%d,pwm_value=%d\n",__FUNCTION__,vol,pwm_value);
 
@@ -292,8 +324,28 @@ static int __devinit pwm_regulator_probe(struct platform_device *pdev)
 		dcdc->suspend_hrc = 0x0a;
 		break;
 	}
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+  if (pwm_id==0){
+  	  dcdc->suspend_lrc = 0x1F;
+  	  dcdc->suspend_hrc = 0x17;
+      g_dcdc0 = dcdc;
+      printk("pwm id 0 init\n");
+	}
+	else{
+	    dcdc->suspend_lrc = 0x25;
+  	  dcdc->suspend_hrc = 0x1C;
+      g_dcdc1 = dcdc;
+      printk("pwm id 1 init\n");
+	}	
+#else
+	g_dcdc	= dcdc;			
+#endif
 
-	g_dcdc	= dcdc;
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC
+        if(pwm_id==0){
+          mutex_init(&mutex_pwm);
+        }
+#endif
 	platform_set_drvdata(pdev, dcdc);	
 	printk(KERN_INFO "pwm_regulator.%d: driver initialized\n",id);
 	pwm_regulator_set_voltage(dcdc->regulator,pdata->pwm_voltage,pdata->pwm_voltage,&selector);
@@ -309,10 +361,23 @@ err:
 
 }
 
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+void pwm_suspend_voltage(int id)
+#else
 void pwm_suspend_voltage(void)
+#endif
 {
-	struct rk_pwm_dcdc *dcdc = g_dcdc;
+	struct rk_pwm_dcdc *dcdc;
 	
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+	if (id == 0)
+		dcdc = g_dcdc0;
+	else
+		dcdc = g_dcdc1;	
+#else
+		dcdc = g_dcdc; 
+#endif
+
 	if(!dcdc)
 		return;
 	
@@ -322,10 +387,24 @@ void pwm_suspend_voltage(void)
 	__rk_pwm_setup(dcdc->pwm_base, PWM_DIV, dcdc->suspend_hrc, dcdc->suspend_lrc);
 }
 
+
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+void pwm_resume_voltage(int id)
+#else
 void pwm_resume_voltage(void)
+#endif
 {
-	struct rk_pwm_dcdc *dcdc = g_dcdc;	
+	struct rk_pwm_dcdc *dcdc;	
 	
+#ifdef CONFIG_RK30_PWM_REGULATOR_ARM_LOGIC	
+	if (id == 0)
+		dcdc = g_dcdc0;
+	else
+		dcdc = g_dcdc1;	
+#else
+		dcdc = g_dcdc;
+#endif
+		
 	if(!dcdc)
 		return;
 	__rk_pwm_setup(dcdc->pwm_base, PWM_DIV, dcdc->backup_hrc, dcdc->backup_lrc);

@@ -1495,6 +1495,78 @@ static void pwm_regulator_init(void)
 	platform_device_register(&pwm_regulator_device[0]);
 	platform_device_register(&pwm_regulator_device[1]);
 }
+
+extern void pwm_suspend_voltage(int id);
+extern void pwm_resume_voltage(int id);
+int __sramdata gpio0a3_iomux,gpio0a3_do,gpio0a3_dir,gpio0a3_en;
+int __sramdata gpio0d7_iomux,gpio0d7_do,gpio0d7_dir,gpio0d7_en;
+#define grf_readl(offset)	readl_relaxed(RK30_GRF_BASE + offset)
+#define grf_writel(v, offset)	do { writel_relaxed(v, RK30_GRF_BASE + offset); dsb(); } while (0)
+
+#define GRF_GPIO0A_IOMUX   0x00a8  
+#define GRF_GPIO0L_DO      0x0038
+#define GRF_GPIO0L_DIR     0x0000
+#define GRF_GPIO0L_EN      0x0070
+
+#define GRF_GPIO0D_IOMUX 0x00b4
+#define GRF_GPIO0H_DIR   0x0004
+#define GRF_GPIO0H_DO    0x003c
+#define GRF_GPIO0H_EN    0x0074
+
+void __sramfunc rk30_pwm_logic_suspend_voltage(void)
+{
+    //	int gpio0d7_iomux,gpio0d7_do,gpio0d7_dir,gpio0d7_en;
+//RK30_PIN0_PA3,RK30_PIN0_PD7
+
+	sram_udelay(10000);
+	gpio0a3_iomux = grf_readl(GRF_GPIO0A_IOMUX);
+	gpio0a3_do = grf_readl(GRF_GPIO0L_DO);
+	gpio0a3_dir = grf_readl(GRF_GPIO0L_DIR);
+	gpio0a3_en = grf_readl(GRF_GPIO0L_EN);
+
+	grf_writel((1<<22)|(0<<6), GRF_GPIO0A_IOMUX);
+	grf_writel((1<<19)|(1<<3), GRF_GPIO0L_DIR);
+	grf_writel((1<<19)|(1<<3), GRF_GPIO0L_DO);
+	grf_writel((1<<19)|(1<<3), GRF_GPIO0L_EN);
+	
+	gpio0d7_iomux = grf_readl(GRF_GPIO0D_IOMUX);
+	gpio0d7_do = grf_readl(GRF_GPIO0H_DO);
+	gpio0d7_dir = grf_readl(GRF_GPIO0H_DIR);
+	gpio0d7_en = grf_readl(GRF_GPIO0H_EN);
+
+	grf_writel((1<<30)|(0<14), GRF_GPIO0D_IOMUX);//PIN0_PD7
+	grf_writel((1<<31)|(1<<15), GRF_GPIO0H_DIR);
+	grf_writel((1<<31)|(1<<15), GRF_GPIO0H_DO);
+	grf_writel((1<<31)|(1<<15), GRF_GPIO0H_EN);
+}
+
+
+void __sramfunc rk30_pwm_logic_resume_voltage(void)
+{
+   grf_writel((1<<30)|gpio0d7_iomux, GRF_GPIO0D_IOMUX);
+	grf_writel((1<<31)|gpio0d7_dir, GRF_GPIO0H_DIR);
+	grf_writel((1<<31)|gpio0d7_do, GRF_GPIO0H_DO);
+	grf_writel((1<<31)|gpio0d7_en, GRF_GPIO0H_EN);
+
+  grf_writel((1<<22)|gpio0a3_iomux, GRF_GPIO0A_IOMUX);
+	grf_writel((1<<19)|gpio0a3_do, GRF_GPIO0L_DO);
+	grf_writel((1<<19)|gpio0a3_dir, GRF_GPIO0L_DIR);
+	grf_writel((1<<19)|gpio0a3_en, GRF_GPIO0L_EN);
+	sram_udelay(10000);
+}
+
+
+
+void  rk30_pwm_suspend_voltage_set(void)
+{
+    pwm_suspend_voltage(0);
+	  pwm_suspend_voltage(3);
+}
+void  rk30_pwm_resume_voltage_set(void)
+{
+    pwm_resume_voltage(3);
+    pwm_resume_voltage(0);
+}
 #else
 #ifdef CONFIG_RK30_PWM_REGULATOR
 const static int pwm_voltage_map[] = {

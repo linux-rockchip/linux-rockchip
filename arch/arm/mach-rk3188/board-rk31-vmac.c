@@ -78,7 +78,7 @@ static int rk30_rmii_power_control(int enable)
 
 	if (ldo_33 == NULL || IS_ERR(ldo_33)){
 		printk("get rmii ldo failed!\n");
-		return -1;
+		//return -1;
 	}
 
 	if (enable) {

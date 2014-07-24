@@ -604,6 +604,7 @@ static void __sramfunc rk_pm_soc_sram_clk_gating(void)
 		gate_save_soc_clk(0
 				  | (1 << CLK_GATE_PERIPH_SRC % 16)
 				  | (1 << CLK_GATE_PCLK_PERIPH % 16)
+				  | (1 << CLK_GATE_HCLK_PERIPH % 16)
 				, clkgt_regs_sram[2], CRU_CLKGATES_CON(2), CLK_GATE_W_MSK2);
 	}
 	gate_save_soc_clk(0
@@ -678,7 +679,9 @@ static void __sramfunc rk_pm_soc_sram_sys_clk_suspend(void)
 		cru_writel(PERI_ACLK_DIV_W_MSK | PERI_ACLK_DIV(4), CRU_CLKSELS_CON(10));
 		cru_writel(CORE_CLK_DIV_W_MSK | CORE_CLK_DIV(4) | CPU_CLK_DIV_W_MSK | CPU_CLK_DIV(4), CRU_CLKSELS_CON(0));
 		cru_writel(0
+#ifndef CONFIG_RK_IR_WAKEUP		
 			   | PLL_MODE_DEEP(APLL_ID)
+#endif
 			   | PLL_MODE_DEEP(DPLL_ID)
 			   | PLL_MODE_DEEP(CPLL_ID)
 			   | PLL_MODE_DEEP(GPLL_ID)
@@ -892,6 +895,7 @@ static void rk_pm_soc_pll_suspend(void)
 		power_off_pll(CPLL_ID);
 		}
 	
+#if 0	
 		//apll
 		clk_sel0 = cru_readl(CRU_CLKSELS_CON(0));
 		clk_sel1 = cru_readl(CRU_CLKSELS_CON(1));
@@ -914,6 +918,7 @@ static void rk_pm_soc_pll_suspend(void)
 			   | AHB2APB_W_MSK | AHB2APB_11
 			   , CRU_CLKSELS_CON(1));
 		power_off_pll(APLL_ID);
+#endif
 	
 		//gpll
 		if(rk_pll_flag()==0)
@@ -939,6 +944,7 @@ static void rk_pm_soc_pll_resume(void)
 	power_on_pll(GPLL_ID);
 	cru_writel((PLL_MODE_MSK(GPLL_ID) << 16) | (PLL_MODE_MSK(GPLL_ID) & cru_mode_con), CRU_MODE_CON);
 	}
+#if 0	
 	//apll
 	cru_writel(0xffff0000 | clk_sel1, CRU_CLKSELS_CON(1));
 	/* To make sure aclk_cpu select gpll after div effect */
@@ -946,7 +952,7 @@ static void rk_pm_soc_pll_resume(void)
 	cru_writel(CPU_SEL_PLL_W_MSK | CORE_SEL_PLL_W_MSK | clk_sel0, CRU_CLKSELS_CON(0));
 	power_on_pll(APLL_ID);
 	cru_writel((PLL_MODE_MSK(APLL_ID) << 16) | (PLL_MODE_MSK(APLL_ID) & cru_mode_con), CRU_MODE_CON);
-
+#endif
 	//cpll
 	if(rk_pll_flag()==0)
 	{	
