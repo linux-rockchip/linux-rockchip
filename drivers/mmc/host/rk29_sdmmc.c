@@ -571,7 +571,7 @@ static int rk29_sdmmc_reset_fifo(struct rk29_sdmmc *host)
 	return ret;
 	
 }
-#if defined(CONFIG_SDMMC2_RK29)
+#if defined(CONFIG_SDMMC2_RK29) || defined(CONFIG_EMMC_RK)
 extern struct mmc_card *this_card;
 #endif
 
