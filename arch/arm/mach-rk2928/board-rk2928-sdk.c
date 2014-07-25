@@ -781,6 +781,75 @@ struct rk29_sdmmc_platform_data default_sdmmc1_data = {
 };
 #endif //endif--#ifdef CONFIG_SDMMC1_RK29
 
+#ifdef CONFIG_SDMMC2_RK29
+#define SDMMC_read_grf_reg(addr) __raw_readl(addr+RK30_GRF_BASE)
+#ifdef CONFIG_ARCH_RK319X
+#define RK_EMMC_FLAHS_SEL   (1<<6)
+#define RK_EMMC_FLASH_REGISTER (GRF_SOC_CON3)
+#else
+#define RK_EMMC_FLAHS_SEL       (1<<11)
+#define RK_EMMC_FLASH_REGISTER (GRF_SOC_CON0)
+#endif
+
+static int sdmmc_is_selected_emmc(int device_id)
+{
+   int ret = 0;
+   switch(device_id)
+   {
+        case 0:
+            break;
+        case 1:
+            break;
+        case 2:
+        {
+  			#if defined(CONFIG_SDMMC2_RK29)
+        #ifdef CONFIG_ARCH_RK3026
+                if((iomux_is_set(rksdmmc2_gpio_init.clk_gpio.iomux.fmux) == 1) &&
+                   (iomux_is_set(rksdmmc2_gpio_init.cmd_gpio.iomux.fmux) == 1) &&
+                   (iomux_is_set(rksdmmc2_gpio_init.data0_gpio.iomux.fmux) == 1))
+                        ret=1;
+        #else
+                if(SDMMC_read_grf_reg(RK_EMMC_FLASH_REGISTER) & RK_EMMC_FLAHS_SEL)
+                        ret=1;
+        #endif
+  			#endif
+            break;
+        }
+        default:
+            break;
+    }
+    if(1==ret)
+        printk("%d..%s: RK SDMMC is setted to support eMMC.\n", __LINE__, __FUNCTION__);
+    else
+        printk("%d..%s: RK SDMMC is not setted to support eMMC.\n", __LINE__, __FUNCTION__);
+    return ret;
+}
+
+static int rk29_sdmmc2_cfg_gpio(void)
+{
+	    return 0;
+}
+struct rk29_sdmmc_platform_data default_sdmmc2_data = {
+	     .host_ocr_avail =
+	           (MMC_VDD_165_195|MMC_VDD_25_26 | MMC_VDD_26_27 | MMC_VDD_27_28 | MMC_VDD_28_29 |
+	              MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32 | MMC_VDD_32_33 | MMC_VDD_33_34),
+
+	     .host_caps = (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA| MMC_CAP_NONREMOVABLE  |
+	             MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED | MMC_CAP_UHS_SDR12 |MMC_CAP_UHS_SDR25 |MMC_CAP_UHS_SDR50),
+
+	     .io_init = rk29_sdmmc2_cfg_gpio,
+	     .set_iomux = rk29_sdmmc_set_iomux,
+	     .emmc_is_selected = sdmmc_is_selected_emmc,
+        //.power_en = INVALID_GPIO,
+	    // .power_en_level = GPIO_LOW,
+           .dma_name = "emmc",
+            .use_dma = 1,
+
+};
+
+#endif//endif--#ifdef CONFIG_SDMMC2_RK29
+
+
 /**************************************************************************************************
  * the end of setting for SDMMC devices
 **************************************************************************************************/
