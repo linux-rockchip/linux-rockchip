@@ -1009,9 +1009,7 @@ struct rk29_sdmmc_platform_data default_sdmmc0_data = {
 #if !defined(CONFIG_SDMMC_RK29_OLD)
 	.set_iomux = rk29_sdmmc_set_iomux,
 #endif
-#ifdef USE_SDMMC_DATA4_DATA7	
-    .emmc_is_selected = NULL,
-#endif
+
 	.dma_name = "sd_mmc",
 #ifdef CONFIG_SDMMC0_USE_DMA
 	.use_dma = 1,
@@ -1106,9 +1104,7 @@ struct rk29_sdmmc_platform_data default_sdmmc1_data = {
 #if !defined(CONFIG_SDMMC_RK29_OLD)
 	.set_iomux = rk29_sdmmc_set_iomux,
 #endif
-#ifdef USE_SDMMC_DATA4_DATA7	
-	.emmc_is_selected = NULL,
-#endif
+
 	.dma_name = "sdio",
 #ifdef CONFIG_SDMMC1_USE_DMA
 	.use_dma = 1,
@@ -1188,6 +1184,8 @@ struct rk29_sdmmc_platform_data default_sdmmc2_data = {
 
 };
 #endif//endif--#ifdef CONFIG_SDMMC2_RK29
+
+
 /**************************************************************************************************
  * the end of setting for SDMMC devices
 **************************************************************************************************/
