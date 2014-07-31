@@ -42,7 +42,7 @@ static void rk616_hdmi_early_suspend(struct early_suspend *h)
 	struct delayed_work	*delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
 	RK616DBG("hdmi enter early suspend \n");	
 	if(delay_work)
-		flush_delayed_work(delay_work);
+		flush_delayed_work_sync(delay_work);
 	return;
 }
 

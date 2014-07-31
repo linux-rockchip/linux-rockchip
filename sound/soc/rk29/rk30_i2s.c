@@ -618,14 +618,16 @@ int rockchip_i2s_suspend(struct snd_soc_dai *cpu_dai)
 {
 	I2S_DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
 //	clk_disable(clk);
-	return i2s_set_gpio_mode(cpu_dai);
+	//return i2s_set_gpio_mode(cpu_dai);
+	return 0;
 }
 
 int rockchip_i2s_resume(struct snd_soc_dai *cpu_dai)
 {
 	I2S_DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
 //	clk_enable(clk);
-	return rockchip_i2s_dai_probe(cpu_dai);
+	//return rockchip_i2s_dai_probe(cpu_dai);
+	return 0;
 }
 #else
 #define rockchip_i2s_suspend NULL

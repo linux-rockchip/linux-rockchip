@@ -895,7 +895,7 @@ static void rk_pm_soc_pll_suspend(void)
 		power_off_pll(CPLL_ID);
 		}
 	
-#if 0	
+#if defined(CONFIG_ARCH_RK3188)	
 		//apll
 		clk_sel0 = cru_readl(CRU_CLKSELS_CON(0));
 		clk_sel1 = cru_readl(CRU_CLKSELS_CON(1));
@@ -919,7 +919,6 @@ static void rk_pm_soc_pll_suspend(void)
 			   , CRU_CLKSELS_CON(1));
 		power_off_pll(APLL_ID);
 #endif
-	
 		//gpll
 		if(rk_pll_flag()==0)
 		{
@@ -944,7 +943,7 @@ static void rk_pm_soc_pll_resume(void)
 	power_on_pll(GPLL_ID);
 	cru_writel((PLL_MODE_MSK(GPLL_ID) << 16) | (PLL_MODE_MSK(GPLL_ID) & cru_mode_con), CRU_MODE_CON);
 	}
-#if 0	
+#if defined(CONFIG_ARCH_RK3188)
 	//apll
 	cru_writel(0xffff0000 | clk_sel1, CRU_CLKSELS_CON(1));
 	/* To make sure aclk_cpu select gpll after div effect */
