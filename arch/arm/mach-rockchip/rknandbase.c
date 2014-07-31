@@ -196,7 +196,6 @@ static int rknand_probe(struct platform_device *pdev)
 	struct resource		*mem;
 	void __iomem    *membase;
 
-    printk("==================rknand_probe\n");
     if(gpNandInfo == NULL)
     {
         gpNandInfo = kzalloc(sizeof(struct rknand_info), GFP_KERNEL);
@@ -210,7 +209,7 @@ static int rknand_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "no reg resource?\n");
 		return -1;
 	}
-	printk("==================rknand_probe %d %x %x\n", pdev->id,(int)mem,(int)membase);
+	//printk("rknand_probe %d %x %x\n", pdev->id,(int)mem,(int)membase);
 #ifdef CONFIG_OF
 	if(0==of_property_read_u32(pdev->dev.of_node, "nandc_id", &id))
 	{
@@ -229,7 +228,7 @@ static int rknand_probe(struct platform_device *pdev)
 	}
 
     irq = platform_get_irq(pdev, 0);
-	printk("=================nand irq: %d\n",irq);
+	//printk("nand irq: %d\n",irq);
 	if (irq < 0) {
 		dev_err(&pdev->dev, "no irq resource?\n");
 		return irq;
@@ -326,7 +325,7 @@ MODULE_ALIAS(DRIVER_NAME);
 static int __init rknand_part_init(void)
 {
 	int ret = 0;
-	printk("==============%s\n", RKNAND_VERSION_AND_DATE);
+	printk("%s\n", RKNAND_VERSION_AND_DATE);
 
 	cmdline = strstr(saved_command_line, "mtdparts=") + 9;
 
@@ -334,7 +333,7 @@ static int __init rknand_part_init(void)
     memset(g_nandc_info,0,sizeof(g_nandc_info));
 
 	ret = platform_driver_register(&rknand_driver);
-	printk("##############rknand_driver:ret = %x \n",ret);
+	printk("rknand_driver:ret = %x \n",ret);
 	return ret;
 }
 

@@ -4,8 +4,7 @@
 #include <linux/rockchip/iomap.h>
 #include "rk3288_hdmi.h"
 #include "rk3288_hdmi_hw.h"
-#include "../scdc.h"
-//#define HDMI_20_SCDC
+
 static const struct phy_mpll_config_tab PHY_MPLL_TABLE[] = {	
 	//tmdsclk = (pixclk / ref_cntrl ) * (fbdiv2 * fbdiv1) / nctrl / tmdsmhl
 	//opmode: 0:HDMI1.4 	1:HDMI2.0
@@ -28,191 +27,6 @@ static const struct phy_mpll_config_tab PHY_MPLL_TABLE[] = {
 	{297000000, 	0, 	16,  	3, 	3, 	1, 	1, 	1, 	0, 	0, 	5, 	0, 	3},
 	{594000000,	0, 	8, 	0, 	3, 	1, 	1, 	3, 	3, 	0, 	0, 	0, 	3},
 };
-//i2c master reset
-static void rk3288_hdmi_i2cm_reset(struct hdmi_dev *hdmi_dev)
-{
-	hdmi_msk_reg(hdmi_dev, I2CM_SOFTRSTZ, m_I2CM_SOFTRST, v_I2CM_SOFTRST(0));
-	udelay(100);
-}
-
-/*set read/write offset,set read/write mode*/
-static void rk3288_i2cm_write_request(struct hdmi_dev *hdmi_dev,u8 offset)
-{
-	hdmi_writel(hdmi_dev, I2CM_ADDRESS, offset);
-	hdmi_msk_reg(hdmi_dev, I2CM_OPERATION, m_I2CM_WR, v_I2CM_WR(1));
-}
-
-static void rk3288_i2cm_read_request(struct hdmi_dev *hdmi_dev,u8 offset)
-{
-	hdmi_writel(hdmi_dev, I2CM_ADDRESS, offset);
-	hdmi_msk_reg(hdmi_dev, I2CM_OPERATION, m_I2CM_RD, v_I2CM_RD(1));
-}
-
-static void rk3288_i2cm_write_data(struct hdmi_dev *hdmi_dev,u8 data,u8 offset)
-{
-	u8 interrupt;
-	int trytime=2;
-	int i=20;
-	while(trytime-- > 0){
-		rk3288_i2cm_write_request(hdmi_dev, offset);
-		while(i--)
-		{
-			msleep(1);
-			interrupt = hdmi_readl(hdmi_dev, IH_I2CM_STAT0);
-			if(interrupt)
-				hdmi_writel(hdmi_dev, IH_I2CM_STAT0, interrupt);
-		
-			if(interrupt & (m_SCDC_READREQ | m_I2CM_DONE | m_I2CM_ERROR))
-				break;
-			msleep(4);
-		}
-		
-		if(interrupt & m_I2CM_DONE) {
-			hdmi_writel(hdmi_dev, I2CM_DATAO, data);
-			trytime = 0;
-		} else if ((interrupt & m_I2CM_ERROR) || (i == -1)) {
-			printk("[%s] read data error\n", __FUNCTION__);
-			rk3288_hdmi_i2cm_reset(hdmi_dev);
-		}
-	}
-}
-
-static int rk3288_i2cm_read_data(struct hdmi_dev *hdmi_dev,u8 offset)
-{	
-	u8 interrupt,val;
-	int trytime=2;
-	int i=20;
-	while(trytime-- > 0){
-		rk3288_i2cm_read_request(hdmi_dev, offset);
-		while(i--)
-		{
-			msleep(1);
-			interrupt = hdmi_readl(hdmi_dev, IH_I2CM_STAT0);
-			if(interrupt)
-				hdmi_writel(hdmi_dev, IH_I2CM_STAT0, interrupt);
-		
-			if(interrupt & (m_SCDC_READREQ | m_I2CM_DONE | m_I2CM_ERROR))
-				break;
-			msleep(4);
-		}
-		
-		if(interrupt & m_I2CM_DONE) {
-			val = hdmi_readl(hdmi_dev, I2CM_DATAI);
-			trytime = 0;
-		} else if ((interrupt & m_I2CM_ERROR) || (i == -1)) {
-			printk("[%s] read data error\n", __FUNCTION__);
-			rk3288_hdmi_i2cm_reset(hdmi_dev);
-		}
-	}
-	return val;
-}
-
-static void rk3288_hdmi_i2cm_mask_int(struct hdmi_dev *hdmi_dev,int mask)
-{
-	if (0 == mask) {
-		hdmi_writel(hdmi_dev, IH_MUTE_I2CM_STAT0, v_SCDC_READREQ_MUTE(0) | v_I2CM_DONE_MUTE(0) | v_I2CM_ERR_MUTE(0));
-		hdmi_msk_reg(hdmi_dev, I2CM_INT, m_I2CM_DONE_MASK, v_I2CM_DONE_MASK(0));
-		hdmi_msk_reg(hdmi_dev, I2CM_CTLINT, m_I2CM_NACK_MASK | m_I2CM_ARB_MASK, v_I2CM_NACK_MASK(0) | v_I2CM_ARB_MASK(0));
-	} else {
-		hdmi_msk_reg(hdmi_dev, IH_MUTE_I2CM_STAT0, m_I2CM_DONE_MUTE | m_I2CM_ERR_MUTE, v_I2CM_DONE_MUTE(1) | v_I2CM_ERR_MUTE(1));
-		hdmi_msk_reg(hdmi_dev, I2CM_INT, m_I2CM_DONE_MASK, v_I2CM_DONE_MASK(1));
-		hdmi_msk_reg(hdmi_dev, I2CM_CTLINT, m_I2CM_NACK_MASK | m_I2CM_ARB_MASK, v_I2CM_NACK_MASK(1) | v_I2CM_ARB_MASK(1));
-	}
-}
-
-static void rk3288_hdmi_i2cm_clk_init(struct hdmi_dev *hdmi_dev)
-{
-	//Set DDC I2C CLK which devided from DDC_CLK to 100KHz.
-	hdmi_writel(hdmi_dev, I2CM_SS_SCL_HCNT_0_ADDR, 0x7a);
-	hdmi_writel(hdmi_dev, I2CM_SS_SCL_LCNT_0_ADDR, 0x8d);
-	hdmi_msk_reg(hdmi_dev, I2CM_DIV, m_I2CM_FAST_STD_MODE, v_I2CM_FAST_STD_MODE(STANDARD_MODE));	//Set Standard Mode
-}
-static int rk3288_scdc_get_sink_version(struct hdmi_dev *hdmi_dev)
-{
-	return rk3288_i2cm_read_data(hdmi_dev, SCDC_SINK_VER);
-}
-static void rk3288_scdc_set_source_version(struct hdmi_dev *hdmi_dev,u8 version)
-{
-	rk3288_i2cm_write_data(hdmi_dev, version, SCDC_SOURCE_VER);
-}
-
-
-static void rk3288_scdc_enable_read_request(struct hdmi_dev *hdmi_dev,int enable)
-{
-	hdmi_msk_reg(hdmi_dev, I2CM_SCDC_READ_UPDATE, m_I2CM_READ_REQ_EN, v_I2CM_READ_REQ_EN(enable));
-	rk3288_i2cm_write_data(hdmi_dev, enable, SCDC_CONFIG_0);
-}
-
-#ifdef HDMI_20_SCDC
-static void rk3288_scdc_update_read(struct hdmi_dev *hdmi_dev)
-{
-	hdmi_msk_reg(hdmi_dev, I2CM_SCDC_READ_UPDATE, m_I2CM_READ_UPDATE, v_I2CM_READ_UPDATE(1));
-}
-
-
-static int rk3288_scdc_get_scambling_status(struct hdmi_dev *hdmi_dev)
-{
-	int val;
-	val = rk3288_i2cm_read_data(hdmi_dev, SCDC_SCRAMBLER_STAT);
-	return val;
-}
-
-static void rk3288_scdc_enable_polling(struct hdmi_dev *hdmi_dev,int enable)
-{
-	rk3288_scdc_enable_read_request(hdmi_dev,enable);
-	hdmi_msk_reg(hdmi_dev, I2CM_SCDC_READ_UPDATE, m_I2CM_UPRD_VSYNC_EN, v_I2CM_UPRD_VSYNC_EN(enable));
-}
-
-static int rk3288_scdc_get_status_reg0(struct hdmi_dev *hdmi_dev)
-{
-	rk3288_scdc_enable_read_request(hdmi_dev,1);
-	rk3288_scdc_update_read(hdmi_dev);
-	return hdmi_readl(hdmi_dev, I2CM_SCDC_UPDATE0);
-}
-
-static int rk3288_scdc_get_status_reg1(struct hdmi_dev *hdmi_dev)
-{
-	rk3288_scdc_enable_read_request(hdmi_dev,1);
-	rk3288_scdc_update_read(hdmi_dev);
-	return hdmi_readl(hdmi_dev, I2CM_SCDC_UPDATE1);
-}
-#endif
-
-static void rk3288_hdmi_scdc_init(struct hdmi_dev *hdmi_dev)
-{ 
-	rk3288_hdmi_i2cm_reset(hdmi_dev);     /*reset i2cm*/
-	rk3288_hdmi_i2cm_mask_int(hdmi_dev,1);/*disable interrupt*/
-	rk3288_hdmi_i2cm_clk_init(hdmi_dev);  /*init i2cm clk*/
-	hdmi_writel(hdmi_dev, I2CM_SLAVE, DDC_I2C_SCDC_ADDR);/*set scdc i2c addr*/
-	rk3288_hdmi_i2cm_mask_int(hdmi_dev,0);/*enable interrupt*/
-}
-
-
-static int rk3288_hdmi_scrambling_enable(struct hdmi_dev *hdmi_dev, int enable)
-{
-	if (1 == enable) { 
-		/* Start/stop HDCP keepout window generation */
-		hdmi_msk_reg(hdmi_dev, FC_INVIDCONF, m_FC_HDCP_KEEPOUT, v_FC_HDCP_KEEPOUT(1));
-		/* TMDS software reset request */
-		hdmi_msk_reg(hdmi_dev, MC_SWRSTZREQ, m_TMDS_SWRST, v_TMDS_SWRST(0));
- 		/* Enable/Disable Scrambling */
-		hdmi_msk_reg(hdmi_dev, FC_SCRAMBLER_CTRL, m_FC_SCRAMBLE_EN, v_FC_SCRAMBLE_EN(1));
- 		/* Write on Rx the bit Scrambling_Enable, register 0x20 */
-		rk3288_i2cm_write_data(hdmi_dev, 1, SCDC_TMDS_CONFIG);
-	} else {
-		/* Enable/Disable Scrambling */
-		hdmi_msk_reg(hdmi_dev, FC_SCRAMBLER_CTRL, m_FC_SCRAMBLE_EN, v_FC_SCRAMBLE_EN(0));
- 		/* Start/stop HDCP keepout window generation */
-		hdmi_msk_reg(hdmi_dev, FC_INVIDCONF, m_FC_HDCP_KEEPOUT, v_FC_HDCP_KEEPOUT(0));
-		/* TMDS software reset request */
-		hdmi_msk_reg(hdmi_dev, MC_SWRSTZREQ, m_TMDS_SWRST, v_TMDS_SWRST(0));
-		/* Write on Rx the bit Scrambling_Enable, register 0x20 */
-		rk3288_i2cm_write_data(hdmi_dev, 0, SCDC_TMDS_CONFIG);
-	}
-	return 0;
-}
-
-
 
 static const struct phy_mpll_config_tab* get_phy_mpll_tab(unsigned int pixClock, char pixRepet, char colorDepth)
 {
@@ -357,7 +171,6 @@ static int rk3288_hdmi_video_frameComposer(struct hdmi *hdmi_drv, struct hdmi_vi
 	int value, vsync_pol, hsync_pol, de_pol;
 	struct hdmi_video_timing *timing = NULL;
 	struct fb_videomode *mode = NULL;
-	int sink_version;
 
 	
 	vsync_pol = hdmi_drv->lcdc->cur_screen->pin_vsync;
@@ -393,26 +206,6 @@ static int rk3288_hdmi_video_frameComposer(struct hdmi *hdmi_drv, struct hdmi_vi
 		vpara->color_output_depth = 8;
 		hdmi_dev->tmdsclk = mode->pixclock;
 	}
-
-	if(hdmi_dev->tmdsclk > 340000000) {	//used for HDMI 2.0 TX	//TODO Daisen wait to modify HDCP KEEPOUT
-		//hdmi_msk_reg(hdmi_dev, FC_INVIDCONF, m_FC_HDCP_KEEPOUT, v_FC_HDCP_KEEPOUT(1));
-		//hdmi_msk_reg(hdmi_dev, FC_SCRAMBLER_CTRL, m_FC_SCRAMBLE_EN, v_FC_SCRAMBLE_EN(1));
-		if (hdmi_drv->scdc.scdc_present == 1) {
-			rk3288_hdmi_scdc_init(hdmi_dev);
-			sink_version = rk3288_scdc_get_sink_version(hdmi_dev);
-			rk3288_scdc_set_source_version(hdmi_dev,hdmi_drv->scdc.hf_vsdb_version);
-			if (hdmi_drv->scdc.rr_capable == 1) {
-				rk3288_scdc_enable_read_request(hdmi_dev,1);
-			}
-			rk3288_hdmi_scrambling_enable(hdmi_dev,1);
-		} else {
-			printk("[%s] edid not support scdc,should not be here\n", __FUNCTION__);
-		}
-	} else {//(hdmi_drv->scdc.lte_340mcsc_scramble == 1)
-		rk3288_hdmi_scdc_init(hdmi_dev);
-		rk3288_hdmi_scrambling_enable(hdmi_dev,0);
-        }
-
 	hdmi_dev->pixelclk = mode->pixclock;
 	hdmi_dev->pixelrepeat = timing->pixelrepeat;
 	hdmi_dev->colordepth = vpara->color_output_depth;
@@ -457,7 +250,12 @@ static int rk3288_hdmi_video_frameComposer(struct hdmi *hdmi_drv, struct hdmi_vi
 	hdmi_writel(hdmi_dev, FC_CTRLDUR, 12);
 	hdmi_writel(hdmi_dev, FC_EXCTRLDUR, 32);
 	
-	#if 0
+#if 0
+
+	if(hdmi_dev->tmdsclk > 340000000) {	//used for HDMI 2.0 TX	//TODO Daisen wait to modify HDCP KEEPOUT
+		hdmi_msk_reg(hdmi_dev, FC_INVIDCONF, m_FC_HDCP_KEEPOUT, v_FC_HDCP_KEEPOUT(1));
+		hdmi_msk_reg(hdmi_dev, FC_SCRAMBLER_CTRL, m_FC_SCRAMBLE_EN, v_FC_SCRAMBLE_EN(1));
+	}
 	/* spacing < 256^2 * config / tmdsClock, spacing <= 50ms
 	 * worst case: tmdsClock == 25MHz => config <= 19
 	 */
@@ -775,7 +573,12 @@ static int rk3288_hdmi_video_csc(struct hdmi_dev *hdmi_dev, struct hdmi_video *v
 	
 	return 0;
 }
-
+//i2c master reset
+static void rk3288_hdmi_i2cm_reset(struct hdmi_dev *hdmi_dev)
+{
+	hdmi_msk_reg(hdmi_dev, I2CM_SOFTRSTZ, m_I2CM_SOFTRST, v_I2CM_SOFTRST(0));
+	udelay(100);
+}
 
 static int hdmi_dev_detect_hotplug(struct hdmi *hdmi)
 {
