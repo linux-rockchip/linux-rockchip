@@ -4,6 +4,7 @@
 #define __LCD_YQ70CPT__
 /* Base */
 #define SCREEN_TYPE		SCREEN_RGB
+#define LVDS_FORMAT             LVDS_8BIT_1
 #define OUT_FACE		OUT_P888
 #define DCLK			33000000
 #define LCDC_ACLK       	150000000     //29 lcdc axi DMA ÆµÂÊ
