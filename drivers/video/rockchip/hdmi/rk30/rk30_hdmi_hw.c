@@ -526,6 +526,9 @@ static void rk30_hdmi_config_aai(struct rk30_hdmi *rk30_hdmi, unsigned char chan
 	info[4] = channel;
 	if(5 == channel)
 		info[7] = 0x0b;
+	else if(7 == channel){
+		info[7] = 0x13;
+	}
 	info[3] = info[0] + info[1] + info[2];	
 	for (i = 4; i < SIZE_AUDIO_INFOFRAME; i++)
     	info[3] += info[i];
@@ -614,25 +617,35 @@ int rk30_hdmi_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 	}
 #endif
 	//set_audio_if I2S
-	HDMIWrReg(AUDIO_CTRL1, 0x00); //internal CTS, disable down sample, i2s input, disable MCLK
+	if((AUDIO_192K == rate) && (I2S_CHANNEL_7_8 == channel)){
+		HDMIWrReg(AUDIO_CTRL1, 0x18); //hbr mode
+	}else{
+		HDMIWrReg(AUDIO_CTRL1, 0x00); //internal CTS, disable down sample, i2s input, disable MCLK
+	}
 	HDMIWrReg(AUDIO_CTRL2, 0x40); 
 	HDMIWrReg(I2S_AUDIO_CTRL, v_I2S_MODE(I2S_MODE_STANDARD) | v_I2S_CHANNEL(channel) );	
 	HDMIWrReg(I2S_INPUT_SWAP, 0x00); //no swap
-	HDMIMskReg(value, AV_CTRL1, m_AUDIO_SAMPLE_RATE, v_AUDIO_SAMPLE_RATE(rate))	
+	HDMIMskReg(value, AV_CTRL1, m_AUDIO_SAMPLE_RATE, v_AUDIO_SAMPLE_RATE(rate));
 	//HDMIWrReg(SRC_NUM_AUDIO_LEN, word_length);
 		
     //Set N value 6144, fs=48kHz
     HDMIWrReg(N_1, N & 0xFF);
     HDMIWrReg(N_2, (N >> 8) & 0xFF);
-    if(audio->channel>2){
+    if((audio->channel>2) && (HDMI_AUDIO_LPCM == audio->type)){
         HDMIWrReg(LR_SWAP_N3, ((N >> 16) & 0x0F)|0x20);
     }else{
         HDMIWrReg(LR_SWAP_N3, (N >> 16) & 0x0F);
     }
     if(HDMI_AUDIO_NLPCM == audio->type){
-        HDMIWrReg(AUDIO_STA_BIT_CTRL2, 0X80);
+        HDMIWrReg(AUDIO_STA_BIT_CTRL2, 0X80|0x1<<7|0x2);
     }else{
         HDMIWrReg(AUDIO_STA_BIT_CTRL2, 0X00);
+    }
+    if((AUDIO_192K == rate) && (I2S_CHANNEL_7_8 == channel)){
+        HDMIMskReg(value, AV_CTRL1, m_AUDIO_SAMPLE_RATE, 0x9<<4);
+        HDMIWrReg(SRC_NUM_AUDIO_LEN, 0x0b);
+        HDMIWrReg(AUDIO_STA_BIT_CTRL1, 0x1<<7 | 0x1);
+        HDMIWrReg(0x118, 0X21);
     }
     rk30_hdmi_config_aai(rk30_hdmi, audio->channel-1);
     return 0;

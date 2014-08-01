@@ -535,8 +535,8 @@ static int frac_div_get_seting(unsigned long rate_out,unsigned long rate,
 	CRU_PRINTK_DBG("frac_get_seting numerator=%d,denominator=%d,times=%d\n",
 			*numerator, *denominator, *denominator / *numerator);
 	
-	if (*numerator > 0xffff || *denominator > 0xffff||
-		(*denominator/(*numerator))<20) {
+	if (*numerator > 0xffff || *denominator > 0xffff/*||
+		(*denominator/(*numerator))<20*/) {
 		CRU_PRINTK_ERR("can't get a available nume and deno\n");
 		return -ENOENT;
 	}	

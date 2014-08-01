@@ -700,7 +700,7 @@ static int rk1000_codec_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
-#define RK1000_CODEC_RATES SNDRV_PCM_RATE_8000_96000
+#define RK1000_CODEC_RATES SNDRV_PCM_RATE_8000_192000
 
 #define RK1000_CODEC_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
 	SNDRV_PCM_FMTBIT_S24_LE)
@@ -722,7 +722,7 @@ struct snd_soc_dai rk1000_codec_dai = {
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
-		.channels_max = 2,
+		.channels_max = 8,
 		.rates = RK1000_CODEC_RATES,
 		.formats = RK1000_CODEC_FORMATS,
 	},

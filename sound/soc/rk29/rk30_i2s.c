@@ -130,7 +130,7 @@ static void rockchip_snd_txctrl(struct rk29_i2s_info *i2s, int on)
 		I2S_DBG("rockchip_snd_txctrl: off\n");
 		opr  &= ~I2S_TRAN_DMA_ENABLE;        
 		writel(opr, &(pheadi2s->I2S_DMACR));  
-		if(0/*!i2s->i2s_tx_status && !i2s->i2s_rx_status*///sync stop i2s rx tx lcrk
+		if(!i2s->i2s_tx_status && !i2s->i2s_rx_status//sync stop i2s rx tx lcrk
 #if defined (CONFIG_RK_HDMI) && defined (CONFIG_SND_RK_SOC_HDMI_I2S)
 //			&& 	hdmi_get_hotplug() == 0	//HDMI_HPD_REMOVED
 #endif			
@@ -186,7 +186,7 @@ static void rockchip_snd_rxctrl(struct rk29_i2s_info *i2s, int on)
 		I2S_DBG("rockchip_snd_rxctrl: off\n");
 		opr  &= ~I2S_RECE_DMA_ENABLE;
 		writel(opr, &(pheadi2s->I2S_DMACR));		
-		if(0/*!i2s->i2s_tx_status && !i2s->i2s_rx_status*/	//sync stop i2s rx tx lcrk
+		if(!i2s->i2s_tx_status && !i2s->i2s_rx_status	//sync stop i2s rx tx lcrk
 #if defined (CONFIG_RK_HDMI) && defined (CONFIG_SND_RK_SOC_HDMI_I2S)
 //			&& 	hdmi_get_hotplug() == 0	//HDMI_HPD_REMOVED
 #endif			
@@ -283,7 +283,7 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params, struct snd_soc_dai *socdai)
 {
 	struct rk29_i2s_info *i2s = to_info(socdai);
-	u32 iismod;
+	u32 iismod, last_iismod;
 	u32 dmarc;
 	u32 iis_ckr_value;//clock generation register
 	struct hdmi_audio hdmi_audio_cfg;
@@ -296,8 +296,7 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 		snd_soc_dai_set_dma_data(socdai, substream, i2s->dma_capture);
 
 	/* Working copies of register */
-    spin_lock(&i2s->spinlock_wr);
-	iismod = readl(&(pheadi2s->I2S_TXCR));
+	last_iismod = iismod = readl(&(pheadi2s->I2S_TXCR));
 	
 	iismod &= (~((1<<5)-1));
 	switch (params_format(params)) {
@@ -335,6 +334,12 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 			I2S_DBG("%d channels not supported\n", params_channels(params));
 			return -EINVAL;
 	}
+
+	if(last_iismod != iismod){
+		printk(KERN_ERR "not equal.\n");
+		rockchip_snd_txctrl(i2s, 0);
+	}
+
     //set hdmi codec params
     if(HW_PARAMS_FLAG_NLPCM == params->flags)
         hdmi_audio_cfg.type = HDMI_AUDIO_NLPCM;
@@ -352,6 +357,8 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 	#if defined (CONFIG_SND_RK29_CODEC_SOC_MASTER) 
 	iis_ckr_value |= I2S_SLAVE_MODE;
 	#endif
+	
+	spin_lock(&i2s->spinlock_wr);
 	writel(iis_ckr_value, &(pheadi2s->I2S_CKR));   
 	
 //	writel((16<<24) |(16<<18)|(16<<12)|(16<<6)|16, &(pheadi2s->I2S_FIFOLR));
@@ -396,7 +403,7 @@ static int rockchip_i2s_trigger(struct snd_pcm_substream *substream, int cmd, st
                 if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 	                rockchip_snd_rxctrl(i2s, 0);
                 else
-	                rockchip_snd_txctrl(i2s, 0);
+	                //rockchip_snd_txctrl(i2s, 0);
                 break;
         default:
                 ret = -EINVAL;
@@ -429,13 +436,13 @@ static int rockchip_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 	int div_id, int div)
 {
 	struct rk29_i2s_info *i2s;
-	u32 reg;
+	u32 reg, last_reg;
 
 	i2s = to_info(cpu_dai);
         
 	//stereo mode MCLK/SCK=4  
-    spin_lock(&i2s->spinlock_wr);
-	reg = readl(&(pheadi2s->I2S_CKR));
+
+	last_reg = reg = readl(&(pheadi2s->I2S_CKR));
 
 	I2S_DBG("Enter:%s, %d, div_id=0x%08X, div=0x%08X\n", __FUNCTION__, __LINE__, div_id, div);
         
@@ -456,6 +463,13 @@ static int rockchip_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
         default:
 			return -EINVAL;
 	}
+
+	if(last_reg != reg){
+		printk(KERN_ERR "not equal..\n");
+		rockchip_snd_txctrl(i2s, 0);
+	}
+
+	spin_lock(&i2s->spinlock_wr);
 	writel(reg, &(pheadi2s->I2S_CKR));
     spin_unlock(&i2s->spinlock_wr);
 	return 0;

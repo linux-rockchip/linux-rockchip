@@ -4,6 +4,7 @@
 #include <plat/memory.h>
 #include <mach/io.h>
 
+#define CONSISTENT_DMA_SIZE SZ_8M
 /*
  * SRAM memory whereabouts
  */

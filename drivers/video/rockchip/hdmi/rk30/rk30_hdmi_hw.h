@@ -29,6 +29,7 @@ enum {
 #define AUDIO_CTRL1			0x28
 #define AUDIO_CTRL2 		0x2c
 #define I2S_AUDIO_CTRL		0x30
+#define AUDIO_STA_BIT_CTRL1    0X44
 #define AUDIO_STA_BIT_CTRL2    0X48
 
 enum {

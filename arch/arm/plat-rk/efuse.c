@@ -203,25 +203,30 @@ char *rk_efuse_value(void)
 
 #define EFUSE_DECRYPT                         _IOW(EFUSE_IOCTL_MAGIC, 0x00, int)
 #define EFUSE_ECRYPT                          _IOW(EFUSE_IOCTL_MAGIC, 0x01, int)
+#define EFUSE_FULLINFO                        _IOW(EFUSE_IOCTL_MAGIC, 0x02, int)
 
 static long proc_efuse_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0,i;
     	u8 *num = (u8 *)arg;
 	switch (cmd) {
-		case EFUSE_DECRYPT: {
-			for(i=0; i<16; i++){
+	case EFUSE_DECRYPT:
+		for(i=0; i<16; i++){
 			num[i] =  efuse_buf[i+6];
-	}
-			
-		} break;
-		case EFUSE_ECRYPT: {
-			
-		} break;
+		}
+		break;
+
+	case EFUSE_ECRYPT:
+		break;
+
+	case EFUSE_FULLINFO:
+		for(i=0; i<32; i++){
+			num[i] =  efuse_buf[i];
+		}
+		break;
 		
-		default: {
-		
-		} break;
+	default:
+		break;
 	}
 
 	return ret;
