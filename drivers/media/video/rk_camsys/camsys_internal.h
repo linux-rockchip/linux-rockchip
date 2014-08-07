@@ -48,6 +48,8 @@
 #include <linux/of_gpio.h>
 #include <linux/rockchip/cpu.h>
 #include <media/camsys_head.h>
+#include <linux/rockchip/sysmmu.h>
+#include <linux/rockchip/iovmm.h>
 
 
 
@@ -81,8 +83,18 @@
 *        1) add flash_trigger_out control
 *v0.d.0:
 *        1) add Isp_SoftRst for rk3288;
+*v0.e.0:
+*        1) isp_clk 208.8M for 1lane, isp_clk 416.6M for 2lane;
+*v0.f.0:
+		 1) mi_mis register may read erro, this may cause mistaken mi frame_end irqs.  
+*v0.0x10.0:
+		 1) add flash_prelight control.		
+*v0.0x11.0:
+         1) raise qos of isp up to the same as lcdc. 
+*v0.0x12.0:
+         1) support iommu. 
 */
-#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0,0xd,0)
+#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0,0x12,0)
 
 
 #define CAMSYS_PLATFORM_DRV_NAME                "RockChip-CamSys"
@@ -242,6 +254,7 @@ typedef struct camsys_dev_s {
     int (*iomux)(camsys_extdev_t *extdev,void *ptr);
     int (*platform_remove)(struct platform_device *pdev);
     int (*flash_trigger_cb)(void *ptr, unsigned int on);
+    int (*iommu_cb)(void *ptr,camsys_sysctrl_t *devctl);
 } camsys_dev_t;
 
 

@@ -4,6 +4,8 @@
 
 #include <linux/rockchip/common.h> 
 #include <dt-bindings/clock/rk_system_status.h>
+#include <linux/rockchip_ion.h>
+#include <linux/file.h>
 
 extern int rockchip_set_system_status(unsigned long status);
 extern int rockchip_clear_system_status(unsigned long status);
@@ -68,6 +70,18 @@ static int camsys_mrv_iomux_cb(camsys_extdev_t *extdev,void *ptr)
             } else {
                 strcpy(state_str,"isp_mipi_fl");
             }
+            {
+                //mux triggerout as gpio
+            //get gpio index
+                int flash_trigger_io ;
+                enum of_gpio_flags flags;
+                flash_trigger_io = of_get_named_gpio_flags(camsys_dev->pdev->dev.of_node, "rockchip,gpios", 0, &flags);
+                if(gpio_is_valid(flash_trigger_io)){
+                    flash_trigger_io = of_get_named_gpio_flags(camsys_dev->pdev->dev.of_node, "rockchip,gpios", 0, &flags);
+                    gpio_request(flash_trigger_io,"camsys_gpio");
+                    gpio_direction_output(flash_trigger_io, (~(extdev->fl.fl.active) & 0x1));
+                }
+            }			
         } else {
             strcpy(state_str,"default");
         }
@@ -122,7 +136,8 @@ static int camsys_mrv_flash_trigger_cb(void *ptr,unsigned int on)
     char state_str[20] = {0};
     int retval = 0;
     enum of_gpio_flags flags;
-
+    camsys_extdev_t *extdev = NULL;
+	
     if(!on){
         strcpy(state_str,"isp_flash_as_gpio");
         pinctrl = devm_pinctrl_get(dev);
@@ -148,9 +163,15 @@ static int camsys_mrv_flash_trigger_cb(void *ptr,unsigned int on)
         if(gpio_is_valid(flash_trigger_io)){
             flash_trigger_io = of_get_named_gpio_flags(camsys_dev->pdev->dev.of_node, "rockchip,gpios", 0, &flags);
             gpio_request(flash_trigger_io,"camsys_gpio");
-            gpio_direction_output(flash_trigger_io, 1);
-            }
-
+            //get flash io active pol
+            if (!list_empty(&camsys_dev->extdevs.list)) {
+                list_for_each_entry(extdev, &camsys_dev->extdevs.list, list) {
+                    if (extdev->dev_cfg & CAMSYS_DEVCFG_FLASHLIGHT) {
+                        gpio_direction_output(flash_trigger_io, (~(extdev->fl.fl.active) & 0x1));
+                    }
+                }
+            }    
+        }
     }else{
         strcpy(state_str,"isp_flash_as_trigger_out");
         pinctrl = devm_pinctrl_get(dev);
@@ -174,7 +195,70 @@ static int camsys_mrv_flash_trigger_cb(void *ptr,unsigned int on)
     return retval;
 }
 
+static int camsys_mrv_iommu_cb(void *ptr,camsys_sysctrl_t *devctl)
+{
+    struct device *iommu_dev = NULL,*dev = NULL;
+    struct file *file = NULL;
+    struct ion_client *client = NULL;
+    struct ion_handle *handle = NULL;
+    camsys_iommu_t *iommu = NULL;
+    int ret = 0,iommu_enabled = 0;
+    camsys_dev_t * camsys_dev = (camsys_dev_t *)ptr;
 
+    of_property_read_u32(camsys_dev->pdev->dev.of_node, "rockchip,isp,iommu_enable", &iommu_enabled);
+    if(iommu_enabled != 1){
+        camsys_err("isp iommu have not been enabled!\n");
+        ret = -1;
+        goto iommu_end;
+    }
+    
+    iommu_dev = rockchip_get_sysmmu_device_by_compatible("iommu,isp_mmu");
+    if(!iommu_dev){
+        camsys_err("get iommu device erro!\n");
+        ret = -1;
+        goto iommu_end;
+    }
+    dev = &(camsys_dev->pdev->dev);
+    iommu = (camsys_iommu_t *)(devctl->rev);
+    file = fget(iommu->client_fd);
+    if(!file){
+        camsys_err("get client_fd file erro!\n");
+        ret = -1;
+        goto iommu_end;
+    }
+    
+    client = file->private_data;
+    
+    if(!client){
+        camsys_err("get ion_client erro!\n");
+        ret = -1;
+        goto iommu_end;
+    }
+    
+    fput(file);
+
+    handle = ion_import_dma_buf(client,iommu->map_fd);
+
+    camsys_trace(1,"map fd %d ,client fd %d\n",iommu->map_fd,iommu->client_fd);
+    if(!handle){
+        camsys_err("get ion_handle erro!\n");
+        ret = -1;
+        goto iommu_end;
+    }
+    if(devctl->on){
+        platform_set_sysmmu(iommu_dev,dev);
+        ret = iovmm_activate(dev);
+        
+        ret = ion_map_iommu(dev,client,handle,&(iommu->linear_addr),&(iommu->len));
+        
+    }else{
+        ion_unmap_iommu(dev,client,handle);
+        platform_set_sysmmu(iommu_dev,dev);
+        iovmm_deactivate(dev);
+    }
+iommu_end:
+    return ret;
+}
 static int camsys_mrv_reset_cb(void *ptr,unsigned int on)
 {
     camsys_dev_t *camsys_dev = (camsys_dev_t*)ptr;
@@ -199,9 +283,19 @@ static int camsys_mrv_clkin_cb(void *ptr, unsigned int on)
 {
     camsys_dev_t *camsys_dev = (camsys_dev_t*)ptr;
     camsys_mrv_clk_t *clk = (camsys_mrv_clk_t*)camsys_dev->clk;
+    unsigned long isp_clk;
 	
     if (on && !clk->in_on) {
 		rockchip_set_system_status(SYS_STATUS_ISP);
+
+		if (on == 1) {
+		    isp_clk = 210000000;           
+		} else {
+		    isp_clk = 420000000;            
+		}
+
+		clk_set_rate(clk->isp,isp_clk);
+        clk_set_rate(clk->isp_jpe, isp_clk);
 
         clk_prepare_enable(clk->aclk_isp);
         clk_prepare_enable(clk->hclk_isp);
@@ -213,7 +307,7 @@ static int camsys_mrv_clkin_cb(void *ptr, unsigned int on)
 
         clk->in_on = true;
 
-        camsys_trace(1, "%s clock in turn on",dev_name(camsys_dev->miscdev.this_device));
+        camsys_trace(1, "%s clock(f: %ld Hz) in turn on",dev_name(camsys_dev->miscdev.this_device),isp_clk);
         camsys_mrv_reset_cb(ptr,1);
         udelay(100);
         camsys_mrv_reset_cb(ptr,0);
@@ -235,7 +329,6 @@ static int camsys_mrv_clkin_cb(void *ptr, unsigned int on)
     
     return 0;
 }
-
 static int camsys_mrv_clkout_cb(void *ptr, unsigned int on,unsigned int inclk)
 {
     camsys_dev_t *camsys_dev = (camsys_dev_t*)ptr;
@@ -273,14 +366,28 @@ static irqreturn_t camsys_mrv_irq(int irq, void *data)
     camsys_irqstas_t *irqsta;
     camsys_irqpool_t *irqpool;
     unsigned int isp_mis,mipi_mis,mi_mis,*mis;
+	
+	unsigned int mi_ris,mi_imis;
 
     isp_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_ISP_MIS));
     mipi_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MIPI_MIS));
-    mi_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_MIS));    
+
+	mi_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_MIS));
+#if 1	
+	mi_ris =  __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_RIS));
+	mi_imis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_IMIS));
+	while((mi_ris & mi_imis) != mi_mis){
+		camsys_trace(2,"mi_mis status erro,mi_mis 0x%x,mi_ris 0x%x,imis 0x%x\n",mi_mis,mi_ris,mi_imis);
+		mi_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_MIS));
+		mi_ris =  __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_RIS));
+    	mi_imis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_IMIS));
+	}
+
+#endif
 
     __raw_writel(isp_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_ISP_ICR)); 
     __raw_writel(mipi_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MIPI_ICR)); 
-    __raw_writel(mi_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_ICR)); 
+	__raw_writel(mi_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_ICR)); 
 
     spin_lock(&camsys_dev->irq.lock);
     if (!list_empty(&camsys_dev->irq.irq_pool)) {
@@ -377,7 +484,7 @@ int camsys_mrv_probe_cb(struct platform_device *pdev, camsys_dev_t *camsys_dev)
     int err = 0;   
     camsys_mrv_clk_t *mrv_clk=NULL;
     
-	err = request_irq(camsys_dev->irq.irq_id, camsys_mrv_irq, 0, CAMSYS_MARVIN_IRQNAME,camsys_dev);
+	err = request_irq(camsys_dev->irq.irq_id, camsys_mrv_irq, IRQF_SHARED, CAMSYS_MARVIN_IRQNAME,camsys_dev);
     if (err) {
         camsys_err("request irq for %s failed",CAMSYS_MARVIN_IRQNAME);
         goto end;
@@ -423,6 +530,7 @@ int camsys_mrv_probe_cb(struct platform_device *pdev, camsys_dev_t *camsys_dev)
     camsys_dev->reset_cb = camsys_mrv_reset_cb;
     camsys_dev->iomux = camsys_mrv_iomux_cb;
     camsys_dev->flash_trigger_cb = camsys_mrv_flash_trigger_cb;
+    camsys_dev->iommu_cb = camsys_mrv_iommu_cb;
     
     camsys_dev->miscdev.minor = MISC_DYNAMIC_MINOR;
     camsys_dev->miscdev.name = miscdev_name;

@@ -992,10 +992,10 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 /*
-		rockchip,ion-heap@1 { //CMA HEAP 
+		ion_cma: rockchip,ion-heap@1 { //CMA HEAP 
 			compatible = "rockchip,ion-reserve";
 			rockchip,ion_heap = <1>;
-			reg = <0x00000000 0x1A000000>; //416MB 
+			reg = <0x00000000 0x20000000>; //512MB
 		};
 */
 		rockchip,ion-heap@3 { /* VMALLOC HEAP */
@@ -1216,14 +1216,14 @@
 		interrupt-names = "vpu_mmu";
 	};
 
-/*	isp_mmu {
+	isp_mmu {
 		dbgname = "isp_mmu";
 		compatible = "iommu,isp_mmu";
 		reg = <0xff914000 0x100>,
 		      <0xff915000 0x100>;
 		interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "isp_mmu";
-	};*/
+	};
 
 	rockchip_suspend {
 		rockchip,ctrbits = <
@@ -1260,6 +1260,8 @@
 		rockchip,isp,mipiphy = <2>;
 		rockchip,isp,cifphy = <1>;
 		rockchip,isp,mipiphy1,reg = <0xff968000 0x4000>;
+		rockchip,gpios = <&gpio7 GPIO_B5 GPIO_ACTIVE_HIGH>;
+		rockchip,isp,iommu_enable = <1>;
 		status = "okay";
 	};
 
