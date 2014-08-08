@@ -1997,7 +1997,19 @@ static int rk_fb_set_par(struct fb_info *info)
 	u32 stride_32bit_2;
 	u16 uv_x_off, uv_y_off, uv_y_act;
 	u8 is_pic_yuv = 0;
-
+       //$_rbox_$_modify_$_qiuen for box
+        int xres = 0;
+        int yres = 0;
+        if (!strcmp(info->fix.id, "fb1")){
+           struct rk_fb *rk_fb =  platform_get_drvdata(fb_pdev);
+	   struct fb_info *fbi = rk_fb->fb[0];
+           xres = fbi->var.xres;
+           yres = fbi->var.yres;
+        } else {
+           xres = var->xres;
+           yres = var->yres;
+        }
+       //$_rbox_$_modify_$_qiuen end
 	var->pixclock = dev_drv->pixclock;
 	win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
 	if (win_id < 0)
@@ -2109,14 +2121,16 @@ static int rk_fb_set_par(struct fb_info *info)
 			}
 		}		
 	}
+	//$_rbox_$_modify_$_zhengyang for box
 	rk_fb_get_prmry_screen(&screen_primary);
 	win->format = fb_data_fmt;
 	win->area[0].y_vir_stride = stride >> 2;
 	win->area[0].uv_vir_stride = uv_stride >> 2;
-	win->area[0].xpos = xpos*screen->mode.xres/screen_primary.mode.xres;
-	win->area[0].ypos = ypos*screen->mode.yres/screen_primary.mode.yres;
-	win->area[0].xsize = screen->mode.xres*xsize/screen_primary.mode.xres;
-	win->area[0].ysize = screen->mode.yres*ysize/screen_primary.mode.yres;
+	win->area[0].xpos = xpos*screen->mode.xres/xres;  //screen_primary.mode.xres;
+	win->area[0].ypos = ypos*screen->mode.yres/yres;//screen_primary.mode.yres;
+	win->area[0].xsize = screen->mode.xres*xsize/xres;//screen_primary.mode.xres;
+	win->area[0].ysize = screen->mode.yres*ysize/yres;//screen_primary.mode.yres;
+	//$_rbox_$_modify_$_zhengyang end
 //	win->area[0].smem_start = fix->smem_start;
 //	win->area[0].cbr_start = fix->smem_start+stride*yvir;//fix->mmio_start;
 	win->area[0].xact = var->xres;	/* winx active window height,is a wint of vir */
