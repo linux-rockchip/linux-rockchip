@@ -122,7 +122,7 @@ static struct rkxx_remote_key_table remote_key_table_meiyu_4040[] = {
     {0xe8, 185},          //zoom out      //6
     {0xe7, 186},          //zoom in       //7
 //mouse switch
-    {0xb8,388},           //1
+    {0xf0,388},           //1
 //display switch
     {0xbe,   0x175},
 };
