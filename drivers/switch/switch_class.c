@@ -53,8 +53,17 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 	}
 	return sprintf(buf, "%s\n", sdev->name);
 }
+//we add the state_store interface to allow userspace to control the switch state.
+static ssize_t state_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    int state;
+    struct switch_dev *sdev = (struct switch_dev *)dev_get_drvdata(dev);
 
-static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
+    sscanf(buf, "%d", &state);
+    switch_set_state(sdev, state);
+    return count;
+}
+static DEVICE_ATTR(state, S_IRUGO, state_show, state_store);
 static DEVICE_ATTR(name, S_IRUGO, name_show, NULL);
 
 void switch_set_state(struct switch_dev *sdev, int state)

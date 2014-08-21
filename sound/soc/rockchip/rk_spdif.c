@@ -43,7 +43,7 @@
 
 #include "rk_pcm.h"
 
-#if 0
+#if 1
 #define RK_SPDIF_DBG(x...) printk(KERN_INFO "rk_spdif:"x)
 #else
 #define RK_SPDIF_DBG(x...) do { } while (0)
@@ -183,9 +183,10 @@ static int spdif_set_syclk(struct snd_soc_dai *cpu_dai,
 {
 	struct rockchip_spdif_info *spdif = to_info(cpu_dai);
 
-	RK_SPDIF_DBG("Entered %s\n", __func__);
+	RK_SPDIF_DBG("Entered %s, freq: %d\n", __func__, freq);
 
 	spdif->clk_rate = freq;
+	clk_set_rate(spdif->clk, freq);
 
 	return 0;
 }
@@ -220,7 +221,6 @@ static int spdif_trigger(struct snd_pcm_substream *substream, int cmd,
 
 	return 0;
 }
-
 
 static int spdif_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,

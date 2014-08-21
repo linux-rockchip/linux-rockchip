@@ -508,7 +508,8 @@ int hdmi_config_audio(struct hdmi_audio	*audio)
 		//printk(KERN_ERR "enable %d, sleep %d\n", hdmi->enable, hdmi->sleep);
 		// Same as current audio setting, return.
 		//Warning: rk30 hdmi bug: fixed hdmi noise, another workaround is keeping i2s always on.
-		#if 1
+
+		#if 0
 		if(memcmp(audio, &hdmi->audio, sizeof(struct hdmi_audio)) == 0)
 			continue;
 		#endif

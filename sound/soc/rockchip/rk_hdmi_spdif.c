@@ -25,7 +25,7 @@
 #include "rk_pcm.h"
 
 
-#if 0
+#if 1
 #define RK_SPDIF_DBG(x...) printk(KERN_INFO "rk_hdmi_spdif:"x)
 #else
 #define RK_SPDIF_DBG(x...) do { } while (0)
@@ -73,22 +73,6 @@ static int rk_hw_params(struct snd_pcm_substream *substream,
 	int ret, ratio;
 
 	RK_SPDIF_DBG("spdif:Entered %s\n", __func__);
-
-	return 0;
-
-	/* set codec DAI configuration */
-	ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
-	if (ret < 0) {
-		printk("%s():failed to set the format for codec side\n", __func__);
-		return ret;
-	}
-
-	/* set cpu DAI configuration */
-	ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
-	if (ret < 0) {
-		printk("%s():failed to set the format for cpu side\n", __func__);
-		return ret;
-	}
   
 	switch (params_rate(params)) {
 	case 44100:
@@ -111,16 +95,12 @@ static int rk_hw_params(struct snd_pcm_substream *substream,
 	ratio = 256;
 	rclk_rate = params_rate(params) * ratio;
 
-	/* Set audio source clock rates */
-	ret = set_audio_clock_rate(pll_out, rclk_rate);
-	if (ret < 0)
-		return ret;
 
 	/* Set S/PDIF uses internal source clock */
-	//ret = snd_soc_dai_set_sysclk(cpu_dai, SND_SOC_SPDIF_INT_MCLK,
-					//rclk_rate, SND_SOC_CLOCK_IN);
-	//if (ret < 0)
-		//return ret;
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0,
+					rclk_rate, SND_SOC_CLOCK_IN);
+	if (ret < 0)
+		return ret;
 
 	return ret;
 }

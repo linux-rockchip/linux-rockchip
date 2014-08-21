@@ -151,7 +151,7 @@ static void dmaengine_pcm_dma_complete(void *arg)
 		after = ktime_get();
 		t = ktime_to_us(ktime_sub(after, before));
 
-		if(t > (snd_pcm_lib_period_bytes(substream)/4+32)*1000*1000/runtime->rate
+		if(t > (snd_pcm_lib_period_bytes(substream)/4+32)*1000/(runtime->rate/1000)
 			&& t != ktime_to_us(after)) // (23220)4096/4/44100 + 32/44100
 		{
 				printk(KERN_DEBUG "Time out:: Audio DMA buffdone time out!!! the time = %lld!\n", t);

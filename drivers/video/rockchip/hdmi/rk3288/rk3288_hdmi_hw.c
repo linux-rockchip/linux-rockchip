@@ -848,8 +848,9 @@ static int hdmi_dev_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 
 	HDMIDBG("%s", __FUNCTION__);
 	//mute audio
-	hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0x0F));
-	
+	//hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0x0F));
+	printk("audio->channel: %d, audio->rate: %d, audio->word_length: %d\n", audio->channel,
+		audio->rate, audio->word_length);
 	if(audio->channel < 3)
 		channel = I2S_CHANNEL_1_2;
 	else if(audio->channel < 5)
@@ -970,12 +971,14 @@ static int hdmi_dev_config_audio(struct hdmi *hdmi, struct hdmi_audio *audio)
 		hdmi_msk_reg(hdmi_dev, AUD_SPDIF0, m_SW_SAUD_FIFO_RST, v_SW_SAUD_FIFO_RST(1));
 	}
 	else {
-		hdmi_msk_reg(hdmi_dev, AUD_CONF0, m_I2S_SEL | m_I2S_IN_EN, v_I2S_SEL(AUDIO_I2S) | v_I2S_IN_EN(channel));
-		hdmi_writel(hdmi_dev, AUD_CONF1, v_I2S_MODE(I2S_STANDARD_MODE) | v_I2S_WIDTH(word_length));
 		//Mask fifo empty and full int and reset fifo
 		hdmi_msk_reg(hdmi_dev, AUD_INT, m_FIFO_EMPTY_MASK | m_FIFO_FULL_MASK, v_FIFO_EMPTY_MASK(1) | v_FIFO_FULL_MASK(1));
-//		hdmi_msk_reg(hdmi_dev, AUD_CONF0, m_SW_AUD_FIFO_RST, v_SW_AUD_FIFO_RST(1));
-//		hdmi_writel(hdmi_dev, MC_SWRSTZREQ, 0xF7);
+		hdmi_msk_reg(hdmi_dev, AUD_CONF0, m_SW_AUD_FIFO_RST, v_SW_AUD_FIFO_RST(1));
+		hdmi_writel(hdmi_dev, MC_SWRSTZREQ, 0xF7);
+		udelay(100);
+
+		hdmi_msk_reg(hdmi_dev, AUD_CONF0, m_I2S_SEL | m_I2S_IN_EN, v_I2S_SEL(AUDIO_I2S) | v_I2S_IN_EN(channel));
+		hdmi_writel(hdmi_dev, AUD_CONF1, v_I2S_MODE(I2S_STANDARD_MODE) | v_I2S_WIDTH(word_length));
 	}
 
 	hdmi_msk_reg(hdmi_dev, AUD_INPUTCLKFS, m_LFS_FACTOR, v_LFS_FACTOR(mclk_fs));
@@ -1007,10 +1010,10 @@ static int hdmi_dev_control_output(struct hdmi *hdmi, int enable)
 	HDMIDBG("[%s] %d\n", __FUNCTION__, enable);
 	
 	if(enable == HDMI_AV_UNMUTE) {
-		hdmi_msk_reg(hdmi_dev, AUD_CONF0, m_SW_AUD_FIFO_RST, v_SW_AUD_FIFO_RST(1));
-		hdmi_writel(hdmi_dev, MC_SWRSTZREQ, 0xF7);
+		//hdmi_msk_reg(hdmi_dev, AUD_CONF0, m_SW_AUD_FIFO_RST, v_SW_AUD_FIFO_RST(1));
+		//hdmi_writel(hdmi_dev, MC_SWRSTZREQ, 0xF7);
 		//unmute audio
-		hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0));
+		//hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0));
 		hdmi_writel(hdmi_dev, FC_DBGFORCE, 0x00);
 //		hdmi_msk_reg(hdmi_dev, FC_GCP, m_FC_SET_AVMUTE, v_FC_SET_AVMUTE(0));
 	} else {
@@ -1019,7 +1022,7 @@ static int hdmi_dev_control_output(struct hdmi *hdmi, int enable)
 //			hdmi_msk_reg(hdmi_dev, FC_GCP, m_FC_SET_AVMUTE, v_FC_SET_AVMUTE(1));
 		}
 		if(enable & HDMI_AUDIO_MUTE) {
-			hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0x0F));
+			//hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0x0F));
 		}
 	}
 	return 0;
@@ -1032,7 +1035,7 @@ static int hdmi_dev_insert(struct hdmi *hdmi)
 	HDMIDBG("%s", __FUNCTION__);
 	hdmi_writel(hdmi_dev, MC_CLKDIS, 0x0);
 	//mute audio
-	hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0x0F));
+	//hdmi_msk_reg(hdmi_dev, FC_AUDSCONF, m_AUD_PACK_SAMPFIT, v_AUD_PACK_SAMPFIT(0x0F));
 	/* report HPD state to HDCP (after configuration) */
 //	hdmi_msk_reg(hdmi_dev, A_HDCPCFG0, m_RX_DETECT, v_RX_DETECT(1));
 	return HDMI_ERROR_SUCESS;
