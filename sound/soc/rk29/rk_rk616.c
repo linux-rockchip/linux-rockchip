@@ -259,7 +259,8 @@ static struct snd_soc_dai_link rk_dai[] = {
 		.init = rk616_init,
 		.ops = &rk616_hifi_ops,
 	},
-	{
+	//remove unuse voice interface on box platform.
+	/*{
 		.name = "RK616 I2S2",
 		.stream_name = "RK616 PCM",
 		.codec_name = "rk616-codec.2-0050",
@@ -271,13 +272,13 @@ static struct snd_soc_dai_link rk_dai[] = {
 #endif
 		.codec_dai_name = "rk616-voice",
 		.ops = &rk616_voice_ops,
-	},
+	},*/
 };
 
 static struct snd_soc_card snd_soc_card_rk = {
 	.name = "RK_RK616",
 	.dai_link = rk_dai,
-	.num_links = 2,
+	.num_links = 1,
 };
 
 
