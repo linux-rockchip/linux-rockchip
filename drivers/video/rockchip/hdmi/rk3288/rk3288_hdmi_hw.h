@@ -571,6 +571,19 @@ enum {
 #define	FC_AUDSV			0x1065
 #define	FC_AUDSU			0x1066
 #define	FC_AUDSCHNLS0			0x1067	//0~8
+#define	FC_AUDSCHNLS7			0x106e
+enum {
+	AUDIO_32K	= 0x3,
+	AUDIO_441K	= 0x0,
+	AUDIO_48K	= 0x2,
+	AUDIO_882K	= 0x8,
+	AUDIO_96K	= 0xa,
+	AUDIO_1764K	= 0xc,
+	AUDIO_192K	= 0xe,
+};
+#define m_AUDIO_SAMPLE_RATE		(0x0f << 0)
+#define v_AUDIO_SAMPLE_RATE(n)	(((n)&0x0f) << 0)
+
 #define	FC_CTRLQHIGH 			0x1073
 #define	FC_CTRLQLOW			0x1074
 #define	FC_ACP0				0x1075
