@@ -139,10 +139,14 @@
 };
 
 &gmac {
-        pmu_regulator = "act_ldo5";
-        pmu_enable_level = <1>; //1->HIGH, 0->LOW
+//	pmu_regulator = "act_ldo5";
+//	pmu_enable_level = <1>; //1->HIGH, 0->LOW
 //	power-gpio = <&gpio0 GPIO_A6 GPIO_ACTIVE_HIGH>;
 	reset-gpio = <&gpio4 GPIO_B0 GPIO_ACTIVE_LOW>;
+	phy-mode = "rgmii";
+	clock_in_out = "input";
+	tx_delay = <0x30>;
+	rx_delay = <0x10>;
 };
 
 &pinctrl {
@@ -167,6 +171,28 @@
 		};
 	//could add other pinctrl definition such as gpio
 
+	// gmac drive strength
+	gpio4_gmac {
+		mac_clk: mac-clk {
+			rockchip,drive = <VALUE_DRV_12MA>;
+		};
+
+		mac_txpins: mac-txpins {
+			rockchip,drive = <VALUE_DRV_12MA>;
+		};
+
+		mac_rxpins: mac-rxpins {
+			rockchip,drive = <VALUE_DRV_12MA>;
+		};
+
+		mac_crs: mac-crs {
+			rockchip,drive = <VALUE_DRV_12MA>;
+		};
+
+		mac_mdpins: mac-mdpins {
+			rockchip,drive = <VALUE_DRV_12MA>;
+		};
+	};
 };
 &nandc0 {
 	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
@@ -641,7 +667,7 @@
 
 		ldo1_reg: regulator@4 {
 			regulator-name= "vccio_sd";
-			regulator-min-microvolt = <3300000>;
+			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <3300000>;
 			
 		};
