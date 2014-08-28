@@ -195,7 +195,7 @@
 	};
 };
 &nandc0 {
-	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
+	status = "okay"; // used nand set "okay" ,used emmc set "disabled"
 };
 &nandc1 {
 	status = "disabled"; // used nand set "okay" ,used emmc set "disabled"
