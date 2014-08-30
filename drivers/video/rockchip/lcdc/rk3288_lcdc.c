@@ -1141,7 +1141,9 @@ static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 		case SCREEN_HDMI:
 			face = OUT_RGB_AAA;
 			mask = m_HDMI_OUT_EN;
-			val = v_HDMI_OUT_EN(1); 	
+			val = v_HDMI_OUT_EN(1);
+			v = 1 << (3+16);
+			v |= ((lcdc_dev->id ? 0 : 1) << 3);
 			break;
 		case SCREEN_MIPI:
 			mask = m_MIPI_OUT_EN;
@@ -1163,6 +1165,7 @@ static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL, mask, val);
 #ifndef CONFIG_RK_FPGA
 		writel_relaxed(v, RK_GRF_VIRT + RK3288_GRF_SOC_CON6);
+		dsb();
 #endif		
 		mask = m_DSP_OUT_MODE | m_DSP_HSYNC_POL | m_DSP_VSYNC_POL |
 		       m_DSP_DEN_POL | m_DSP_DCLK_POL | m_DSP_BG_SWAP | 
@@ -1206,7 +1209,7 @@ static int rk3288_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 	}
 	spin_unlock(&lcdc_dev->reg_lock);
 	rk3288_lcdc_set_dclk(dev_drv);
-	if (dev_drv->trsm_ops && dev_drv->trsm_ops->enable)
+	if (screen->type != SCREEN_HDMI && dev_drv->trsm_ops && dev_drv->trsm_ops->enable)
 		dev_drv->trsm_ops->enable();
 	if (screen->init)
 		screen->init();
@@ -2540,6 +2543,8 @@ static int rk3288_lcdc_early_resume(struct rk_lcdc_driver *dev_drv)
 			}
 			lcdc_msk_reg(lcdc_dev, DSP_CTRL1, m_DSP_LUT_EN,
 				     v_DSP_LUT_EN(1));
+			if (dev_drv->iommu_enabled && dev_drv->mmu_dev)
+				iovmm_activate(dev_drv->dev);
 		}
 
 		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_DSP_OUT_ZERO,
