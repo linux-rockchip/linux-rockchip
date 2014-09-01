@@ -17,9 +17,12 @@
 #include "rk3288_hdmi_hw.h"
 
 #define HDMI_SEL_LCDC(x)	((((x)&1)<<4)|(1<<20))
-#define grf_writel(v,offset) 	do{ writel_relaxed(v, RK_GRF_VIRT + offset);dsb();} while (0)
+#define grf_writel(v, offset)	do { \
+		writel_relaxed(v, RK_GRF_VIRT + offset); \
+		dsb(); \
+		} while (0)
 
-static struct hdmi_dev *hdmi_dev = NULL;
+static struct hdmi_dev *hdmi_dev;
 
 #if defined(CONFIG_DEBUG_FS)
 static const struct rk3288_hdmi_reg_table hdmi_reg_table[] = {
@@ -33,7 +36,7 @@ static const struct rk3288_hdmi_reg_table hdmi_reg_table[] = {
 	{AUDIO_SAMPLER_BASE, AHB_DMA_STPADDR_SET1_0},
 	{MAIN_CONTROLLER_BASE, MC_SWRSTZREQ_2},
 	{COLOR_SPACE_CONVERTER_BASE, CSC_SPARE_2},
-	{HDCP_ENCRYPTION_ENGINE_BASE, HDCP_REVOC_LIST},	//HDCP_REVOC_LIST+5059
+	{HDCP_ENCRYPTION_ENGINE_BASE, HDCP_REVOC_LIST},
 	{HDCP_BKSV_BASE, HDCPREG_BKSV4},
 	{HDCP_AN_BASE, HDCPREG_AN7},
 	{ENCRYPTED_DPK_EMBEDDED_BASE, HDCPREG_DPK6},
@@ -43,20 +46,20 @@ static const struct rk3288_hdmi_reg_table hdmi_reg_table[] = {
 
 static int rk3288_hdmi_reg_show(struct seq_file *s, void *v)
 {
-	int i = 0,j = 0;
+	int i = 0, j = 0;
 	u32 val = 0;
+
 	seq_printf(s, "\n>>>hdmi_ctl reg ");
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < 16; i++)
 		seq_printf(s, " %2x", i);
-	}
 	seq_printf(s, "\n-----------------------------------------------------------------");
 
-	for(i = 0; i < ARRAY_SIZE(hdmi_reg_table); i++) {
-		for(j = hdmi_reg_table[i].reg_base; j <= hdmi_reg_table[i].reg_end; j++) {
+	for (i = 0; i < ARRAY_SIZE(hdmi_reg_table); i++) {
+		for (j = hdmi_reg_table[i].reg_base; j <= hdmi_reg_table[i].reg_end; j++) {
 			val = hdmi_readl(hdmi_dev, j);
-			if((j - hdmi_reg_table[i].reg_base)%16==0)
-				seq_printf(s,"\n>>>hdmi_ctl %04x:", j);
-			seq_printf(s," %02x",val);
+			if ((j - hdmi_reg_table[i].reg_base)%16 == 0)
+				seq_printf(s, "\n>>>hdmi_ctl %04x:", j);
+			seq_printf(s, " %02x", val);
 
 		}
 	}
@@ -87,7 +90,7 @@ static ssize_t rk3288_hdmi_reg_write(struct file *file, const char __user *buf, 
 static int rk3288_hdmi_reg_open(struct inode *inode, struct file *file)
 {
 	struct hdmi_dev *hdmi_dev = inode->i_private;
-	return single_open(file,rk3288_hdmi_reg_show, hdmi_dev);
+	return single_open(file, rk3288_hdmi_reg_show, hdmi_dev);
 }
 
 static const struct file_operations rk3288_hdmi_reg_fops = {
@@ -112,11 +115,15 @@ static void rk3288_hdmi_early_suspend(struct early_suspend *h)
 {
 	struct hdmi *hdmi = hdmi_dev->hdmi;
 	struct delay_work *delay_work;
-	HDMIDBG("hdmi enter early suspend \n");	
-	//hdmi_suspend(hdmi);
+	struct pinctrl_state *gpio_state;
+
+	HDMIDBG("hdmi enter early suspend \n");
 	delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
-	if(delay_work)
-		flush_delayed_work(delay_work);
+	if (delay_work)
+		flush_delayed_work_sync(delay_work);
+	/* iomux to gpio and pull down when suspend */
+	gpio_state = pinctrl_lookup_state(hdmi_dev->dev->pins->p, "gpio");
+	pinctrl_select_state(hdmi_dev->dev->pins->p, gpio_state);
 	rk3288_hdmi_clk_disable(hdmi_dev);
 	return;
 }
@@ -124,11 +131,14 @@ static void rk3288_hdmi_early_suspend(struct early_suspend *h)
 static void rk3288_hdmi_early_resume(struct early_suspend *h)
 {
 	struct hdmi *hdmi = hdmi_dev->hdmi;
-	
+
 	HDMIDBG("hdmi exit early resume\n");
+	/* iomux to default state for hdmi use when resume */
+	pinctrl_select_state(hdmi_dev->dev->pins->p,
+			     hdmi_dev->dev->pins->default_state);
 	rk3288_hdmi_clk_enable(hdmi_dev);
 	hdmi_dev_initial(hdmi_dev);
-	if(hdmi->ops->hdcp_power_on_cb)
+	if (hdmi->ops->hdcp_power_on_cb)
 		hdmi->ops->hdcp_power_on_cb();
 	hdmi_submit_work(hdmi, HDMI_RESUME_CTL, 0, NULL);
 }
@@ -186,25 +196,24 @@ static int rk3288_hdmi_clk_enable(struct hdmi_dev *hdmi_dev)
 
 static int rk3288_hdmi_clk_disable(struct hdmi_dev *hdmi_dev)
 {
-	if (hdmi_dev->clk_on == 0) {
+	if (hdmi_dev->clk_on == 0)
 		return 0;
-	}
 
 	if ((hdmi_dev->clk_on & HDMI_PD_ON) && (hdmi_dev->pd != NULL)) {
 		clk_disable_unprepare(hdmi_dev->pd);
 		hdmi_dev->clk_on &= ~HDMI_PD_ON;
 	}
+/*
+	if ((hdmi_dev->clk_on & HDMI_PCLK_ON) && (hdmi_dev->pclk != NULL)) {
+		clk_disable_unprepare(hdmi_dev->pclk);
+		hdmi_dev->clk_on &= ~HDMI_PCLK_ON;
+	}
 
-//	if ((hdmi_dev->clk_on & HDMI_PCLK_ON) && (hdmi_dev->pclk != NULL)) {
-//		clk_disable_unprepare(hdmi_dev->pclk);
-//		hdmi_dev->clk_on &= ~HDMI_PCLK_ON;
-//	}
-
-//	if ((hdmi_dev->clk_on & HDMI_HDCPCLK_ON) && (hdmi_dev->hdcp_clk != NULL)) {
-//		clk_disable_unprepare(hdmi_dev->hdcp_clk);
-//		hdmi_dev->clk_on &= ~HDMI_HDCPCLK_ON;
-//	}
-
+	if ((hdmi_dev->clk_on & HDMI_HDCPCLK_ON) && (hdmi_dev->hdcp_clk != NULL)) {
+		clk_disable_unprepare(hdmi_dev->hdcp_clk);
+		hdmi_dev->clk_on &= ~HDMI_HDCPCLK_ON;
+	}
+*/
 	return 0;
 }
 
@@ -214,48 +223,47 @@ static int rk3288_hdmi_fb_event_notify(struct notifier_block *self, unsigned lon
 	int blank_mode = *((int *)event->data);
 	struct hdmi *hdmi = hdmi_dev->hdmi;
 	struct delayed_work *delay_work;
-	
+
 	if (action == FB_EARLY_EVENT_BLANK) {
 		switch (blank_mode) {
-			case FB_BLANK_UNBLANK:
-				break;
-			default:
-				HDMIDBG("suspend hdmi\n");
-				if(!hdmi->sleep) {
-					delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
-					if(delay_work)
-						flush_delayed_work(delay_work);
-					rk3288_hdmi_clk_disable(hdmi_dev);
-				}
-				break;
+		case FB_BLANK_UNBLANK:
+			break;
+		default:
+			HDMIDBG("suspend hdmi\n");
+			if (!hdmi->sleep) {
+				delay_work = hdmi_submit_work(hdmi, HDMI_SUSPEND_CTL, 0, NULL);
+				if (delay_work)
+					flush_delayed_work(delay_work);
+				rk3288_hdmi_clk_disable(hdmi_dev);
+			}
+			break;
 		}
-	}
-	else if (action == FB_EVENT_BLANK) {
+	} else if (action == FB_EVENT_BLANK) {
 		switch (blank_mode) {
-			case FB_BLANK_UNBLANK:
-				HDMIDBG("resume hdmi\n");
-				if(hdmi->sleep) {
-					rk3288_hdmi_clk_enable(hdmi_dev);
-					hdmi_dev_initial(hdmi_dev, NULL);
-					if(hdmi->ops->hdcp_power_on_cb)
-						hdmi->ops->hdcp_power_on_cb();
-					hdmi_submit_work(hdmi, HDMI_RESUME_CTL, 0, NULL);
-				}
-				break;
-			default:
-				break;
+		case FB_BLANK_UNBLANK:
+			HDMIDBG("resume hdmi\n");
+			if (hdmi->sleep) {
+				rk3288_hdmi_clk_enable(hdmi_dev);
+				hdmi_dev_initial(hdmi_dev);
+				if (hdmi->ops->hdcp_power_on_cb)
+					hdmi->ops->hdcp_power_on_cb();
+				hdmi_submit_work(hdmi, HDMI_RESUME_CTL, 0, NULL);
+			}
+			break;
+		default:
+			break;
 		}
 	}
 	return NOTIFY_OK;
 }
 
 static struct notifier_block rk3288_hdmi_fb_notifier = {
-        .notifier_call = rk3288_hdmi_fb_event_notify,
+	.notifier_call = rk3288_hdmi_fb_event_notify,
 };
 
 static void rk3288_hdmi_irq_work_func(struct work_struct *work)
 {
-	if(hdmi_dev->enable) {
+	if (hdmi_dev->enable) {
 		hdmi_dev_irq(0, hdmi_dev);
 		queue_delayed_work(hdmi_dev->workqueue, &(hdmi_dev->delay_work), msecs_to_jiffies(50));
 	}
@@ -273,14 +281,13 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	int ret = -1;
 	struct resource *res;
 	struct delayed_work *delaywork;
-	
+
 	HDMIDBG("%s\n", __FUNCTION__);
-	
+
 	hdmi_dev = kmalloc(sizeof(struct hdmi_dev), GFP_KERNEL);
-	if(!hdmi_dev)
-	{
-	    	dev_err(&pdev->dev, ">>rk3288 hdmi kmalloc fail!");
-	    	return -ENOMEM;
+	if (!hdmi_dev) {
+		dev_err(&pdev->dev, ">>rk3288 hdmi kmalloc fail!");
+		return -ENOMEM;
 	}
 	memset(hdmi_dev, 0, sizeof(struct hdmi_dev));
 	platform_set_drvdata(pdev, hdmi_dev);
@@ -297,53 +304,46 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	hdmi_dev->regbase = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(hdmi_dev->regbase)) {
 		ret = PTR_ERR(hdmi_dev->regbase);
-		dev_err(&pdev->dev, "cannot ioremap registers,err=%d\n",ret);
+		dev_err(&pdev->dev, "cannot ioremap registers,err=%d\n", ret);
 		goto failed;
 	}
-	
+
 	/*enable pd and pclk and hdcp_clk*/
 	if (rk3288_hdmi_clk_enable(hdmi_dev) < 0) {
 		ret = -ENXIO;
 		goto failed1;
 	}
-	
-	//lcdc source select
-	grf_writel(HDMI_SEL_LCDC(rk3288_hdmi_property.videosrc), RK3288_GRF_SOC_CON6);		
-	hdmi_dev_initial(hdmi_dev, &rk3288_hdmi_ops);
-	
-	// Register HDMI device	
-	rk3288_hdmi_property.name = (char*)pdev->name;
+
+	hdmi_dev_init_ops(&rk3288_hdmi_ops);
+	/* Register HDMI device */
+	rk3288_hdmi_property.name = (char *)pdev->name;
 	rk3288_hdmi_property.priv = hdmi_dev;
 	hdmi_dev->hdmi = hdmi_register(&rk3288_hdmi_property, &rk3288_hdmi_ops);
-	if(hdmi_dev->hdmi == NULL) {
+	if (hdmi_dev->hdmi == NULL) {
 		dev_err(&pdev->dev, "register hdmi device failed\n");
 		ret = -ENOMEM;
 		goto failed1;
 	}
-	
+	mutex_init(&hdmi_dev->ddc_lock);
 	hdmi_dev->hdmi->dev = &pdev->dev;
-//	hdmi_dev->enable = 1;
-			
-	#ifdef CONFIG_HAS_EARLYSUSPEND
-	hdmi_dev->early_suspend.suspend = rk3288_hdmi_early_suspend;
-	hdmi_dev->early_suspend.resume = rk3288_hdmi_early_resume;
-	hdmi_dev->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 10;
-	register_early_suspend(&hdmi_dev->early_suspend);
-	#endif
-	
 	fb_register_client(&rk3288_hdmi_fb_notifier);
-	
+	/*lcdc source select*/
+	grf_writel(HDMI_SEL_LCDC(rk3288_hdmi_property.videosrc), RK3288_GRF_SOC_CON6);
+	hdmi_dev_initial(hdmi_dev);
+	pinctrl_select_state(hdmi_dev->dev->pins->p,
+			     hdmi_dev->dev->pins->default_state);
 #if defined(CONFIG_DEBUG_FS)
 	hdmi_dev->debugfs_dir = debugfs_create_dir("rk3288-hdmi", NULL);
-	if (IS_ERR(hdmi_dev->debugfs_dir)) {
-		dev_err(hdmi_dev->hdmi->dev,"failed to create debugfs dir for rk616!\n");
-	} else {
+	if (IS_ERR(hdmi_dev->debugfs_dir))
+		dev_err(hdmi_dev->hdmi->dev, "failed to create debugfs dir for rk616!\n");
+	else
 		debugfs_create_file("hdmi", S_IRUSR, hdmi_dev->debugfs_dir, hdmi_dev, &rk3288_hdmi_reg_fops);
-	}
 #endif
-	delaywork = hdmi_submit_work(hdmi_dev->hdmi, HDMI_HPD_CHANGE, 0, NULL);
-	if(delaywork)
-		flush_delayed_work(delaywork);
+	if (!hdmi_dev->hdmi->uboot) {
+		delaywork = hdmi_submit_work(hdmi_dev->hdmi, HDMI_HPD_CHANGE, 0, NULL);
+		if (delaywork)
+			flush_delayed_work(delaywork);
+	}
 	{
 		hdmi_dev->workqueue = create_singlethread_workqueue("rk3288 hdmi irq");
 		INIT_DELAYED_WORK(&(hdmi_dev->delay_work), rk3288_hdmi_irq_work_func);
@@ -351,11 +351,11 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	}
 	dev_info(&pdev->dev, "rk3288 hdmi probe sucess.\n");
 	return 0;
-	
+
 failed1:
 	hdmi_unregister(hdmi_dev->hdmi);
 failed:
-	if(hdmi_dev) {
+	if (hdmi_dev) {
 		kfree(hdmi_dev);
 		hdmi_dev = NULL;
 	}
@@ -365,14 +365,14 @@ failed:
 
 static int rk3288_hdmi_remove(struct platform_device *pdev)
 {
-	
+
 	printk(KERN_INFO "rk3288 hdmi driver removed.\n");
 	return 0;
 }
 
 static void rk3288_hdmi_shutdown(struct platform_device *pdev)
 {
-	if(hdmi_dev) {
+	if (hdmi_dev) {
 		#ifdef CONFIG_HAS_EARLYSUSPEND
 		unregister_early_suspend(&hdmi_dev->early_suspend);
 		#endif
@@ -402,6 +402,6 @@ static void __exit rk3288_hdmi_exit(void)
 	platform_driver_unregister(&rk3288_hdmi_driver);
 }
 
-//fs_initcall(rk3288_hdmi_init);
+/* fs_initcall(rk3288_hdmi_init); */
 device_initcall_sync(rk3288_hdmi_init);
 module_exit(rk3288_hdmi_exit);

@@ -34,6 +34,8 @@ enum {
 #define HDMI_SCL_RATE		(100*1000)
 #define DDC_I2C_EDID_ADDR	0x50	// 0xA0/2 = 0x50
 #define DDC_I2C_SEG_ADDR	0x30	// 0x60/2 = 0x30
+#define DDC_I2C_SCDC_ADDR	0x54	//  0xa8/2 = 0x54
+
 
 /*Register and Field Descriptions*/
 /*Identification Registers*/
@@ -1470,7 +1472,7 @@ static inline int hdmi_msk_reg(struct hdmi_dev *hdmi_dev, u16 offset, u32 msk, u
         writel_relaxed(temp | ( (val) & (msk) ),  hdmi_dev->regbase + (offset) * 0x04);
         return ret;
 }
-
-void hdmi_dev_initial(struct hdmi_dev *hdmi_dev, struct hdmi_ops *ops);
+void hdmi_dev_init_ops(struct hdmi_ops *ops);
+void hdmi_dev_initial(struct hdmi_dev *hdmi_dev);
 irqreturn_t hdmi_dev_irq(int irq, void *priv);
 #endif

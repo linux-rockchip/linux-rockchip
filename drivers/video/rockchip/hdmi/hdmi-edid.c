@@ -186,7 +186,7 @@ static int hdmi_edid_parse_3dinfo(unsigned char *buf, struct list_head *head)
 	if(buf[1] & 0xF0) {
 		len = (buf[1] & 0xF0) >> 4;
 		for(i = 0; i < len; i++) {
-			if (buf[offset])
+			if(buf[offset])
 				hdmi_add_vic( (96 - buf[offset++]), head);
 		}
 	}
@@ -239,11 +239,91 @@ static int hdmi_edid_parse_3dinfo(unsigned char *buf, struct list_head *head)
 	
 	return 0;
 }
+static int hdmi_edmi_parse_vsdb(unsigned char *buf, struct hdmi_edid *pedid,
+		int cur_offset,int IEEEOUI)
+{
+	int count,buf_offset;
+	count = buf[cur_offset] & 0x1F;
+	switch (IEEEOUI)
+	{
+	case 0x0c03:
+		pedid->sink_hdmi = 1;
+		pedid->cecaddress = buf[cur_offset + 5];
+		pedid->cecaddress |= buf[cur_offset + 4] << 8;
+		hdmi_edid_debug("[EDID-CEA] CEC Physical addres is 0x%08x.\n", pedid->cecaddress);
+		if (count > 6)
+			pedid->deepcolor = (buf[cur_offset + 6] >> 3) & 0x0F;
+		if (count > 7) {
+			pedid->maxtmdsclock = buf[cur_offset + 7] * 5000000;
+			hdmi_edid_debug("[EDID-CEA] maxtmdsclock is %d.\n", pedid->maxtmdsclock);
+		}
+		if (count > 8) {
+			pedid->fields_present = buf[cur_offset + 8];
+			hdmi_edid_debug("[EDID-CEA] fields_present is 0x%02x.\n", pedid->fields_present);
+		}
+		buf_offset = cur_offset + 9;
+		if (pedid->fields_present & 0x80)
+		{
+			pedid->video_latency = buf[buf_offset++];
+			pedid->audio_latency = buf[buf_offset++];
+		}
+		if (pedid->fields_present & 0x40)
+		{
+			pedid->interlaced_video_latency = buf[buf_offset++];
+			pedid->interlaced_audio_latency = buf[buf_offset++];
+		}
+		if (pedid->fields_present & 0x20) {
+			hdmi_edid_parse_3dinfo(buf + buf_offset, &pedid->modelist);
+		}
+		break;
+	case 0xc45dd8:
+		pedid->sink_hdmi = 1;
+		if (count > 4)
+			pedid->hf_vsdb_version = buf[cur_offset + 4];
+		switch (pedid->hf_vsdb_version)
+		{
+		case 1:/*compliant with HDMI Specification 2.0*/
+			if(count > 5) {
+				pedid->maxtmdsclock = buf[cur_offset + 5] * 5000000;
+				hdmi_edid_debug("[EDID-CEA] maxtmdsclock is %d.\n",
+					pedid->maxtmdsclock);
+			}
+			if(count > 6) {
+				pedid->scdc_present = buf[cur_offset+6] >> 7;
+				pedid->rr_capable = (buf[cur_offset+6]&0x40)>>6;
+				pedid->lte_340mcsc_scramble = (buf[cur_offset+6]&0x08)>>3;
+				pedid->independent_view = (buf[cur_offset+6]&0x04)>>2;
+				pedid->dual_view = (buf[cur_offset+6]&0x02)>>1;
+				pedid->osd_disparity_3d = buf[cur_offset+6]&0x01;
+				hdmi_edid_debug("[EDID-CEA] scdc_present[%d],rr_capable[%d]"
+					"lte_340mcsc_scramble[%d],independent_view[%d],"
+					"dual_view[%d],osd_disparity_3d[%d]",
+					pedid->scdc_present,pedid->rr_capable,
+					pedid->lte_340mcsc_scramble,pedid->independent_view,pedid->dual_view,
+					pedid->osd_disparity_3d);
+			}
+			if(count > 7) {
+				pedid->deepcolor = buf[cur_offset+7]&0x7;
+				hdmi_edid_debug("[EDID-CEA] deepcolor is %d.\n",
+					pedid->deepcolor);
+			}
+			break;
+		default:
+			printk("hf_vsdb_version = %d\n",pedid->hf_vsdb_version);
+			break;
+		}
+		break;
+	default:
+		printk("IEEOUT = 0x%x\n",IEEEOUI);
+		break;
+	}
+	return 0;
+}
 
 // Parse CEA 861 Serial Extension.
 static int hdmi_edid_parse_extensions_cea(unsigned char *buf, struct hdmi_edid *pedid)
 {
-	unsigned int ddc_offset, native_dtd_num, cur_offset = 4, buf_offset;
+	unsigned int ddc_offset, native_dtd_num, cur_offset = 4;
 //	unsigned int underscan_support, baseaudio_support;
 	unsigned int tag, IEEEOUI = 0, count;
 	
@@ -291,35 +371,8 @@ static int hdmi_edid_parse_extensions_cea(unsigned char *buf, struct hdmi_edid *
 				IEEEOUI <<= 8;
 				IEEEOUI += buf[cur_offset + 1];
 				hdmi_edid_debug("[EDID-CEA] IEEEOUI is 0x%08x.\n", IEEEOUI);
-				if(IEEEOUI == 0x0c03)
-					pedid->sink_hdmi = 1;
-				pedid->cecaddress = buf[cur_offset + 5];
-				pedid->cecaddress |= buf[cur_offset + 4] << 8;
-				hdmi_edid_debug("[EDID-CEA] CEC Physical addres is 0x%08x.\n", pedid->cecaddress);
-				if(count > 6)
-					pedid->deepcolor = (buf[cur_offset + 6] >> 3) & 0x0F;					
-				if(count > 7) {
-					pedid->maxtmdsclock = buf[cur_offset + 7] * 5000000;
-					hdmi_edid_debug("[EDID-CEA] maxtmdsclock is %d.\n", pedid->maxtmdsclock);
-				}
-				if(count > 8) {
-					pedid->fields_present = buf[cur_offset + 8];
-					hdmi_edid_debug("[EDID-CEA] fields_present is 0x%02x.\n", pedid->fields_present);
-				}
-				buf_offset = cur_offset + 9;		
-				if(pedid->fields_present & 0x80)
-				{
-					pedid->video_latency = buf[buf_offset++];
-					pedid->audio_latency = buf[buf_offset++];
-				}
-				if(pedid->fields_present & 0x40)
-				{
-					pedid->interlaced_video_latency = buf[buf_offset++];
-					pedid->interlaced_audio_latency = buf[buf_offset++];
-				}
-				if(pedid->fields_present & 0x20) {
-					hdmi_edid_parse_3dinfo(buf + buf_offset, &pedid->modelist);
-				}
+
+				hdmi_edmi_parse_vsdb(buf,pedid,cur_offset,IEEEOUI);
 				break;		
 			case 0x05:	// VESA DTC Data Block
 				hdmi_edid_debug("[EDID-CEA] It is a VESA DTC Data Block.\n");
