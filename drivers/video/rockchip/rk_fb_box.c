@@ -1641,18 +1641,16 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,
 				fix->mmio_start = 0;
 				break;
 			}	
-			if(dev_drv->enable) {
+//			if(dev_drv->enable) {
 				hdl = ion_import_dma_buf(rk_fb->ion_client, usr_fd);
 				ion_map_iommu(dev_drv->dev, rk_fb->ion_client, hdl,
 						(unsigned long *)&phy_addr, (unsigned long *)&len);
 	
 				fix->smem_start = phy_addr;
 				fix->mmio_start = phy_addr + offset;
-			} else {
-				hdl = NULL;
-				fix->smem_start = 0;
-				fix->mmio_start = 0;
-			}
+//			} else
+//				hdl = NULL;
+				
 			if(ion_hanle[ION_MAX - 1] != 0) {
 				ion_unmap_iommu(dev_drv->dev, rk_fb->ion_client, ion_hanle[ION_MAX- 1]);
 				ion_free(rk_fb->ion_client, ion_hanle[ION_MAX- 1]);

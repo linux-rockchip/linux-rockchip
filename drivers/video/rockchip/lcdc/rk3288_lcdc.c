@@ -1403,7 +1403,7 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 					struct lcdc_device, driver);
 	int sys_status = (dev_drv->id == 0) ?
 			SYS_STATUS_LCDC0 : SYS_STATUS_LCDC1;
-
+	int reg;
 	/*enable clk,when first layer open */
 	if ((open) && (!lcdc_dev->atv_layer_cnt)) {
 		rockchip_set_system_status(sys_status);
@@ -1458,12 +1458,12 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 		rk3288_lcdc_reg_update(dev_drv);
 		#if defined(CONFIG_ROCKCHIP_IOMMU)
 		if (dev_drv->iommu_enabled) {
+			for (reg = MMU_DTE_ADDR; reg <= MMU_AUTO_GATING; reg +=4)
+			lcdc_readl(lcdc_dev, reg);
 			if(dev_drv->mmu_dev)
 				iovmm_deactivate(dev_drv->dev);
 		}
 		#endif
-		/* Add 50ms delay to make sure all registers value is updated. */
-		msleep(50);
 		rk3288_lcdc_clk_disable(lcdc_dev);
 		rockchip_clear_system_status(sys_status);
 	}
@@ -2477,6 +2477,7 @@ static int rk3288_lcdc_ioctl(struct rk_lcdc_driver *dev_drv, unsigned int cmd,
 
 static int rk3288_lcdc_early_suspend(struct rk_lcdc_driver *dev_drv)
 {
+	u32 reg;
 	struct lcdc_device *lcdc_dev =
 	    container_of(dev_drv, struct lcdc_device, driver);
 	if (dev_drv->suspend_flag)
@@ -2491,8 +2492,12 @@ static int rk3288_lcdc_early_suspend(struct rk_lcdc_driver *dev_drv)
 	spin_lock(&lcdc_dev->reg_lock);
 	if (likely(lcdc_dev->clk_on)) {
 		#if defined(CONFIG_ROCKCHIP_IOMMU)
-		if (dev_drv->iommu_enabled && dev_drv->mmu_dev)
-			iovmm_deactivate(dev_drv->dev);
+		if (dev_drv->iommu_enabled) {
+			for (reg = MMU_DTE_ADDR; reg <= MMU_AUTO_GATING; reg +=4)
+			lcdc_readl(lcdc_dev, reg);
+			if(dev_drv->mmu_dev)
+				iovmm_deactivate(dev_drv->dev);
+		}
 		#endif		
 		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_DSP_BLANK_EN,
 					v_DSP_BLANK_EN(1));
