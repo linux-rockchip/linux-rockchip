@@ -1938,10 +1938,11 @@ static void rtw_drv_halt(void)
 	rtw_mstat_dump(RTW_DBGDUMP);
 }
 
+
 #include "wifi_version.h"
 #include <linux/rfkill-wlan.h>
 
-int rockchip_wifi_init_module(void)
+int rockchip_wifi_init_module_rtl8188eu(void)
 {
     printk("\n");
     printk("=======================================================\n");
@@ -1953,7 +1954,7 @@ int rockchip_wifi_init_module(void)
     return rtw_drv_entry();
 }
 
-void rockchip_wifi_exit_module(void)
+void rockchip_wifi_exit_module_rtl8188eu(void)
 {
     printk("\n");
     printk("=======================================================\n");
@@ -1964,8 +1965,10 @@ void rockchip_wifi_exit_module(void)
     rockchip_wifi_power(0);
 }
 
-EXPORT_SYMBOL(rockchip_wifi_init_module);
-EXPORT_SYMBOL(rockchip_wifi_exit_module);
+EXPORT_SYMBOL(rockchip_wifi_init_module_rtl8188eu);
+EXPORT_SYMBOL(rockchip_wifi_exit_module_rtl8188eu);
+//module_init(rtw_drv_entry);
+//module_exit(rtw_drv_halt);
 
 #ifdef CONFIG_INTEL_PROXIM
 _adapter  *rtw_usb_get_sw_pointer(void)

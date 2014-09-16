@@ -40,6 +40,13 @@ struct rksdmmc_gpio_wifi_moudle {
     struct rksdmmc_gpio   GPS_LAN;  //pin33--GPS_LAN
 };
 
+enum {
+    WIFI_RKWIFI,
+    WIFI_RTL8188EU,
+    WIFI_ESP8089,
+    WIFI_RTL8723BS
+};
+
 int rfkill_get_wifi_power_state(int *power, int *vref_ctrl_enable);
 void *rockchip_mem_prealloc(int section, unsigned long size);
 int rockchip_wifi_ref_voltage(int on);

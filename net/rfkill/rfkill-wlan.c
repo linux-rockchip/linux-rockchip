@@ -35,6 +35,7 @@
 #include <linux/rockchip/iomap.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <linux/skbuff.h>
+#include <linux/rockchip/cpu.h>
 #ifdef CONFIG_OF
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -89,6 +90,25 @@ static const char wlan_name[] =
         "wlan_default"
 #endif
 ;
+
+static char wifi_chip_type_string[64];
+int get_wifi_chip_type(void)
+{
+    int type;
+    if (strcmp(wifi_chip_type_string, "rkwifi") == 0) {
+        type = WIFI_RKWIFI;
+    } else if (strcmp(wifi_chip_type_string, "rtl8188eu") == 0) {
+        type = WIFI_RTL8188EU;
+    } else if (strcmp(wifi_chip_type_string, "esp8089") == 0) {
+        type = WIFI_ESP8089;
+    } else if (strcmp(wifi_chip_type_string, "rtl8723bs") == 0) {
+        type = WIFI_RTL8723BS; 
+    } else {
+        type = WIFI_RKWIFI;
+    }
+    return type;
+}
+EXPORT_SYMBOL(get_wifi_chip_type);
 
 /***********************************************************
  * 
@@ -410,10 +430,19 @@ EXPORT_SYMBOL(rockchip_wifi_power);
  *
  *************************************************************************/
 #include <linux/mmc/host.h>
-extern int mmc_host_rescan(struct mmc_host *host, int val);
+extern int mmc_host_rescan(struct mmc_host *host, int val, int irq_type);
 int rockchip_wifi_set_carddetect(int val)
 {
-    return mmc_host_rescan(NULL, val);//NULL => SDIO host
+	int chip, irq_type;
+	chip = get_wifi_chip_type();
+
+	/*  irq_type : 0, oob; 1, cap-sdio-irq */
+	if (chip == WIFI_RKWIFI)
+		irq_type = 0;
+	else
+		irq_type = 1;
+
+	return mmc_host_rescan(NULL, val, irq_type);//NULL => SDIO host
 }
 EXPORT_SYMBOL(rockchip_wifi_set_carddetect);
 
@@ -591,6 +620,13 @@ static int wlan_platdata_parse_dt(struct device *dev,
 
     memset(data, 0, sizeof(*data));
 
+    ret = of_property_read_string(node, "wifi_chip_type", &strings);
+    if (ret) {
+        printk("%s: Can not read wifi_chip_type, set default to rkwifi.\n", __func__);
+        strcpy(wifi_chip_type_string, "rkwifi");
+    }
+    strcpy(wifi_chip_type_string, strings);
+    printk("%s: wifi_chip_type = %s\n", __func__, wifi_chip_type_string);
     ret = of_property_read_u32(node, "sdio_vref", &value);
     if (ret < 0) {
         LOG("%s: Can't get sdio vref.", __func__);
