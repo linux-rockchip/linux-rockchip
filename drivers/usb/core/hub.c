@@ -1689,14 +1689,16 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	 * where the controller driver doesn't have bus_suspend and
 	 * bus_resume methods.
 	 */
-	if (hdev->parent) {		/* normal device */
-		usb_enable_autosuspend(hdev);
-	} else {			/* root hub */
-		const struct hc_driver *drv = bus_to_hcd(hdev->bus)->driver;
-
-		if (drv->bus_suspend && drv->bus_resume)
-			usb_enable_autosuspend(hdev);
-	}
+	
+	// modified to close the auto suspend of hub. 
+	//if (hdev->parent) {		/* normal device */
+	//	usb_enable_autosuspend(hdev);
+	//} else {			/* root hub */
+	//	const struct hc_driver *drv = bus_to_hcd(hdev->bus)->driver;
+	//
+	//	if (drv->bus_suspend && drv->bus_resume)
+	//		usb_enable_autosuspend(hdev);
+	//}
 
 	if (hdev->level == MAX_TOPO_LEVEL) {
 		dev_err(&intf->dev,
