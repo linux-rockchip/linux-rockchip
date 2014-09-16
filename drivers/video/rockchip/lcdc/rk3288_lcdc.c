@@ -26,6 +26,7 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/rockchip-iovmm.h>
 #include <asm/div64.h>
 #include <asm/uaccess.h>
 #include <linux/rockchip/cpu.h>
@@ -33,10 +34,7 @@
 #include <linux/rockchip/grf.h>
 #include <linux/rockchip/common.h>
 #include <dt-bindings/clock/rk_system_status.h>
-#if defined(CONFIG_ION_ROCKCHIP)
-#include <linux/rockchip/iovmm.h>
-#include <linux/rockchip/sysmmu.h>
-#endif
+
 #include "rk3288_lcdc.h"
 
 #if defined(CONFIG_HAS_EARLYSUSPEND)
@@ -1408,6 +1406,23 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 	if ((open) && (!lcdc_dev->atv_layer_cnt)) {
 		rockchip_set_system_status(sys_status);
 		rk3288_lcdc_pre_init(dev_drv);
+#if defined(CONFIG_ROCKCHIP_IOMMU)
+		if (dev_drv->iommu_enabled) {
+			if (!dev_drv->mmu_dev) {
+				dev_drv->mmu_dev =
+                                        rk_fb_get_sysmmu_device_by_compatible(dev_drv->mmu_dts_name);
+				if (dev_drv->mmu_dev) {
+					rk_fb_platform_set_sysmmu(dev_drv->mmu_dev,
+					                          dev_drv->dev);
+                                        rockchip_iovmm_activate(dev_drv->dev);
+                                } else {
+					dev_err(dev_drv->dev,
+						"failed to get rockchip iommu device\n");
+					return -1;
+				}
+			}
+		}
+#endif
 		rk3288_lcdc_clk_enable(lcdc_dev);
 		rk3288_lcdc_reg_restore(lcdc_dev);
 		if (dev_drv->iommu_enabled)
@@ -1422,21 +1437,6 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 		if (dev_drv->cur_screen->dsp_lut)
 			rk3288_lcdc_set_lut(dev_drv);
 		spin_unlock(&lcdc_dev->reg_lock);
-		
-#if defined(CONFIG_ROCKCHIP_IOMMU)
-		if(dev_drv->iommu_enabled) {
-			if(!dev_drv->mmu_dev)
-				dev_drv->mmu_dev = rockchip_get_sysmmu_device_by_compatible(dev_drv->mmu_dts_name);
-			if (dev_drv->mmu_dev) {
-				platform_set_sysmmu(dev_drv->mmu_dev, dev_drv->dev);
-				/*rockchip_sysmmu_set_fault_handler(dev_drv->dev,
-						rk_fb_sysmmu_fault_handler);*/
-				iovmm_activate(dev_drv->dev);
-			}
-			else
-				dev_err(dev_drv->dev, "failed to get rockchip iommu device\n");
-		}
-#endif
 	}
 
 	if (win_id == 0)
@@ -1461,9 +1461,10 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 			for (reg = MMU_DTE_ADDR; reg <= MMU_AUTO_GATING; reg +=4)
 			lcdc_readl(lcdc_dev, reg);
 			if(dev_drv->mmu_dev)
-				iovmm_deactivate(dev_drv->dev);
+				rockchip_iovmm_deactivate(dev_drv->dev);
 		}
 		#endif
+
 		rk3288_lcdc_clk_disable(lcdc_dev);
 		rockchip_clear_system_status(sys_status);
 	}
@@ -2485,20 +2486,12 @@ static int rk3288_lcdc_early_suspend(struct rk_lcdc_driver *dev_drv)
 	
 	dev_drv->suspend_flag = 1;
 	flush_kthread_worker(&dev_drv->update_regs_worker);
-	
+
 	if (dev_drv->trsm_ops && dev_drv->trsm_ops->disable)
 		dev_drv->trsm_ops->disable();
 	
 	spin_lock(&lcdc_dev->reg_lock);
 	if (likely(lcdc_dev->clk_on)) {
-		#if defined(CONFIG_ROCKCHIP_IOMMU)
-		if (dev_drv->iommu_enabled) {
-			for (reg = MMU_DTE_ADDR; reg <= MMU_AUTO_GATING; reg +=4)
-			lcdc_readl(lcdc_dev, reg);
-			if(dev_drv->mmu_dev)
-				iovmm_deactivate(dev_drv->dev);
-		}
-		#endif		
 		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_DSP_BLANK_EN,
 					v_DSP_BLANK_EN(1));
 		lcdc_msk_reg(lcdc_dev, INTR_CTRL0, m_FS_INTR_CLR | m_LINE_FLAG_INTR_CLR,
@@ -2508,6 +2501,14 @@ static int rk3288_lcdc_early_suspend(struct rk_lcdc_driver *dev_drv)
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_STANDBY_EN,
 			    		v_STANDBY_EN(1));
 		lcdc_cfg_done(lcdc_dev);
+		#if defined(CONFIG_ROCKCHIP_IOMMU)
+        if (dev_drv->iommu_enabled) {
+			for (reg = MMU_DTE_ADDR; reg <= MMU_AUTO_GATING; reg +=4)
+			lcdc_readl(lcdc_dev, reg);
+			if (dev_drv->mmu_dev)
+				rockchip_iovmm_deactivate(dev_drv->dev);
+		}
+		#endif	
 		spin_unlock(&lcdc_dev->reg_lock);
 	} else {
 		spin_unlock(&lcdc_dev->reg_lock);
@@ -2548,8 +2549,6 @@ static int rk3288_lcdc_early_resume(struct rk_lcdc_driver *dev_drv)
 			}
 			lcdc_msk_reg(lcdc_dev, DSP_CTRL1, m_DSP_LUT_EN,
 				     v_DSP_LUT_EN(1));
-			if (dev_drv->iommu_enabled && dev_drv->mmu_dev)
-				iovmm_activate(dev_drv->dev);
 		}
 
 		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_DSP_OUT_ZERO,
@@ -2559,6 +2558,11 @@ static int rk3288_lcdc_early_resume(struct rk_lcdc_driver *dev_drv)
 		lcdc_msk_reg(lcdc_dev, DSP_CTRL0, m_DSP_BLANK_EN,
 					v_DSP_BLANK_EN(0));	
 		lcdc_cfg_done(lcdc_dev);
+
+        if (dev_drv->iommu_enabled) {
+			if (dev_drv->mmu_dev)
+				rockchip_iovmm_activate(dev_drv->dev);
+		}
 
 		spin_unlock(&lcdc_dev->reg_lock);
 	}
@@ -3853,9 +3857,9 @@ static int rk3288_lcdc_probe(struct platform_device *pdev)
 
 	if (dev_drv->iommu_enabled) {
 		if(lcdc_dev->id == 0){
-			strcpy(dev_drv->mmu_dts_name, "iommu,vopb_mmu");
+			strcpy(dev_drv->mmu_dts_name, VOPB_IOMMU_COMPATIBLE_NAME);
 		}else{
-			strcpy(dev_drv->mmu_dts_name, "iommu,vopl_mmu");
+			strcpy(dev_drv->mmu_dts_name, VOPL_IOMMU_COMPATIBLE_NAME);
 		}
 	}
 

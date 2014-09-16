@@ -34,6 +34,7 @@
 
 #ifdef CONFIG_OF
 #include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <video/of_display_timing.h>
 #include <video/display_timing.h>
@@ -42,8 +43,7 @@
 
 #if defined(CONFIG_ION_ROCKCHIP)
 #include <linux/rockchip_ion.h>
-#include <linux/rockchip/iovmm.h>
-#include <linux/rockchip/sysmmu.h>
+#include <linux/rockchip-iovmm.h>
 #include <linux/dma-buf.h>
 #include <linux/highmem.h>
 #endif
@@ -634,6 +634,46 @@ bool rk_fb_poll_wait_frame_complete(void)
 	return true;
 }
 
+
+/* rk_fb_get_sysmmu_device_by_compatible()
+ * @compt: dts device compatible name
+ * return value: success: pointer to the device inside of platform device
+ *               fail: NULL
+ */
+struct device *rk_fb_get_sysmmu_device_by_compatible(const char *compt)
+{
+        struct device_node *dn = NULL;
+        struct platform_device *pd = NULL;
+        struct device *ret = NULL ;
+
+        dn = of_find_compatible_node(NULL, NULL, compt);
+        if (!dn) {
+                printk("can't find device node %s \r\n", compt);
+                return NULL;
+	}
+
+        pd = of_find_device_by_node(dn);
+        if (!pd) {
+                printk("can't find platform device in device node %s \r\n", compt);
+                return  NULL;
+        }
+        ret = &pd->dev;
+
+        return ret;
+}
+
+#ifdef CONFIG_IOMMU_API
+void rk_fb_platform_set_sysmmu(struct device *sysmmu, struct device *dev)
+{
+        dev->archdata.iommu = sysmmu;
+}
+#else
+void rk_fb_platform_set_sysmmu(struct device *sysmmu, struct device *dev)
+{
+
+}
+#endif
+
 static int rk_fb_open(struct fb_info *info, int user)
 {
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
@@ -882,7 +922,7 @@ u32 freed_index;
 char buf[PAGE_SIZE];
 
 int rk_fb_sysmmu_fault_handler(struct device *dev,
-			       enum rk_sysmmu_inttype itype,
+			       enum rk_iommu_inttype itype,
 			       unsigned long pgtable_base,
 			       unsigned long fault_addr, unsigned int status)
 {
@@ -1202,6 +1242,7 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 	u8 is_pic_yuv = 0;
 	u8 ppixel_a = 0, global_a = 0;
 	ion_phys_addr_t phy_addr;
+	int ret;
 
 	reg_win_data->reg_area_data[0].smem_start = -1;
 	reg_win_data->area_num = 0;
@@ -1225,19 +1266,24 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 				reg_win_data->area_num++;
 				reg_win_data->reg_area_data[i].ion_handle = hdl;
 #ifndef CONFIG_ROCKCHIP_IOMMU
-				ion_phys(rk_fb->ion_client, hdl, &phy_addr,
-					 &len);
+				ret = ion_phys(rk_fb->ion_client, hdl, &phy_addr,
+						&len);
 #else
 				if (dev_drv->iommu_enabled)
-					ion_map_iommu(dev_drv->dev,
-						      rk_fb->ion_client,
-						      hdl,
-						      (unsigned long *)&phy_addr,
-						      (unsigned long *)&len);
+					ret = ion_map_iommu(dev_drv->dev,
+								rk_fb->ion_client,
+								hdl,
+								(unsigned long *)&phy_addr,
+								(unsigned long *)&len);
 				else
-					ion_phys(rk_fb->ion_client, hdl,
-						 &phy_addr, &len);
+					ret = ion_phys(rk_fb->ion_client, hdl,
+							&phy_addr, &len);
 #endif
+				if (ret < 0) {
+					dev_err(fbi->dev, "ion map to get phy addr failed\n");
+					ion_free(rk_fb->ion_client, hdl);
+					return -ENOMEM;
+				}
 				reg_win_data->reg_area_data[i].smem_start = phy_addr;
 				reg_win_data->area_buf_num++;
 				reg_win_data->reg_area_data[i].index_buf = 1;
@@ -1594,9 +1640,10 @@ int rk_get_real_fps(int before)
 EXPORT_SYMBOL(rk_get_real_fps);
 
 #endif
+#ifdef CONFIG_ROCKCHIP_IOMMU
 #define ION_MAX 10
 static struct ion_handle *ion_hanle[ION_MAX];
-
+#endif
 static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		       unsigned long arg)
 {
@@ -1619,54 +1666,67 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	switch (cmd) {
 	case RK_FBIOSET_YUV_ADDR:
-	{
-		u32 yuv_phy[2];
-		if (copy_from_user(yuv_phy, argp, 8))
-			return -EFAULT;
-		if(!dev_drv->iommu_enabled) {
-			fix->smem_start = yuv_phy[0];
-			fix->mmio_start = yuv_phy[1];
-		}
-		else {
-			int usr_fd, offset, tmp;
-			struct ion_handle *hdl;
-			ion_phys_addr_t phy_addr;
-			size_t len;
-        
-			usr_fd = yuv_phy[0];
-			offset = yuv_phy[1] - yuv_phy[0];
-			
-			if(!usr_fd) {
-				fix->smem_start = 0;
-				fix->mmio_start = 0;
-				break;
-			}	
-//			if(dev_drv->enable) {
+		{
+			u32 yuv_phy[2];
+
+			if (copy_from_user(yuv_phy, argp, 8))
+				return -EFAULT;
+			#ifdef CONFIG_ROCKCHIP_IOMMU
+			if (!dev_drv->iommu_enabled || !strcmp(info->fix.id, "fb0")) {
+			#endif
+				fix->smem_start = yuv_phy[0];
+				fix->mmio_start = yuv_phy[1];
+			#ifdef CONFIG_ROCKCHIP_IOMMU
+			} else {
+				int usr_fd, offset, tmp;
+				struct ion_handle *hdl;
+				ion_phys_addr_t phy_addr;
+				size_t len;
+
+				usr_fd = yuv_phy[0];
+				offset = yuv_phy[1] - yuv_phy[0];
+
+				if (!usr_fd) {
+					fix->smem_start = 0;
+					fix->mmio_start = 0;
+					break;
+				}
+
+				if (ion_hanle[ION_MAX - 1] != 0) {
+					/*ion_unmap_kernel(rk_fb->ion_client, ion_hanle[ION_MAX - 1]);*/
+					/*ion_unmap_iommu(dev_drv->dev, rk_fb->ion_client, ion_hanle[ION_MAX - 1]);*/
+					ion_free(rk_fb->ion_client, ion_hanle[ION_MAX - 1]);
+					ion_hanle[ION_MAX - 1] = 0;
+				}
+
 				hdl = ion_import_dma_buf(rk_fb->ion_client, usr_fd);
-				ion_map_iommu(dev_drv->dev, rk_fb->ion_client, hdl,
-						(unsigned long *)&phy_addr, (unsigned long *)&len);
-	
+				if (IS_ERR(hdl)) {
+					dev_err(info->dev, "failed to get ion handle:%ld\n",
+						PTR_ERR(hdl));
+					return -EFAULT;
+				}
+
+				ret = ion_map_iommu(dev_drv->dev, rk_fb->ion_client, hdl,
+							(unsigned long *)&phy_addr,
+							(unsigned long *)&len);
+				if (ret < 0) {
+					dev_err(info->dev, "ion map to get phy addr failed");
+					ion_free(rk_fb->ion_client, hdl);
+					return -ENOMEM;
+				}
 				fix->smem_start = phy_addr;
 				fix->mmio_start = phy_addr + offset;
-//			} else
-//				hdl = NULL;
-				
-			if(ion_hanle[ION_MAX - 1] != 0) {
-				ion_unmap_iommu(dev_drv->dev, rk_fb->ion_client, ion_hanle[ION_MAX- 1]);
-				ion_free(rk_fb->ion_client, ion_hanle[ION_MAX- 1]);
+				fix->smem_len = len;
+				/*info->screen_base = ion_map_kernel(rk_fb->ion_client, hdl);*/
+
+				ion_hanle[0] = hdl;
+				for (tmp = ION_MAX - 1; tmp > 0; tmp--)
+					ion_hanle[tmp] = ion_hanle[tmp - 1];
+				ion_hanle[0] = 0;
 			}
-			
-			ion_hanle[0] = hdl;
-			
-			
-			for(tmp = ION_MAX - 1 ; tmp > 0 ; tmp--){
-				ion_hanle[tmp] = ion_hanle[tmp - 1];
-			}
-			ion_hanle[0] = 0;
+			#endif
+			break;
 		}
-    
-		break;
-	}
 	case RK_FBIOSET_ENABLE:
 		if (copy_from_user(&enable, argp, sizeof(enable)))
 			return -EFAULT;
@@ -2444,6 +2504,8 @@ static int rk_fb_alloc_buffer_by_ion(struct fb_info *fbi,
 	struct ion_handle *handle;
 	ion_phys_addr_t phy_addr;
 	size_t len;
+	int ret;
+
 	if (dev_drv->iommu_enabled)
 		handle = ion_alloc(rk_fb->ion_client, (size_t) fb_mem_size, 0,
 				   ION_HEAP(ION_VMALLOC_HEAP_ID), 0);
@@ -2464,14 +2526,18 @@ static int rk_fb_alloc_buffer_by_ion(struct fb_info *fbi,
 	fbi->screen_base = ion_map_kernel(rk_fb->ion_client, handle);
 #ifdef CONFIG_ROCKCHIP_IOMMU
 	if (dev_drv->iommu_enabled)
-		ion_map_iommu(dev_drv->dev, rk_fb->ion_client, handle,
-			      (unsigned long *)&phy_addr,
-			      (unsigned long *)&len);
+		ret = ion_map_iommu(dev_drv->dev, rk_fb->ion_client, handle,
+					(unsigned long *)&phy_addr,
+					(unsigned long *)&len);
 	else
-		ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
+		ret = ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
 #else
-	ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
+	ret = ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
 #endif
+	if (ret < 0) {
+		dev_err(fbi->dev, "ion map to get phy addr failed\n");
+		goto err_share_dma_buf;
+	}
 	fbi->fix.smem_start = phy_addr;
 	fbi->fix.smem_len = len;
 	printk(KERN_INFO "alloc_buffer:ion_phy_addr=0x%lx\n", phy_addr);
@@ -2835,13 +2901,14 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 		}
 #endif
 		main_fbi->fbops->fb_pan_display(&main_fbi->var, main_fbi);
-} else {
-	struct fb_info *ext_fbi = rk_fb->fb[dev_drv->fb_index_base];
-	ext_fbi->fbops->fb_open(ext_fbi, 1);
-	ext_fbi->var.activate |= FB_ACTIVATE_FORCE;
-	ext_fbi->fbops->fb_set_par(ext_fbi);
-	ext_fbi->fbops->fb_pan_display(&ext_fbi->var, ext_fbi);
-}
+	} else {
+#if !defined(CONFIG_ROCKCHIP_IOMMU)
+		struct fb_info *extend_fbi = rk_fb->fb[rk_fb->num_fb >> 1];
+		int extend_fb_id = get_extend_fb_id(extend_fbi);
+
+		rk_fb_alloc_buffer(extend_fbi, extend_fb_id);
+#endif
+	}
 #endif
 	return 0;
 

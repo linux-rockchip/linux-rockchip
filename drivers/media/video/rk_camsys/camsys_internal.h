@@ -48,8 +48,7 @@
 #include <linux/of_gpio.h>
 #include <linux/rockchip/cpu.h>
 #include <media/camsys_head.h>
-#include <linux/rockchip/sysmmu.h>
-#include <linux/rockchip/iovmm.h>
+#include <linux/rockchip-iovmm.h>
 
 
 
@@ -93,8 +92,11 @@
          1) raise qos of isp up to the same as lcdc. 
 *v0.0x12.0:
          1) support iommu. 
+*v0.0x13.0:
+         1) camsys_extdev_register return failed when this dev_id has been registered;
+         2) add support JPG irq connect;
 */
-#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0,0x12,0)
+#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0,0x13,0)
 
 
 #define CAMSYS_PLATFORM_DRV_NAME                "RockChip-CamSys"

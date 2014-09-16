@@ -40,6 +40,7 @@
 
 #ifdef CONFIG_OF
 #include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <video/of_display_timing.h>
 #include <video/display_timing.h>
@@ -48,8 +49,7 @@
 
 #if defined(CONFIG_ION_ROCKCHIP)
 #include <linux/rockchip_ion.h>
-#include <linux/rockchip/iovmm.h>
-#include <linux/rockchip/sysmmu.h>
+#include <linux/rockchip-iovmm.h>
 #include <linux/dma-buf.h>
 #include <linux/highmem.h>
 #endif
@@ -347,6 +347,8 @@ int rk_fb_video_mode_from_timing(const struct display_timing *dt,
 	screen->type = dt->screen_type;
 	screen->lvds_format = dt->lvds_format;
 	screen->face = dt->face;
+	screen->color_mode = dt->color_mode;
+	screen->dsp_lut = dt->dsp_lut;
 
 	if (dt->flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
 		screen->pin_dclk = 1;
@@ -378,7 +380,7 @@ int rk_fb_prase_timing_dt(struct device_node *np, struct rk_screen *screen)
 		pr_err("parse display timing err\n");
 		return -EINVAL;
 	}
-	dt = display_timings_get(disp_timing, 0);
+	dt = display_timings_get(disp_timing, disp_timing->native_mode);
 	rk_fb_video_mode_from_timing(dt, screen);
 	return 0;
 
@@ -464,14 +466,23 @@ char *get_format_string(enum data_format format, char *fmt)
  */
 struct rk_lcdc_driver *rk_get_lcdc_drv(char *name)
 {
-	struct rk_fb *inf = platform_get_drvdata(fb_pdev);
+	struct rk_fb *inf = NULL;
+	struct rk_lcdc_driver *dev_drv = NULL;
 	int i = 0;
-	for (i = 0; i < inf->num_lcdc; i++) {
-		if (!strcmp(inf->lcdc_dev_drv[i]->name, name))
-			break;
-	}
-	return inf->lcdc_dev_drv[i];
 
+        if (likely(fb_pdev))
+                inf = platform_get_drvdata(fb_pdev);
+        else
+                return NULL;
+
+	for (i = 0; i < inf->num_lcdc; i++) {
+		if (!strcmp(inf->lcdc_dev_drv[i]->name, name)) {
+			dev_drv = inf->lcdc_dev_drv[i];
+			break;
+		}
+	}
+
+	return dev_drv;
 }
 
 static struct rk_lcdc_driver *rk_get_prmry_lcdc_drv(void)
@@ -525,7 +536,10 @@ u32 rk_fb_get_prmry_screen_ft(void)
 
 	ft_us = dev_drv->frame_time.framedone_t - dev_drv->frame_time.last_framedone_t;
 	do_div(ft_us, 1000);
-	dev_drv->frame_time.ft = min(dev_drv->frame_time.ft, (u32)ft_us);
+	ft_us = min(dev_drv->frame_time.ft, (u32)ft_us);
+	if (ft_us != 0)
+		dev_drv->frame_time.ft = ft_us;
+
 	return dev_drv->frame_time.ft;
 }
 
@@ -563,10 +577,46 @@ u64 rk_fb_get_prmry_screen_framedone_t(void)
 {
 	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
 
-	return dev_drv->frame_time.framedone_t;
+	if (unlikely(!dev_drv))
+		return 0;
+	else
+		return dev_drv->frame_time.framedone_t;
 }
 
-#if 0
+/*
+ * set prmry screen status
+ */
+int rk_fb_set_prmry_screen_status(int status)
+{
+	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
+	struct rk_screen *screen;
+
+	if (unlikely(!dev_drv))
+		return 0;
+
+	screen = dev_drv->cur_screen;
+	switch (status) {
+	case SCREEN_PREPARE_DDR_CHANGE:
+		if (screen->type == SCREEN_MIPI
+			|| screen->type == SCREEN_DUAL_MIPI) {
+			if (dev_drv->trsm_ops->dsp_pwr_off)
+				dev_drv->trsm_ops->dsp_pwr_off();
+		}
+		break;
+	case SCREEN_UNPREPARE_DDR_CHANGE:
+		if (screen->type == SCREEN_MIPI
+			|| screen->type == SCREEN_DUAL_MIPI) {
+			if (dev_drv->trsm_ops->dsp_pwr_on)
+				dev_drv->trsm_ops->dsp_pwr_on();
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static struct rk_lcdc_driver *rk_get_extend_lcdc_drv(void)
 {
 	struct rk_fb *inf = NULL;
@@ -587,24 +637,29 @@ static struct rk_lcdc_driver *rk_get_extend_lcdc_drv(void)
 
 	return dev_drv;
 }
-#endif
 
 u32 rk_fb_get_prmry_screen_pixclock(void)
 {
 	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
-	return dev_drv->pixclock;
+
+	if (unlikely(!dev_drv))
+		return 0;
+	else
+		return dev_drv->pixclock;
 }
 
 int rk_fb_poll_prmry_screen_vblank(void)
 {
 	struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
+
 	if (likely(dev_drv)) {
 		if (dev_drv->ops->poll_vblank)
 			return dev_drv->ops->poll_vblank(dev_drv);
 		else
 			return RK_LF_STATUS_NC;
-	} else
+	} else {
 		return RK_LF_STATUS_NC;
+	}
 }
 
 bool rk_fb_poll_wait_frame_complete(void)
@@ -636,12 +691,53 @@ bool rk_fb_poll_wait_frame_complete(void)
 	return true;
 }
 
+
+/* rk_fb_get_sysmmu_device_by_compatible()
+ * @compt: dts device compatible name
+ * return value: success: pointer to the device inside of platform device
+ *               fail: NULL
+ */
+struct device *rk_fb_get_sysmmu_device_by_compatible(const char *compt)
+{
+        struct device_node *dn = NULL;
+        struct platform_device *pd = NULL;
+        struct device *ret = NULL ;
+
+        dn = of_find_compatible_node(NULL, NULL, compt);
+        if (!dn) {
+                printk("can't find device node %s \r\n", compt);
+                return NULL;
+	}
+
+        pd = of_find_device_by_node(dn);
+        if (!pd) {
+                printk("can't find platform device in device node %s \r\n", compt);
+                return  NULL;
+        }
+        ret = &pd->dev;
+
+        return ret;
+}
+
+#ifdef CONFIG_IOMMU_API
+void rk_fb_platform_set_sysmmu(struct device *sysmmu, struct device *dev)
+{
+        dev->archdata.iommu = sysmmu;
+}
+#else
+void rk_fb_platform_set_sysmmu(struct device *sysmmu, struct device *dev)
+{
+
+}
+#endif
+
 static int rk_fb_open(struct fb_info *info, int user)
 {
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
 	int win_id;
 
 	win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
+	dev_drv->win[win_id]->logicalstate++;
 	/* if this win aready opened ,no need to reopen */
 	if (dev_drv->win[win_id]->state)
 		return 0;
@@ -655,6 +751,7 @@ static int get_extend_fb_id(struct fb_info *info)
 	int fb_id = 0;
 	char *id = info->fix.id;
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
+
 	if (!strcmp(id, "fb0"))
 		fb_id = 0;
 	else if (!strcmp(id, "fb1"))
@@ -669,39 +766,42 @@ static int rk_fb_close(struct fb_info *info, int user)
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
 	struct rk_lcdc_win *win = NULL;
 	int win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
+
 	if (win_id >= 0) {
-		win = dev_drv->win[win_id];
-		info->fix.smem_start = win->reserved;
-
-		info->var.xres = dev_drv->screen0->mode.xres;
-		info->var.yres = dev_drv->screen0->mode.yres;
-		info->var.grayscale |=
-		    (info->var.xres << 8) + (info->var.yres << 20);
-		info->var.xres_virtual = info->var.xres;
-		info->var.yres_virtual = info->var.yres;
+		dev_drv->win[win_id]->logicalstate--;
+		if (!dev_drv->win[win_id]->logicalstate) {
+			win = dev_drv->win[win_id];
+			info->fix.smem_start = win->reserved;
+			info->var.xres = dev_drv->screen0->mode.xres;
+			info->var.yres = dev_drv->screen0->mode.yres;
+			/*
+			info->var.grayscale |=
+			    (info->var.xres << 8) + (info->var.yres << 20);
+			*/
+			info->var.xres_virtual = info->var.xres;
+			info->var.yres_virtual = info->var.yres;
 #if defined(CONFIG_LOGO_LINUX_BMP)
-		info->var.bits_per_pixel = 32;
+			info->var.bits_per_pixel = 32;
 #else
-		info->var.bits_per_pixel = 16;
+			info->var.bits_per_pixel = 16;
 #endif
-
-		info->fix.line_length =
-		    (info->var.xres_virtual) * (info->var.bits_per_pixel >> 3);
-		info->var.width = dev_drv->screen0->width;
-		info->var.height = dev_drv->screen0->height;
-		info->var.pixclock = dev_drv->pixclock;
-		info->var.left_margin = dev_drv->screen0->mode.left_margin;
-		info->var.right_margin = dev_drv->screen0->mode.right_margin;
-		info->var.upper_margin = dev_drv->screen0->mode.upper_margin;
-		info->var.lower_margin = dev_drv->screen0->mode.lower_margin;
-		info->var.vsync_len = dev_drv->screen0->mode.vsync_len;
-		info->var.hsync_len = dev_drv->screen0->mode.hsync_len;
+			info->fix.line_length =
+			    (info->var.xres_virtual) * (info->var.bits_per_pixel >> 3);
+			info->var.width = dev_drv->screen0->width;
+			info->var.height = dev_drv->screen0->height;
+			info->var.pixclock = dev_drv->pixclock;
+			info->var.left_margin = dev_drv->screen0->mode.left_margin;
+			info->var.right_margin = dev_drv->screen0->mode.right_margin;
+			info->var.upper_margin = dev_drv->screen0->mode.upper_margin;
+			info->var.lower_margin = dev_drv->screen0->mode.lower_margin;
+			info->var.vsync_len = dev_drv->screen0->mode.vsync_len;
+			info->var.hsync_len = dev_drv->screen0->mode.hsync_len;
+		}
 	}
 
 	return 0;
 }
 
-#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
 
 #if defined(CONFIG_RK29_IPP)
 static int get_ipp_format(int fmt)
@@ -763,7 +863,6 @@ static void ipp_win_check(int *dst_w, int *dst_h, int *dst_vir_w,
 				*dst_vir_w = *dst_w;
 		}
 	} else {
-
 		if ((*dst_w & align64) != 0)
 			*dst_w = (*dst_w + align64) & (~align64);
 		if ((fmt > IPP_RGB_565) && ((*dst_h & 1) == 1))
@@ -771,7 +870,6 @@ static void ipp_win_check(int *dst_w, int *dst_h, int *dst_vir_w,
 		if (*dst_vir_w < *dst_w)
 			*dst_vir_w = *dst_w;
 	}
-
 }
 
 static void fb_copy_by_ipp(struct fb_info *dst_info,
@@ -782,29 +880,29 @@ static void fb_copy_by_ipp(struct fb_info *dst_info,
 	int dst_w, dst_h, dst_vir_w;
 	int ipp_fmt;
 	u8 data_format = (dst_info->var.nonstd) & 0xff;
+	struct rk_lcdc_driver *ext_dev_drv =
+			(struct rk_lcdc_driver *)dst_info->par;
+	u16 orientation = ext_dev_drv->rotate_mode;
 
 	memset(&ipp_req, 0, sizeof(struct rk29_ipp_req));
-#if defined(CONFIG_FB_ROTATE)
-	int orientation = 270 - CONFIG_ROTATE_ORIENTATION;
+
 	switch (orientation) {
 	case 0:
 		rotation = IPP_ROT_0;
 		break;
-	case 90:
+	case ROTATE_90:
 		rotation = IPP_ROT_90;
 		break;
-	case 180:
+	case ROTATE_180:
 		rotation = IPP_ROT_180;
 		break;
-	case 270:
+	case ROTATE_270:
 		rotation = IPP_ROT_270;
 		break;
 	default:
 		rotation = IPP_ROT_270;
 		break;
-
 	}
-#endif
 
 	dst_w = dst_info->var.xres;
 	dst_h = dst_info->var.yres;
@@ -826,7 +924,6 @@ static void fb_copy_by_ipp(struct fb_info *dst_info,
 	ipp_req.timeout = 100;
 	ipp_req.flag = rotation;
 	ipp_blit_sync(&ipp_req);
-
 }
 
 #endif
@@ -897,23 +994,18 @@ static void rga_win_check(struct rk_lcdc_win *dst_win,
 }
 
 static void win_copy_by_rga(struct rk_lcdc_win *dst_win,
-			    struct rk_lcdc_win *src_win)
+			    struct rk_lcdc_win *src_win,
+			    u16 orientation, int iommu_en)
 {
-	struct rk_fb *rk_fb = platform_get_drvdata(fb_pdev);
 	struct rga_req Rga_Request;
 	long ret = 0;
 	/* int fd = 0; */
-#if defined(CONFIG_FB_ROTATE)
-	int orientation = 0;
-#endif
 
 	memset(&Rga_Request, 0, sizeof(Rga_Request));
 	rga_win_check(dst_win, src_win);
 
-#if defined(CONFIG_FB_ROTATE)
-	orientation = 270 - CONFIG_ROTATE_ORIENTATION;
 	switch (orientation) {
-	case 90:
+	case ROTATE_90:
 		Rga_Request.rotate_mode = 1;
 		Rga_Request.sina = 65536;
 		Rga_Request.cosa = 0;
@@ -922,7 +1014,7 @@ static void win_copy_by_rga(struct rk_lcdc_win *dst_win,
 		Rga_Request.dst.x_offset = dst_win->area[0].xact - 1;
 		Rga_Request.dst.y_offset = 0;
 		break;
-	case 180:
+	case ROTATE_180:
 		Rga_Request.rotate_mode = 1;
 		Rga_Request.sina = 0;
 		Rga_Request.cosa = -65536;
@@ -931,13 +1023,13 @@ static void win_copy_by_rga(struct rk_lcdc_win *dst_win,
 		Rga_Request.dst.x_offset = dst_win->area[0].xact - 1;
 		Rga_Request.dst.y_offset = dst_win->area[0].yact - 1;
 		break;
-	case 270:
+	case ROTATE_270:
 		Rga_Request.rotate_mode = 1;
 		Rga_Request.sina = -65536;
 		Rga_Request.cosa = 0;
 		Rga_Request.dst.act_w = dst_win->area[0].yact;
 		Rga_Request.dst.act_h = dst_win->area[0].xact;
-		Rga_Request.dst.x_offset = dst_win->area[0].xact - 1;
+		Rga_Request.dst.x_offset = 0;
 		Rga_Request.dst.y_offset = dst_win->area[0].yact - 1;
 		break;
 	default:
@@ -948,21 +1040,7 @@ static void win_copy_by_rga(struct rk_lcdc_win *dst_win,
 		Rga_Request.dst.y_offset = dst_win->area[0].yact - 1;
 		break;
 	}
-#endif
 
-#if defined(CONFIG_ROCKCHIP_RGA)
-	Rga_Request.src.yrgb_addr =
-	    src_win->area[0].smem_start + src_win->area[0].y_offset;
-	Rga_Request.src.uv_addr = 0;
-	Rga_Request.src.v_addr = 0;
-
-	dst_win->area[0].smem_start =
-	    rk_fb->fb[rk_fb->num_fb >> 1]->fix.smem_start;
-	Rga_Request.dst.yrgb_addr =
-	    dst_win->area[0].smem_start + dst_win->area[0].y_offset;
-	Rga_Request.dst.uv_addr = 0;
-	Rga_Request.dst.v_addr = 0;
-#elif defined(CONFIG_ROCKCHIP_RGA2)
 /*
 	fd = ion_share_dma_buf_fd(rk_fb->ion_client, src_win->area[0].ion_hdl);
 	Rga_Request.src.yrgb_addr = fd;
@@ -974,13 +1052,10 @@ static void win_copy_by_rga(struct rk_lcdc_win *dst_win,
 	    src_win->area[0].smem_start + src_win->area[0].y_offset;
 	Rga_Request.src.v_addr = 0;
 
-	dst_win->area[0].smem_start =
-	    rk_fb->fb[rk_fb->num_fb >> 1]->fix.smem_start;
 	Rga_Request.dst.yrgb_addr = 0;
 	Rga_Request.dst.uv_addr =
 	    dst_win->area[0].smem_start + dst_win->area[0].y_offset;
 	Rga_Request.dst.v_addr = 0;
-#endif
 
 	Rga_Request.src.vir_w = src_win->area[0].xvir;
 	Rga_Request.src.vir_h = src_win->area[0].yvir;
@@ -1000,8 +1075,13 @@ static void win_copy_by_rga(struct rk_lcdc_win *dst_win,
 	Rga_Request.clip.ymax = dst_win->area[0].yact - 1;
 	Rga_Request.scale_mode = 0;
 #if defined(CONFIG_ROCKCHIP_IOMMU)
-	Rga_Request.mmu_info.mmu_en = 1;	/* TODO Modify for use mmu */
-	Rga_Request.mmu_info.mmu_flag = 1;
+	if (iommu_en) {
+		Rga_Request.mmu_info.mmu_en = 1;
+		Rga_Request.mmu_info.mmu_flag = 1;
+	} else {
+		Rga_Request.mmu_info.mmu_en = 0;
+		Rga_Request.mmu_info.mmu_flag = 0;
+	}
 #else
 	Rga_Request.mmu_info.mmu_en = 0;
 	Rga_Request.mmu_info.mmu_flag = 0;
@@ -1031,7 +1111,8 @@ static void fb_copy_by_rga(struct fb_info *dst_info, struct fb_info *src_info,
 	    ext_dev_drv->ops->fb_get_win_id(ext_dev_drv, dst_info->fix.id);
 	dst_win = ext_dev_drv->win[ext_win_id];
 
-	win_copy_by_rga(dst_win, src_win);
+	win_copy_by_rga(dst_win, src_win, ext_dev_drv->rotate_mode,
+			ext_dev_drv->iommu_enabled);
 }
 
 #endif
@@ -1050,16 +1131,17 @@ static int rk_fb_rotate(struct fb_info *dst_info,
 }
 
 static int rk_fb_win_rotate(struct rk_lcdc_win *dst_win,
-			    struct rk_lcdc_win *src_win)
+			    struct rk_lcdc_win *src_win,
+			    u16 rotate, int iommu_en)
 {
 #if defined(CONFIG_ROCKCHIP_RGA) || defined(CONFIG_ROCKCHIP_RGA2)
-	win_copy_by_rga(dst_win, src_win);
+	win_copy_by_rga(dst_win, src_win, rotate, iommu_en);
 #else
 	return -1;
 #endif
 	return 0;
 }
-#endif
+
 
 static int rk_fb_pan_display(struct fb_var_screeninfo *var,
 			     struct fb_info *info)
@@ -1202,12 +1284,15 @@ static int rk_fb_pan_display(struct fb_var_screeninfo *var,
 	if (rk_fb->disp_mode == DUAL) {
 		if (extend_win->state && (hdmi_switch_complete)) {
 			extend_win->area[0].y_offset = win->area[0].y_offset;
-#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
-			rk_fb_rotate(extend_info, info, win->area[0].y_offset);
-#else
-			extend_win->area[0].smem_start = win->area[0].smem_start;
-			extend_win->area[0].cbr_start = win->area[0].cbr_start;
-#endif
+			if (extend_dev_drv->rotate_mode > X_Y_MIRROR) {
+				rk_fb_rotate(extend_info, info,
+						win->area[0].y_offset);
+			} else {
+				extend_win->area[0].smem_start =
+						win->area[0].smem_start;
+				extend_win->area[0].cbr_start =
+						win->area[0].cbr_start;
+			}
 			extend_dev_drv->ops->pan_display(extend_dev_drv,
 							 extend_win_id);
 		}
@@ -1223,10 +1308,10 @@ static int rk_fb_pan_display(struct fb_var_screeninfo *var,
 static int rk_fb_get_list_stat(struct rk_lcdc_driver *dev_drv)
 {
 	int i, j;
+
 	i = list_empty(&dev_drv->update_regs_list);
 	j = list_empty(&saved_list);
 	return i == j ? 0 : 1;
-
 }
 
 void rk_fd_fence_wait(struct rk_lcdc_driver *dev_drv, struct sync_fence *fence)
@@ -1275,7 +1360,7 @@ u32 freed_index;
 char buf[PAGE_SIZE];
 
 int rk_fb_sysmmu_fault_handler(struct device *dev,
-			       enum rk_sysmmu_inttype itype,
+			       enum rk_iommu_inttype itype,
 			       unsigned long pgtable_base,
 			       unsigned long fault_addr, unsigned int status)
 {
@@ -1339,14 +1424,22 @@ void rk_fb_free_dma_buf(struct rk_lcdc_driver *dev_drv,
 	memset(reg_win_data, 0, sizeof(struct rk_fb_reg_win_data));
 }
 
-static void rk_fb_update_driver(struct rk_lcdc_win *win,
+static void rk_fb_update_driver(struct rk_lcdc_driver *dev_drv,
+                                struct rk_lcdc_win *win,
 				struct rk_fb_reg_win_data *reg_win_data)
 {
 	int i = 0;
-/*
-	struct rk_lcdc_win *win;
-	win = dev_drv->win[reg_win_data->win_id];
-*/
+        struct rk_fb *inf = platform_get_drvdata(fb_pdev);
+        struct rk_screen *cur_screen;
+        struct rk_screen primary_screen;
+
+        if (unlikely(!inf) || unlikely(!dev_drv) ||
+            unlikely(!win) || unlikely(!reg_win_data))
+                return;
+
+        cur_screen = dev_drv->cur_screen;
+        rk_fb_get_prmry_screen(&primary_screen);
+
 	win->area_num = reg_win_data->area_num;
 	win->format = reg_win_data->data_format;
 	win->id = reg_win_data->win_id;
@@ -1360,30 +1453,43 @@ static void rk_fb_update_driver(struct rk_lcdc_win *win,
 		win->z_order = reg_win_data->z_order;
 		win->area[0].uv_vir_stride =
 		    reg_win_data->reg_area_data[0].uv_vir_stride;
-
-#if !defined(RK_FB_ROTATE) && defined(CONFIG_THREE_FB_BUFFER)
-		/* TODO Mofidy if HDMI info is change to hwc */
 		win->area[0].cbr_start =
 		    reg_win_data->reg_area_data[0].cbr_start;
-#endif
 		win->area[0].c_offset = reg_win_data->reg_area_data[0].c_offset;
 		win->alpha_en = reg_win_data->alpha_en;
 		win->alpha_mode = reg_win_data->alpha_mode;
 		win->g_alpha_val = reg_win_data->g_alpha_val;
 		for (i = 0; i < RK_WIN_MAX_AREA; i++) {
 			if (reg_win_data->reg_area_data[i].smem_start > 0) {
-#if !defined(RK_FB_ROTATE) && defined(CONFIG_THREE_FB_BUFFER)
 				win->area[i].smem_start =
 				    reg_win_data->reg_area_data[i].smem_start;
-#endif
-				win->area[i].xpos =
-				    reg_win_data->reg_area_data[i].xpos;
-				win->area[i].ypos =
-				    reg_win_data->reg_area_data[i].ypos;
-				win->area[i].xsize =
-				    reg_win_data->reg_area_data[i].xsize;
-				win->area[i].ysize =
-				    reg_win_data->reg_area_data[i].ysize;
+                                if (inf->disp_mode == DUAL) {
+				        win->area[i].xpos =
+				                reg_win_data->reg_area_data[i].xpos;
+				        win->area[i].ypos =
+				                reg_win_data->reg_area_data[i].ypos;
+				        win->area[i].xsize =
+				                reg_win_data->reg_area_data[i].xsize;
+				        win->area[i].ysize =
+				                reg_win_data->reg_area_data[i].ysize;
+                                } else {
+                                        win->area[i].xpos =
+                                                reg_win_data->reg_area_data[i].xpos *
+                                                cur_screen->mode.xres /
+                                                primary_screen.mode.xres;
+	                                win->area[i].ypos =
+                                                reg_win_data->reg_area_data[i].ypos *
+                                                cur_screen->mode.yres /
+                                                primary_screen.mode.yres;
+	                                win->area[i].xsize =
+                                                reg_win_data->reg_area_data[i].xsize *
+                                                cur_screen->mode.xres /
+                                                primary_screen.mode.xres;
+	                                win->area[i].ysize =
+                                                reg_win_data->reg_area_data[i].ysize *
+                                                cur_screen->mode.yres /
+                                                primary_screen.mode.yres;
+                                }
 				win->area[i].xact =
 				    reg_win_data->reg_area_data[i].xact;
 				win->area[i].yact =
@@ -1407,7 +1513,189 @@ static void rk_fb_update_driver(struct rk_lcdc_win *win,
 		win->z_order = -1;
 	*/
 	}
+}
 
+static int rk_fb_update_hdmi_win(struct rk_lcdc_win *ext_win,
+                                 struct rk_lcdc_win *win)
+{
+        struct rk_fb *rk_fb = platform_get_drvdata(fb_pdev);
+        struct rk_lcdc_driver *dev_drv = rk_get_prmry_lcdc_drv();
+        struct rk_lcdc_driver *ext_dev_drv = rk_get_extend_lcdc_drv();
+        struct rk_screen *screen;
+        struct rk_screen *ext_screen;
+        int hdmi_xsize;
+        int hdmi_ysize;
+        int pixel_width, vir_width_bit, y_stride;
+        struct rk_lcdc_win *last_win;
+        bool is_yuv = false;
+        static u8 fb_index = 0;
+
+        if ((rk_fb->disp_mode != DUAL) ||
+                (hdmi_get_hotplug() != HDMI_HPD_ACTIVED) ||
+                (!hdmi_switch_complete)) {
+                printk(KERN_INFO "%s: hdmi is disconnect!\n", __func__);
+                return -1;
+        }
+
+        if (unlikely(!dev_drv) || unlikely(!ext_dev_drv))
+                return -1;
+
+        screen = dev_drv->cur_screen;
+        ext_screen = ext_dev_drv->cur_screen;
+        hdmi_xsize = ext_screen->xsize;
+        hdmi_ysize = ext_screen->ysize;
+
+        ext_win->state = win->state;
+        ext_win->id = win->id;
+        if (win->area[0].smem_start == 0)
+                ext_win->state = 0;
+        if (ext_win->state == 0)
+                return 0;
+
+	ext_win->area_num = win->area_num;
+	ext_win->format = win->format;
+	ext_win->z_order = win->z_order;
+        ext_win->alpha_en = win->alpha_en;
+        ext_win->alpha_mode = win->alpha_mode;
+	ext_win->g_alpha_val = win->g_alpha_val;
+
+        /* win0 and win1 have only one area and support scale
+         * but win2 and win3 don't support scale
+         * so hdmi only use win0 or win1
+         */
+        ext_win->area[0].state = win->area[0].state;
+
+        switch (ext_win->format) {
+        case YUV422:
+        case YUV420:
+        case YUV444:
+        case YUV422_A:
+        case YUV420_A:
+        case YUV444_A:
+                is_yuv = true;
+                break;
+        default:
+                is_yuv = false;
+                break;
+        }
+
+        if (ext_dev_drv->rotate_mode == ROTATE_90 ||
+                        ext_dev_drv->rotate_mode == ROTATE_270) {
+                if (ext_win->id == 0) {
+                        ext_win->area[0].smem_start =
+	                        rk_fb->fb[rk_fb->num_fb >> 1]->fix.smem_start;
+                        ext_win->area[0].y_offset = (get_rotate_fb_size() >> 1) * fb_index;
+                        if ((++fb_index) > 1)
+                                fb_index = 0;
+                } else {
+                        ext_win->area[0].y_offset = 0;
+                        last_win = ext_dev_drv->win[ext_win->id - 1];
+                        if (last_win->area[0].cbr_start)
+                                ext_win->area[0].smem_start =
+                                        last_win->area[0].cbr_start +
+                                        last_win->area[0].c_offset +
+                                        last_win->area[0].xvir * last_win->area[0].yvir;
+                        else
+                                ext_win->area[0].smem_start =
+                                        last_win->area[0].smem_start +
+                                        last_win->area[0].y_offset +
+                                        last_win->area[0].xvir * last_win->area[0].yvir;
+                }
+
+                ext_win->area[0].xact = win->area[0].yact;
+                ext_win->area[0].yact = win->area[0].xact;
+                ext_win->area[0].xvir = win->area[0].yact;
+                ext_win->area[0].yvir = win->area[0].xact;
+                pixel_width = rk_fb_pixel_width(ext_win->format);
+                vir_width_bit = pixel_width * ext_win->area[0].xvir;
+                y_stride = ALIGN_N_TIMES(vir_width_bit, 32) / 8;
+                ext_win->area[0].y_vir_stride = y_stride >> 2;
+	} else {
+	        ext_win->area[0].smem_start = win->area[0].smem_start;
+                ext_win->area[0].y_offset = win->area[0].y_offset;
+                ext_win->area[0].xact = win->area[0].xact;
+                ext_win->area[0].yact = win->area[0].yact;
+                ext_win->area[0].xvir = win->area[0].xvir;
+                ext_win->area[0].yvir = win->area[0].yvir;
+                ext_win->area[0].y_vir_stride = win->area[0].y_vir_stride;
+        }
+
+        if (win->area[0].xpos != 0 || win->area[0].ypos != 0) {
+                if (ext_dev_drv->rotate_mode == ROTATE_270) {
+                        int xbom_pos = 0, ybom_pos = 0;
+                        int xtop_pos = 0, ytop_pos = 0;
+
+                        ext_win->area[0].xsize = hdmi_xsize *
+                                                win->area[0].ysize /
+                                                screen->mode.yres;
+                        ext_win->area[0].ysize = hdmi_ysize *
+                                                win->area[0].xsize /
+                                                screen->mode.xres;
+                        xbom_pos = hdmi_xsize * win->area[0].ypos / screen->mode.yres;
+                        ybom_pos = hdmi_ysize * win->area[0].xpos / screen->mode.xres;
+                        xtop_pos = hdmi_xsize - ext_win->area[0].xsize - xbom_pos;
+                        ytop_pos = hdmi_ysize - ext_win->area[0].ysize - ybom_pos;
+                        ext_win->area[0].xpos =
+                                ((ext_screen->mode.xres - hdmi_xsize) >> 1) + xtop_pos;
+                        ext_win->area[0].ypos =
+                                ((ext_screen->mode.yres - hdmi_ysize) >> 1) + ytop_pos;
+                } else if (ext_dev_drv->rotate_mode == ROTATE_90) {
+                        ext_win->area[0].xsize = hdmi_xsize *
+                                                win->area[0].ysize /
+                                                screen->mode.yres;
+                        ext_win->area[0].ysize = hdmi_ysize *
+                                                win->area[0].xsize /
+                                                screen->mode.xres;
+                        ext_win->area[0].xpos =
+                                ((ext_screen->mode.xres - hdmi_xsize) >> 1) +
+                                hdmi_xsize * win->area[0].ypos / screen->mode.yres;
+                        ext_win->area[0].ypos =
+                                ((ext_screen->mode.yres - hdmi_ysize) >> 1) +
+                                hdmi_ysize * win->area[0].xpos / screen->mode.xres;
+                } else {
+                        ext_win->area[0].xsize = hdmi_xsize *
+                                                win->area[0].xsize /
+                                                screen->mode.xres;
+                        ext_win->area[0].ysize = hdmi_ysize *
+                                                win->area[0].ysize /
+                                                screen->mode.yres;
+                        ext_win->area[0].xpos =
+                                ((ext_screen->mode.xres - hdmi_xsize) >> 1) +
+                                hdmi_xsize * win->area[0].xpos / screen->mode.xres;
+                        ext_win->area[0].ypos =
+                                ((ext_screen->mode.yres - hdmi_ysize) >> 1) +
+                                hdmi_ysize * win->area[0].ypos / screen->mode.yres;
+                }
+        } else {
+                ext_win->area[0].xsize = hdmi_xsize;
+                ext_win->area[0].ysize = hdmi_ysize;
+                ext_win->area[0].xpos =
+                                (ext_screen->mode.xres - hdmi_xsize) >> 1;
+                ext_win->area[0].ypos =
+                                (ext_screen->mode.yres - hdmi_ysize) >> 1;
+        }
+
+        if (!is_yuv) {
+                ext_win->area[0].uv_vir_stride = 0;
+	        ext_win->area[0].cbr_start = 0;
+	        ext_win->area[0].c_offset = 0;
+                return 0;
+        }
+
+        if (ext_dev_drv->rotate_mode == ROTATE_90 ||
+                ext_dev_drv->rotate_mode == ROTATE_270) {
+                ext_win->area[0].uv_vir_stride = ext_win->area[0].y_vir_stride;
+                ext_win->area[0].cbr_start = ext_win->area[0].smem_start +
+                                ext_win->area[0].y_offset +
+                                ext_win->area[0].xvir * ext_win->area[0].yvir;
+	        ext_win->area[0].c_offset = win->area[0].c_offset;
+        } else {
+	        ext_win->area[0].uv_vir_stride = win->area[0].uv_vir_stride;
+	        ext_win->area[0].cbr_start = win->area[0].cbr_start;
+	        ext_win->area[0].c_offset = win->area[0].c_offset;
+        }
+
+        return 0;
 }
 
 static struct rk_fb_reg_win_data *rk_fb_get_win_data(struct rk_fb_reg_data
@@ -1455,7 +1743,7 @@ static void rk_fb_update_reg(struct rk_lcdc_driver *dev_drv,
 		win = dev_drv->win[i];
 		win_data = rk_fb_get_win_data(regs, i);
 		if (win_data) {
-			rk_fb_update_driver(win, win_data);
+			rk_fb_update_driver(dev_drv, win, win_data);
 			win->state = 1;
 			dev_drv->ops->set_par(dev_drv, i);
 			dev_drv->ops->pan_display(dev_drv, i);
@@ -1475,70 +1763,34 @@ static void rk_fb_update_reg(struct rk_lcdc_driver *dev_drv,
 	if ((rk_fb->disp_mode == DUAL)
 	    && (hdmi_get_hotplug() == HDMI_HPD_ACTIVED)
 	    && hdmi_switch_complete) {
-		for (i = 0; i < rk_fb->num_lcdc; i++) {
-			if (rk_fb->lcdc_dev_drv[i]->prop == EXTEND) {
-				ext_dev_drv = rk_fb->lcdc_dev_drv[i];
-				break;
-			}
-		}
-		if (i == rk_fb->num_lcdc) {
-			printk(KERN_ERR "hdmi lcdc driver not found!\n");
-			goto ext_win_exit;
-		}
-		/* hdmi just need set win0 only(win0 have only one area)
-		 * other win is disable
-		 */
-		win = dev_drv->win[0];
-		ext_win = ext_dev_drv->win[0];
-		for (j = 0; j < regs->win_num; j++) {
-			if (0 == regs->reg_win_data[j].win_id)
-				break;
-		}
-		if (j < regs->win_num) {
-			rk_fb_update_driver(ext_win, &regs->reg_win_data[j]);
-			if (win->area[0].xpos != 0 || win->area[0].ypos != 0) {
-				ext_win->area[0].xsize =
-				    (ext_dev_drv->cur_screen->xsize * win->area[0].xsize) /
-				    dev_drv->cur_screen->mode.xres;
-				ext_win->area[0].ysize =
-				    (ext_dev_drv->cur_screen->ysize * win->area[0].ysize) /
-				    dev_drv->cur_screen->mode.yres;
-				ext_win->area[0].xpos =
-				    ((ext_dev_drv->cur_screen->mode.xres - ext_dev_drv->cur_screen->xsize) >> 1) +
-				    ext_dev_drv->cur_screen->xsize * win->area[0].xpos / dev_drv->cur_screen->mode.xres;
-				ext_win->area[0].ypos =
-				    ((ext_dev_drv->cur_screen->mode.yres - ext_dev_drv->cur_screen->ysize) >> 1) +
-				    ext_dev_drv->cur_screen->ysize * win->area[0].ypos / dev_drv->cur_screen->mode.yres;
-			} else {
-				ext_win->area[0].xpos =
-				    (ext_dev_drv->cur_screen->mode.xres - ext_dev_drv->cur_screen->xsize) >> 1;
-				ext_win->area[0].ypos =
-				    (ext_dev_drv->cur_screen->mode.yres - ext_dev_drv->cur_screen->ysize) >> 1;
-				ext_win->area[0].xsize = ext_dev_drv->cur_screen->xsize;
-				ext_win->area[0].ysize = ext_dev_drv->cur_screen->ysize;
-			}
-			/* hdmi only one win so disable alpha */
-			ext_win->alpha_en = 0;
-			ext_win->state = 1;
-		} else {
-			ext_win->state = 0;
-		}
+                ext_dev_drv = rk_get_extend_lcdc_drv();
+                if (!ext_dev_drv) {
+                        printk(KERN_ERR "hdmi lcdc driver not found!\n");
+                        goto ext_win_exit;
+                }
 
-		if (ext_win->area[0].xact < ext_win->area[0].yact) {
-			int pixel_width, vir_width_bit, stride;
-			ext_win->area[0].xact = win->area[0].yact;
-			ext_win->area[0].yact = win->area[0].xact;
-			ext_win->area[0].xvir = win->area[0].yact;
-			pixel_width = rk_fb_pixel_width(ext_win->format);
-			vir_width_bit = pixel_width * ext_win->area[0].xvir;
-			stride = ALIGN_N_TIMES(vir_width_bit, 32) / 8;
-			ext_win->area[0].y_vir_stride = stride >> 2;
-		}
-#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
-		rk_fb_win_rotate(ext_win, win);
-#endif
-		ext_dev_drv->ops->set_par(ext_dev_drv, 0);
-		ext_dev_drv->ops->pan_display(ext_dev_drv, 0);
+                /* win0 and win1 have only one area and support scale
+                 * but win2 and win3 don't support scale
+                 * so hdmi only use win0 or win1
+                 */
+		for (i = 0; i < 2; i++) {
+		        win = dev_drv->win[i];
+		        ext_win = ext_dev_drv->win[i];
+                        ext_win->state = win->state;
+                        if (!ext_win->state)
+                                continue;
+
+                        rk_fb_update_hdmi_win(ext_win, win);
+
+                        if (ext_dev_drv->rotate_mode > X_Y_MIRROR)
+			        rk_fb_win_rotate(ext_win, win,
+			                         ext_dev_drv->rotate_mode,
+						 ext_dev_drv->iommu_enabled);
+
+                        ext_dev_drv->ops->set_par(ext_dev_drv, i);
+		        ext_dev_drv->ops->pan_display(ext_dev_drv, i);
+                }
+
 		ext_dev_drv->ops->cfg_done(ext_dev_drv);
 	}
 ext_win_exit:
@@ -1592,7 +1844,6 @@ ext_win_exit:
 	}
 	g_last_win_num = regs->win_num;
 	g_first_buf = 0;
-
 }
 
 static void rk_fb_update_regs_handler(struct kthread_work *work)
@@ -1650,10 +1901,12 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 	struct fb_fix_screeninfo *fix = &info->fix;
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
 	struct rk_screen *screen = dev_drv->cur_screen;
+        struct rk_screen primary_screen;
 	struct fb_info *fbi = rk_fb->fb[0];
 	int i, ion_fd, acq_fence_fd;
 	u32 xvir, yvir;
 	u32 xoffset, yoffset;
+	int ret;
 
 	struct ion_handle *hdl;
 	size_t len;
@@ -1668,6 +1921,7 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 	u8 is_pic_yuv = 0;
 	u8 ppixel_a = 0, global_a = 0;
 	ion_phys_addr_t phy_addr;
+	int ret = 0;
 
 	reg_win_data->reg_area_data[0].smem_start = -1;
 	reg_win_data->area_num = 0;
@@ -1691,19 +1945,24 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 				reg_win_data->area_num++;
 				reg_win_data->reg_area_data[i].ion_handle = hdl;
 #ifndef CONFIG_ROCKCHIP_IOMMU
-				ion_phys(rk_fb->ion_client, hdl, &phy_addr,
-					 &len);
+				ret = ion_phys(rk_fb->ion_client, hdl, &phy_addr,
+						&len);
 #else
 				if (dev_drv->iommu_enabled)
-					ion_map_iommu(dev_drv->dev,
-						      rk_fb->ion_client,
-						      hdl,
-						      (unsigned long *)&phy_addr,
-						      (unsigned long *)&len);
+					ret = ion_map_iommu(dev_drv->dev,
+								rk_fb->ion_client,
+								hdl,
+								(unsigned long *)&phy_addr,
+								(unsigned long *)&len);
 				else
-					ion_phys(rk_fb->ion_client, hdl,
-						 &phy_addr, &len);
+					ret = ion_phys(rk_fb->ion_client, hdl,
+							&phy_addr, &len);
 #endif
+				if (ret < 0) {
+					dev_err(fbi->dev, "ion map to get phy addr failed\n");
+					ion_free(rk_fb->ion_client, hdl);
+					return -ENOMEM;
+				}
 				reg_win_data->reg_area_data[i].smem_start = phy_addr;
 				reg_win_data->area_buf_num++;
 				reg_win_data->reg_area_data[i].index_buf = 1;
@@ -1731,8 +1990,8 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 	reg_win_data->data_format = fb_data_fmt;
 	pixel_width = rk_fb_pixel_width(fb_data_fmt);
 
-	ppixel_a = ((fb_data_fmt == ARGB888)
-		    || (fb_data_fmt == ABGR888)) ? 1 : 0;
+	ppixel_a = ((fb_data_fmt == ARGB888) ||
+		    (fb_data_fmt == ABGR888)) ? 1 : 0;
 	global_a = (win_par->g_alpha_val == 0) ? 0 : 1;
 	reg_win_data->alpha_en = ppixel_a | global_a;
 	reg_win_data->g_alpha_val = win_par->g_alpha_val;
@@ -1744,8 +2003,10 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 		reg_win_data->z_order = -1;
 		reg_win_data->win_id = -1;
 	}
+
+        rk_fb_get_prmry_screen(&primary_screen);
 	for (i = 0; i < reg_win_data->area_num; i++) {
-		rk_fb_check_config_var(&win_par->area_par[i], screen);
+		rk_fb_check_config_var(&win_par->area_par[i], &primary_screen);
 		/* visiable pos in panel */
 		reg_win_data->reg_area_data[i].xpos = win_par->area_par[i].xpos;
 		reg_win_data->reg_area_data[i].ypos = win_par->area_par[i].ypos;
@@ -1801,7 +2062,6 @@ static int rk_fb_set_win_buffer(struct fb_info *info,
 				    xoffset * pixel_width / 8;
 			}
 		}
-
 	}
 	switch (fb_data_fmt) {
 	case YUV422:
@@ -1899,8 +2159,9 @@ static int rk_fb_set_win_config(struct fb_info *info,
 
 	for (i = 0; i < dev_drv->lcdc_win_num; i++) {
 		if (win_data->win_par[i].win_id < dev_drv->lcdc_win_num) {
-			rk_fb_set_win_buffer(info, &win_data->win_par[i],
-					     &regs->reg_win_data[j]);
+			if (rk_fb_set_win_buffer(info, &win_data->win_par[i],
+							&regs->reg_win_data[j]))
+				return -ENOMEM;
 			if (regs->reg_win_data[j].area_num > 0) {
 				regs->win_num++;
 				regs->buf_num +=
@@ -2059,7 +2320,10 @@ int rk_get_real_fps(int before)
 EXPORT_SYMBOL(rk_get_real_fps);
 
 #endif
-
+#ifdef CONFIG_ROCKCHIP_IOMMU
+#define ION_MAX 10
+static struct ion_handle *ion_hanle[ION_MAX];
+#endif
 static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		       unsigned long arg)
 {
@@ -2096,10 +2360,63 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	case RK_FBIOSET_YUV_ADDR:
 		{
 			u32 yuv_phy[2];
+
 			if (copy_from_user(yuv_phy, argp, 8))
 				return -EFAULT;
-			fix->smem_start = yuv_phy[0];
-			fix->mmio_start = yuv_phy[1];
+			#ifdef CONFIG_ROCKCHIP_IOMMU
+			if (!dev_drv->iommu_enabled || !strcmp(info->fix.id, "fb0")) {
+			#endif
+				fix->smem_start = yuv_phy[0];
+				fix->mmio_start = yuv_phy[1];
+			#ifdef CONFIG_ROCKCHIP_IOMMU
+			} else {
+				int usr_fd, offset, tmp;
+				struct ion_handle *hdl;
+				ion_phys_addr_t phy_addr;
+				size_t len;
+
+				usr_fd = yuv_phy[0];
+				offset = yuv_phy[1] - yuv_phy[0];
+
+				if (!usr_fd) {
+					fix->smem_start = 0;
+					fix->mmio_start = 0;
+					break;
+				}
+
+				if (ion_hanle[ION_MAX - 1] != 0) {
+					/*ion_unmap_kernel(rk_fb->ion_client, ion_hanle[ION_MAX - 1]);*/
+					/*ion_unmap_iommu(dev_drv->dev, rk_fb->ion_client, ion_hanle[ION_MAX - 1]);*/
+					ion_free(rk_fb->ion_client, ion_hanle[ION_MAX - 1]);
+					ion_hanle[ION_MAX - 1] = 0;
+				}
+
+				hdl = ion_import_dma_buf(rk_fb->ion_client, usr_fd);
+				if (IS_ERR(hdl)) {
+					dev_err(info->dev, "failed to get ion handle:%ld\n",
+						PTR_ERR(hdl));
+					return -EFAULT;
+				}
+
+				ret = ion_map_iommu(dev_drv->dev, rk_fb->ion_client, hdl,
+							(unsigned long *)&phy_addr,
+							(unsigned long *)&len);
+				if (ret < 0) {
+					dev_err(info->dev, "ion map to get phy addr failed");
+					ion_free(rk_fb->ion_client, hdl);
+					return -ENOMEM;
+				}
+				fix->smem_start = phy_addr;
+				fix->mmio_start = phy_addr + offset;
+				fix->smem_len = len;
+				/*info->screen_base = ion_map_kernel(rk_fb->ion_client, hdl);*/
+
+				ion_hanle[0] = hdl;
+				for (tmp = ION_MAX - 1; tmp > 0; tmp--)
+					ion_hanle[tmp] = ion_hanle[tmp - 1];
+				ion_hanle[0] = 0;
+			}
+			#endif
 			break;
 		}
 	case RK_FBIOSET_ENABLE:
@@ -2235,8 +2552,8 @@ static int rk_fb_blank(int blank_mode, struct fb_info *info)
 	if (win_id < 0)
 		return -ENODEV;
 #if defined(CONFIG_RK_HDMI)
-	if ((rk_fb->disp_mode == ONE_DUAL)
-	    && (hdmi_get_hotplug() == HDMI_HPD_ACTIVED)) {
+	if ((rk_fb->disp_mode == ONE_DUAL) &&
+	    (hdmi_get_hotplug() == HDMI_HPD_ACTIVED)) {
 		printk(KERN_INFO "hdmi is connect , not blank lcdc\n");
 	} else
 #endif
@@ -2248,7 +2565,6 @@ static int rk_fb_blank(int blank_mode, struct fb_info *info)
 
 static int rk_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
-
 	if ((0 == var->xres_virtual) || (0 == var->yres_virtual) ||
 	    (0 == var->xres) || (0 == var->yres) || (var->xres < 16) ||
 	    ((16 != var->bits_per_pixel) &&
@@ -2300,14 +2616,14 @@ static ssize_t rk_fb_read(struct fb_info *info, char __user *buf,
 		win = dev_drv->win[win_id];
 
 	/* only read the current frame buffer */
-	if (win->format == RGB565)
+	if (win->format == RGB565) {
 		total_size = win->area[0].y_vir_stride * win->area[0].yact << 1;
-	else if (win->format == YUV420) {
+	} else if (win->format == YUV420) {
 		total_size =
 		    (win->area[0].y_vir_stride * win->area[0].yact * 6);
-	} else
+	} else {
 		total_size = win->area[0].y_vir_stride * win->area[0].yact << 2;
-
+	}
 	if (p >= total_size)
 		return 0;
 
@@ -2321,7 +2637,7 @@ static ssize_t rk_fb_read(struct fb_info *info, char __user *buf,
 	if (!buffer)
 		return -ENOMEM;
 
-	src = (u8 __iomem *) (info->screen_base + p + win->area[0].y_offset);
+	src = (u8 __iomem *)(info->screen_base + p + win->area[0].y_offset);
 
 	while (count) {
 		c = (count > PAGE_SIZE) ? PAGE_SIZE : count;
@@ -2388,7 +2704,7 @@ static ssize_t rk_fb_write(struct fb_info *info, const char __user *buf,
 	if (!buffer)
 		return -ENOMEM;
 
-	dst = (u8 __iomem *) (info->screen_base + p + win->area[0].y_offset);
+	dst = (u8 __iomem *)(info->screen_base + p + win->area[0].y_offset);
 
 	while (count) {
 		c = (count > PAGE_SIZE) ? PAGE_SIZE : count;
@@ -2411,7 +2727,6 @@ static ssize_t rk_fb_write(struct fb_info *info, const char __user *buf,
 	kfree(buffer);
 
 	return (cnt) ? cnt : err;
-
 }
 
 static int rk_fb_set_par(struct fb_info *info)
@@ -2464,26 +2779,13 @@ static int rk_fb_set_par(struct fb_info *info)
 	if (var->grayscale >> 8) {
 		xsize = (var->grayscale >> 8) & 0xfff;
 		ysize = (var->grayscale >> 20) & 0xfff;
+		if (xsize > screen->mode.xres)
+			xsize = screen->mode.xres;
+		if (ysize > screen->mode.yres)
+			ysize = screen->mode.yres;
 	} else {		/*ohterwise  full  screen display */
 		xsize = screen->mode.xres;
 		ysize = screen->mode.yres;
-	}
-
-/*this is for device like rk2928 ,whic have one lcdc but two display outputs*/
-/*save winameter set by android*/
-	if (rk_fb->disp_mode != DUAL) {
-		if (screen->screen_id == 0) {
-
-			dev_drv->screen0->xsize = xsize;
-			dev_drv->screen0->ysize = ysize;
-			dev_drv->screen0->xpos = xpos;
-			dev_drv->screen0->ypos = ypos;
-		} else {
-			xsize = dev_drv->screen1->xsize;
-			ysize = dev_drv->screen1->ysize;
-			xpos = dev_drv->screen1->xpos;
-			ypos = dev_drv->screen1->ypos;
-		}
 	}
 
 	fb_data_fmt = rk_fb_data_fmt(data_format, var->bits_per_pixel);
@@ -2585,19 +2887,15 @@ static int rk_fb_set_par(struct fb_info *info)
 	win->area[0].ypos = ypos;
 	win->area[0].xsize = xsize;
 	win->area[0].ysize = ysize;
-
-	win->area[0].smem_start = fix->smem_start;
-	win->area[0].cbr_start = fix->smem_start + stride * yvir;	/* fix->mmio_start; */
 	win->area[0].xact = var->xres;	/* winx active window height,is a wint of vir */
 	win->area[0].yact = var->yres;
 	win->area[0].xvir = var->xres_virtual;	/* virtual resolution  stride --->LCDC_WINx_VIR */
 	win->area[0].yvir = var->yres_virtual;
-	win->area[0].state = 1;
+
 	win->area_num = 1;
-	win->state = 1;
 	win->alpha_mode = 4;	/* AB_SRC_OVER; */
-	win->alpha_en = ((win->format == ARGB888)
-			 || (win->format == ABGR888)) ? 1 : 0;
+	win->alpha_en = ((win->format == ARGB888) ||
+			 (win->format == ABGR888)) ? 1 : 0;
 	win->g_alpha_val = 0;
 
 	if (rk_fb->disp_mode == DUAL) {
@@ -2630,8 +2928,8 @@ static int rk_fb_set_par(struct fb_info *info)
 				    win->area[0].y_vir_stride;
 				extend_win->area[0].uv_vir_stride =
 				    win->area[0].uv_vir_stride;
-				if (win->area[0].xpos != 0
-				    || win->area[0].ypos != 0) {
+				if (win->area[0].xpos != 0 ||
+				    win->area[0].ypos != 0) {
 					extend_win->area[0].xsize =
 					    (extend_dev_drv->cur_screen->xsize * win->area[0].xsize) / screen->mode.xres;
 					extend_win->area[0].ysize =
@@ -2811,10 +3109,62 @@ void rk_direct_fb_show(struct fb_info *fbi)
 }
 EXPORT_SYMBOL(rk_direct_fb_show);
 
-static int set_xact_yact_for_hdmi(struct fb_var_screeninfo *pmy_var,
-				  struct fb_var_screeninfo *hdmi_var)
+int rk_fb_dpi_open(bool open)
 {
-	if (pmy_var->xres < pmy_var->yres) {	/* vertical  lcd screen */
+	struct rk_lcdc_driver *dev_drv = NULL;
+	dev_drv = rk_get_prmry_lcdc_drv();
+
+	if (dev_drv->ops->dpi_open)
+		dev_drv->ops->dpi_open(dev_drv, open);
+	return 0;
+}
+
+int rk_fb_dpi_win_sel(int win_id)
+{
+	struct rk_lcdc_driver *dev_drv = NULL;
+	dev_drv = rk_get_prmry_lcdc_drv();
+
+	if (dev_drv->ops->dpi_win_sel)
+		dev_drv->ops->dpi_win_sel(dev_drv, win_id);
+	return 0;
+}
+
+int rk_fb_dpi_status(void)
+{
+	int ret = 0;
+	struct rk_lcdc_driver *dev_drv = NULL;
+
+	dev_drv = rk_get_prmry_lcdc_drv();
+	if (dev_drv->ops->dpi_status)
+		ret = dev_drv->ops->dpi_status(dev_drv);
+
+	return ret;
+}
+
+/*
+ * function: this function will be called to modify hdmi info according to
+ *              pmy info for DUAL disp_mode when HDMI is used as EXTEND
+ * @pmy_info: primary screen fb_info
+ * @hdmi_info: hdmi screen fb_info
+ * @screen: the hdmi screen info
+ */
+static int rk_fb_hdmi_info_align(struct fb_info *pmy_info,
+                                 struct fb_info *hdmi_info,
+                                 struct rk_screen *screen)
+{
+	struct rk_fb *inf =  platform_get_drvdata(fb_pdev);
+	struct fb_var_screeninfo *hdmi_var = NULL;
+	struct fb_var_screeninfo *pmy_var = NULL;
+
+	if(unlikely(!pmy_info) || unlikely(!hdmi_info))
+		return -1;
+
+	if (inf->disp_mode != DUAL || pmy_info == hdmi_info)
+		return 0;
+
+	pmy_var = &pmy_info->var;
+	hdmi_var = &hdmi_info->var;
+	if (pmy_var->xres < pmy_var->yres) {    /* vertical lcd screen */
 		hdmi_var->xres = pmy_var->yres;
 		hdmi_var->yres = pmy_var->xres;
 		hdmi_var->xres_virtual = pmy_var->yres;
@@ -2824,177 +3174,135 @@ static int set_xact_yact_for_hdmi(struct fb_var_screeninfo *pmy_var,
 		hdmi_var->xres_virtual = pmy_var->xres_virtual;
 	}
 
-	return 0;
+	/* use the same format as primary screen */
+	hdmi_var->nonstd &= 0xffffff00;
+	hdmi_var->nonstd |= (pmy_var->nonstd & 0xff);
 
-}
-
-int rk_fb_dpi_open(bool open)
-{
-	struct rk_lcdc_driver *dev_drv = NULL;
-	dev_drv = rk_get_prmry_lcdc_drv();
-	dev_drv->ops->dpi_open(dev_drv, open);
-
-	return 0;
-}
-
-int rk_fb_dpi_win_sel(int win_id)
-{
-	struct rk_lcdc_driver *dev_drv = NULL;
-	dev_drv = rk_get_prmry_lcdc_drv();
-	dev_drv->ops->dpi_win_sel(dev_drv, win_id);
+	if (screen) {
+		hdmi_var->grayscale &= 0xff;
+		hdmi_var->grayscale |= (screen->mode.xres << 8) +
+					(screen->mode.yres << 20);
+	}
 
 	return 0;
-}
-
-int rk_fb_dpi_status(void)
-{
-	int ret;
-	struct rk_lcdc_driver *dev_drv = NULL;
-	dev_drv = rk_get_prmry_lcdc_drv();
-	ret = dev_drv->ops->dpi_status(dev_drv);
-
-	return ret;
 }
 
 /*
- * function:this function will be called by hdmi,when
- *             hdmi plug in/out
- * screen: the screen attached to hdmi
- * enable: 1,hdmi plug in,0,hdmi plug out
- * lcdc_id: the lcdc id the hdmi attached ,0 or 1
+ * function: this function will be called by display device, enable/disable lcdc
+ * @screen: screen timing to be set to lcdc
+ * @enable: 0 disable lcdc; 1 enable change lcdc timing; 2 just enable dclk
+ * @lcdc_id: the lcdc id the display device attached ,0 or 1
  */
 int rk_fb_switch_screen(struct rk_screen *screen, int enable, int lcdc_id)
 {
-	struct rk_fb *rk_fb = platform_get_drvdata(fb_pdev);
+	struct rk_fb *rk_fb =  platform_get_drvdata(fb_pdev);
 	struct fb_info *info = NULL;
+	struct fb_info *pmy_info = NULL;
 	struct rk_lcdc_driver *dev_drv = NULL;
-	struct fb_var_screeninfo *hdmi_var = NULL;
-	struct fb_var_screeninfo *pmy_var = NULL;	/* var for primary screen */
-	int i;
-	struct fb_fix_screeninfo *hdmi_fix = NULL;
-	char name[6];
-	int ret;
-	int win_id;
-/*
-	if (rk_fb->disp_mode != DUAL)
-		rk29_backlight_set(0);
-*/
+	struct rk_lcdc_driver *pmy_dev_drv = rk_get_prmry_lcdc_drv();
+	char name[6] = {0};
+	int i, win_id, load_screen = 0;
+
+	if (unlikely(!rk_fb) || unlikely(!pmy_dev_drv) || unlikely(!screen))
+		return -ENODEV;
+
+	/* get lcdc driver */
 	sprintf(name, "lcdc%d", lcdc_id);
-
-	if (rk_fb->disp_mode != DUAL) {
-		dev_drv = rk_fb->lcdc_dev_drv[0];
-	} else {
-
-		for (i = 0; i < rk_fb->num_lcdc; i++) {
-			if (rk_fb->lcdc_dev_drv[i]->prop == EXTEND) {
-				dev_drv = rk_fb->lcdc_dev_drv[i];
-				break;
-			}
-		}
-
-		if (i == rk_fb->num_lcdc) {
-			printk(KERN_ERR "%s driver not found!", name);
-			return -ENODEV;
-		}
-	}
-	printk("hdmi %s lcdc%d\n", enable ? "connect to" : "remove from",
-	       dev_drv->id);
-
-	if (rk_fb->num_lcdc == 1)
-		info = rk_fb->fb[0];
-	else if (rk_fb->num_lcdc == 2)
-		info = rk_fb->fb[dev_drv->lcdc_win_num];	/* the main fb of lcdc1 */
-
-	if (dev_drv->screen1) {	/* device like rk2928 ,have only one lcdc but two outputs */
-		if (enable) {
-			memcpy(dev_drv->screen1, screen,
-			       sizeof(struct rk_screen));
-			dev_drv->screen1->lcdc_id = 0;	/* connect screen1 to output interface 0 */
-			dev_drv->screen1->screen_id = 1;
-			dev_drv->screen0->lcdc_id = 1;	/* connect screen0 to output interface 1 */
-			dev_drv->cur_screen = dev_drv->screen1;
-			dev_drv->screen0->ext_screen = dev_drv->screen1;
-			if (dev_drv->screen0->sscreen_get) {
-				dev_drv->screen0->sscreen_get(dev_drv->screen0,
-							      dev_drv->cur_screen->hdmi_resolution);
-			}
-
-		} else {
-			dev_drv->screen1->lcdc_id = 1;	/* connect screen1 to output interface 1 */
-			dev_drv->screen0->lcdc_id = 0;	/* connect screen0 to output interface 0 */
-			dev_drv->cur_screen = dev_drv->screen0;
-			dev_drv->screen_ctr_info->set_screen_info(dev_drv->cur_screen,
-								  dev_drv->screen_ctr_info->lcd_info);
-		}
-	} else {
-		if (enable)
-			memcpy(dev_drv->cur_screen, screen, sizeof(struct rk_screen));
-	}
-
-	win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
-
-	if (!enable && !dev_drv->screen1) {	/* only double lcdc device need to close */
-		if (dev_drv->win[win_id]->state)
-			dev_drv->ops->open(dev_drv, win_id, enable);	/* disable the win which attached to this fb */
-		hdmi_switch_complete = 0;
-
-		return 0;
-	}
-
-	hdmi_var = &info->var;
-	hdmi_fix = &info->fix;
-	if (rk_fb->disp_mode == DUAL) {
-		if (likely(rk_fb->num_lcdc == 2)) {
-			pmy_var = &rk_fb->fb[0]->var;
-			set_xact_yact_for_hdmi(pmy_var, hdmi_var);
-			hdmi_var->nonstd &= 0xffffff00;
-			hdmi_var->nonstd |= (pmy_var->nonstd & 0xff);	/* use the same format as primary screen */
-		} else {
-			printk(KERN_WARNING
-			       "%s>>only one lcdc,dual display no supported!",
-			       __func__);
-		}
-	}
-	hdmi_var->grayscale &= 0xff;
-	hdmi_var->grayscale |=
-	    (dev_drv->cur_screen->mode.xres << 8) + (dev_drv->cur_screen->mode.yres << 20);
-	if (dev_drv->screen1) {	/* device like rk2928,whic have one lcdc but two outputs */
-		/*
-		info->var.nonstd &= 0xff;
-		info->var.nonstd |= (dev_drv->cur_screen->mode.xpos<<8) + (dev_drv->cur_screen->mode.ypos<<20);
-		info->var.grayscale &= 0xff;
-		info->var.grayscale |= (dev_drv->cur_screen->mode.x_res<<8) + (dev_drv->cur_screen->mode.y_res<<20);
-		*/
-		dev_drv->screen1->xsize = dev_drv->cur_screen->mode.xres;
-		dev_drv->screen1->ysize = dev_drv->cur_screen->mode.yres;
-		dev_drv->screen1->xpos = 0;
-		dev_drv->screen1->ypos = 0;
-	}
-
-	ret = info->fbops->fb_open(info, 1);
-	dev_drv->ops->load_screen(dev_drv, 1);
-	ret = info->fbops->fb_set_par(info);
-	if (dev_drv->ops->lcdc_hdmi_process)
-		dev_drv->ops->lcdc_hdmi_process(dev_drv, enable);
-
-	hdmi_switch_complete = enable;
-	info->fbops->fb_pan_display(hdmi_var, info);
-
-	/* info->fbops->fb_ioctl(info, RK_FBIOSET_CONFIG_DONE, 0); */
-	if (dev_drv->screen1) {
-		if (dev_drv->screen0->sscreen_set) {
-			dev_drv->ops->blank(dev_drv, 0, FB_BLANK_NORMAL);
-			msleep(100);
-			dev_drv->screen0->sscreen_set(dev_drv->screen0, enable);
-			dev_drv->ops->blank(dev_drv, 0, FB_BLANK_UNBLANK);
-		}
-	}
-	/*
 	if (rk_fb->disp_mode != DUAL)
-		rk29_backlight_set(1);
-	*/
-	return 0;
+		dev_drv = rk_fb->lcdc_dev_drv[0];
+	else
+		dev_drv = rk_get_lcdc_drv(name);
 
+	if (dev_drv == NULL) {
+		printk(KERN_ERR "%s driver not found!", name);
+		return -ENODEV;
+	}
+	if (screen->type == SCREEN_HDMI)
+		printk("hdmi %s lcdc%d\n", enable ? "connect to" : "remove from",
+               		dev_drv->id);
+        else if (screen->type == SCREEN_TVOUT)
+        	printk("cvbs %s lcdc%d\n", enable ? "connect to" : "remove from",
+               		dev_drv->id);
+
+	if (enable == 2 /*&& dev_drv->enable*/)
+		return 0;
+
+	if (rk_fb->disp_mode == ONE_DUAL) {
+		if (dev_drv->trsm_ops && dev_drv->trsm_ops->disable)
+			dev_drv->trsm_ops->disable();
+		if (dev_drv->ops->set_screen_scaler)
+			dev_drv->ops->set_screen_scaler(dev_drv, dev_drv->screen0, 0);
+	}
+
+	if (!enable) {
+		/* if screen type is different, we do not disable lcdc. */
+		if (dev_drv->cur_screen->type != screen->type)
+			return 0;
+
+		/* if used one lcdc to dual disp, no need to close win */
+		if (rk_fb->disp_mode == ONE_DUAL) {
+			dev_drv->cur_screen = dev_drv->screen0;
+			dev_drv->ops->load_screen(dev_drv, 1);
+			if (dev_drv->trsm_ops && dev_drv->trsm_ops->enable)
+				dev_drv->trsm_ops->enable();
+		} else if (rk_fb->num_lcdc > 1) {
+			/* If there is more than one lcdc device, we disable
+			   the layer which attached to this device */
+			for (i = 0; i < dev_drv->lcdc_win_num; i++) {
+				if (dev_drv->win[i] && dev_drv->win[i]->state)
+					dev_drv->ops->open(dev_drv, i, 0);
+			}
+		}
+
+		hdmi_switch_complete = 0;
+		return 0;
+	} else {
+		if (dev_drv->screen1)
+			dev_drv->cur_screen = dev_drv->screen1;
+		memcpy(dev_drv->cur_screen, screen, sizeof(struct rk_screen));
+		dev_drv->cur_screen->x_mirror = dev_drv->rotate_mode & X_MIRROR;
+		dev_drv->cur_screen->y_mirror = dev_drv->rotate_mode & Y_MIRROR;
+	}
+
+	for (i = 0; i < dev_drv->lcdc_win_num; i++) {
+		info = rk_fb->fb[dev_drv->fb_index_base + i];
+		if (rk_fb->disp_mode == DUAL &&
+				dev_drv != pmy_dev_drv) {
+			pmy_info = rk_fb->fb[pmy_dev_drv->fb_index_base + i];
+			rk_fb_hdmi_info_align(pmy_info, info,
+						dev_drv->cur_screen);
+		}
+
+		win_id = dev_drv->ops->fb_get_win_id(dev_drv, info->fix.id);
+		if (dev_drv->win[win_id]) {
+			if (rk_fb->disp_mode == DUAL) {
+				if (dev_drv != pmy_dev_drv &&
+						pmy_dev_drv->win[win_id]) {
+					dev_drv->win[win_id]->logicalstate =
+						pmy_dev_drv->win[win_id]->logicalstate;
+				}
+			}
+			if (dev_drv->win[win_id]->logicalstate) {
+				dev_drv->ops->open(dev_drv, win_id, 1);
+				if (!load_screen) {
+					dev_drv->ops->load_screen(dev_drv, 1);
+					load_screen = 1;
+				}
+				info->var.activate |= FB_ACTIVATE_FORCE;
+				info->fbops->fb_set_par(info);
+				info->fbops->fb_pan_display(&info->var, info);
+			}
+		}
+	}
+
+	hdmi_switch_complete = 1;
+	if (rk_fb->disp_mode == ONE_DUAL) {
+		if (dev_drv->ops->set_screen_scaler)
+			dev_drv->ops->set_screen_scaler(dev_drv, dev_drv->screen0, 1);
+		if (dev_drv->trsm_ops && dev_drv->trsm_ops->enable)
+			dev_drv->trsm_ops->enable();
+	}
+	return 0;
 }
 
 /*
@@ -3013,25 +3321,24 @@ int rk_fb_disp_scale(u8 scale_x, u8 scale_y, u8 lcdc_id)
 	u16 screen_x, screen_y;
 	u16 xpos, ypos;
 	char name[6];
-	int i = 0;
+	struct rk_screen primary_screen;
+	rk_fb_get_prmry_screen(&primary_screen);
+	if (primary_screen.type == SCREEN_HDMI) {
+		return 0;
+	}
+
 	sprintf(name, "lcdc%d", lcdc_id);
 
-#if defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF)
-	dev_drv = inf->lcdc_dev_drv[0];
-#else
-	for (i = 0; i < inf->num_lcdc; i++) {
-		if (inf->lcdc_dev_drv[i]->prop == EXTEND) {
-			dev_drv = inf->lcdc_dev_drv[i];
-			break;
+	if (inf->disp_mode == DUAL) {
+		dev_drv = rk_get_lcdc_drv(name);
+		if (dev_drv == NULL) {
+			printk(KERN_ERR "%s driver not found!", name);
+			return -ENODEV;
 		}
+	} else {
+		dev_drv = inf->lcdc_dev_drv[0];
 	}
 
-	if (i == inf->num_lcdc) {
-		printk(KERN_ERR "%s driver not found!", name);
-		return -ENODEV;
-
-	}
-#endif
 	if (inf->num_lcdc == 1)
 		info = inf->fb[0];
 	else if (inf->num_lcdc == 2)
@@ -3041,17 +3348,14 @@ int rk_fb_disp_scale(u8 scale_x, u8 scale_y, u8 lcdc_id)
 	screen_x = dev_drv->cur_screen->mode.xres;
 	screen_y = dev_drv->cur_screen->mode.yres;
 
-#if defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF) || defined(CONFIG_NO_DUAL_DISP)
-	if (dev_drv->cur_screen->screen_id == 1) {
+	if (inf->disp_mode != DUAL && dev_drv->screen1) {
 		dev_drv->cur_screen->xpos =
 		    (screen_x - screen_x * scale_x / 100) >> 1;
 		dev_drv->cur_screen->ypos =
 		    (screen_y - screen_y * scale_y / 100) >> 1;
 		dev_drv->cur_screen->xsize = screen_x * scale_x / 100;
 		dev_drv->cur_screen->ysize = screen_y * scale_y / 100;
-	} else
-#endif
-	{
+	} else {
 		xpos = (screen_x - screen_x * scale_x / 100) >> 1;
 		ypos = (screen_y - screen_y * scale_y / 100) >> 1;
 		dev_drv->cur_screen->xsize = screen_x * scale_x / 100;
@@ -3067,7 +3371,6 @@ int rk_fb_disp_scale(u8 scale_x, u8 scale_y, u8 lcdc_id)
 	/* info->fbops->fb_ioctl(info, RK_FBIOSET_CONFIG_DONE, 0); */
 	dev_drv->ops->cfg_done(dev_drv);
 	return 0;
-
 }
 
 #if defined(CONFIG_ION_ROCKCHIP)
@@ -3080,6 +3383,8 @@ static int rk_fb_alloc_buffer_by_ion(struct fb_info *fbi,
 	struct ion_handle *handle;
 	ion_phys_addr_t phy_addr;
 	size_t len;
+	int ret = 0;
+
 	if (dev_drv->iommu_enabled)
 		handle = ion_alloc(rk_fb->ion_client, (size_t) fb_mem_size, 0,
 				   ION_HEAP(ION_VMALLOC_HEAP_ID), 0);
@@ -3097,17 +3402,22 @@ static int rk_fb_alloc_buffer_by_ion(struct fb_info *fbi,
 		goto err_share_dma_buf;
 	}
 	win->area[0].ion_hdl = handle;
-	fbi->screen_base = ion_map_kernel(rk_fb->ion_client, handle);
+        if (dev_drv->prop == PRMRY)
+	        fbi->screen_base = ion_map_kernel(rk_fb->ion_client, handle);
 #ifdef CONFIG_ROCKCHIP_IOMMU
 	if (dev_drv->iommu_enabled)
-		ion_map_iommu(dev_drv->dev, rk_fb->ion_client, handle,
-			      (unsigned long *)&phy_addr,
-			      (unsigned long *)&len);
+		ret = ion_map_iommu(dev_drv->dev, rk_fb->ion_client, handle,
+					(unsigned long *)&phy_addr,
+					(unsigned long *)&len);
 	else
-		ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
+		ret = ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
 #else
-	ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
+	ret = ion_phys(rk_fb->ion_client, handle, &phy_addr, &len);
 #endif
+	if (ret < 0) {
+		dev_err(fbi->dev, "ion map to get phy addr failed\n");
+		goto err_share_dma_buf;
+	}
 	fbi->fix.smem_start = phy_addr;
 	fbi->fix.smem_len = len;
 	printk(KERN_INFO "alloc_buffer:ion_phy_addr=0x%lx\n", phy_addr);
@@ -3127,12 +3437,11 @@ static int rk_fb_alloc_buffer(struct fb_info *fbi, int fb_id)
 	int win_id;
 	int ret = 0;
 	unsigned long fb_mem_size;
-/*
-#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
-	struct resource *res;
-	struct resource *mem;
+#if !defined(CONFIG_ION_ROCKCHIP)
+	dma_addr_t fb_mem_phys;
+	void *fb_mem_virt;
 #endif
-*/
+
 	win_id = dev_drv->ops->fb_get_win_id(dev_drv, fbi->fix.id);
 	if (win_id < 0)
 		return -ENODEV;
@@ -3145,8 +3454,6 @@ static int rk_fb_alloc_buffer(struct fb_info *fbi, int fb_id)
 		if (rk_fb_alloc_buffer_by_ion(fbi, win, fb_mem_size) < 0)
 			return -ENOMEM;
 #else
-		dma_addr_t fb_mem_phys;
-		void *fb_mem_virt;
 		fb_mem_virt = dma_alloc_writecombine(fbi->dev, fb_mem_size,
 						     &fb_mem_phys, GFP_KERNEL);
 		if (!fb_mem_virt) {
@@ -3163,45 +3470,32 @@ static int rk_fb_alloc_buffer(struct fb_info *fbi, int fb_id)
 		       fbi->fix.smem_start, fbi->screen_base,
 		       fbi->fix.smem_len);
 	} else {
-#if defined(CONFIG_FB_ROTATE) || !defined(CONFIG_THREE_FB_BUFFER)
-		/*
-		   res = platform_get_resource_byname(fb_pdev,
-		   IORESOURCE_MEM, "fb2 buf");
-		   if (res == NULL) {
-		   dev_err(&fb_pdev->dev, "failed to get win0 memory\n");
-		   ret = -ENOENT;
-		   }
-		   fbi->fix.smem_start = res->start;
-		   fbi->fix.smem_len = res->end - res->start + 1;
-		   mem = request_mem_region(res->start, resource_size(res),
-		   fb_pdev->name);
-		   fbi->screen_base = ioremap(res->start, fbi->fix.smem_len);
-		   memset(fbi->screen_base, 0, fbi->fix.smem_len);
-		 */
-		fb_mem_size = get_fb_size();
+		if (dev_drv->rotate_mode > X_Y_MIRROR) {
+			fb_mem_size = get_rotate_fb_size();
 #if defined(CONFIG_ION_ROCKCHIP)
-		if (rk_fb_alloc_buffer_by_ion(fbi, win, fb_mem_size) < 0)
-			return -ENOMEM;
+			if (rk_fb_alloc_buffer_by_ion(fbi, win, fb_mem_size) < 0)
+				return -ENOMEM;
 #else
-		dma_addr_t fb_mem_phys;
-		void *fb_mem_virt;
-		fb_mem_virt = dma_alloc_writecombine(fbi->dev, fb_mem_size,
-						     &fb_mem_phys, GFP_KERNEL);
-		if (!fb_mem_virt) {
-			pr_err("%s: Failed to allocate framebuffer\n",
-			       __func__);
-			return -ENOMEM;
+			fb_mem_virt =
+				dma_alloc_writecombine(fbi->dev,
+						       fb_mem_size,
+						       &fb_mem_phys,
+						       GFP_KERNEL);
+			if (!fb_mem_virt) {
+				pr_err("%s: Failed to allocate framebuffer\n",
+					__func__);
+				return -ENOMEM;
+			}
+			fbi->fix.smem_len = fb_mem_size;
+			fbi->fix.smem_start = fb_mem_phys;
+			fbi->screen_base = fb_mem_virt;
+#endif
+		} else {
+			fbi->fix.smem_start = rk_fb->fb[0]->fix.smem_start;
+			fbi->fix.smem_len = rk_fb->fb[0]->fix.smem_len;
+			fbi->screen_base = rk_fb->fb[0]->screen_base;
 		}
-		fbi->fix.smem_len = fb_mem_size;
-		fbi->fix.smem_start = fb_mem_phys;
-		fbi->screen_base = fb_mem_virt;
-#endif
 
-#else	/* three buffer no need to copy */
-		fbi->fix.smem_start = rk_fb->fb[0]->fix.smem_start;
-		fbi->fix.smem_len = rk_fb->fb[0]->fix.smem_len;
-		fbi->screen_base = rk_fb->fb[0]->screen_base;
-#endif
 		printk(KERN_INFO "fb%d:phy:%lx>>vir:%p>>len:0x%x\n", fb_id,
 		       fbi->fix.smem_start, fbi->screen_base,
 		       fbi->fix.smem_len);
@@ -3226,7 +3520,6 @@ static int rk_release_fb_buffer(struct fb_info *fbi)
 	iounmap(fbi->screen_base);
 	release_mem_region(fbi->fix.smem_start, fbi->fix.smem_len);
 	return 0;
-
 }
 #endif
 
@@ -3235,6 +3528,7 @@ static int init_lcdc_win(struct rk_lcdc_driver *dev_drv,
 {
 	int i;
 	int lcdc_win_num = dev_drv->lcdc_win_num;
+
 	for (i = 0; i < lcdc_win_num; i++) {
 		struct rk_lcdc_win *win = NULL;
 		win = kzalloc(sizeof(struct rk_lcdc_win), GFP_KERNEL);
@@ -3255,11 +3549,11 @@ static int init_lcdc_win(struct rk_lcdc_driver *dev_drv,
 static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 				   struct rk_lcdc_win *def_win, int index)
 {
-	u32 mirror = 0;
 	struct rk_lcdc_driver *dev_drv = rk_fb->lcdc_dev_drv[index];
 	struct rk_screen *screen = devm_kzalloc(dev_drv->dev,
 						sizeof(struct rk_screen),
 						GFP_KERNEL);
+
 	if (!screen) {
 		dev_err(dev_drv->dev, "malloc screen for lcdc%d fail!",
 			dev_drv->id);
@@ -3272,20 +3566,19 @@ static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 	screen->overscan.top = 100;
 	screen->overscan.right = 100;
 	screen->overscan.bottom = 100;
-	if (of_property_read_u32(dev_drv->dev->of_node, "rockchip,mirror", &mirror))
-		mirror = NO_MIRROR;
 
-	screen->x_mirror = mirror & X_MIRROR;
-	screen->y_mirror = mirror & Y_MIRROR;
+	screen->x_mirror = dev_drv->rotate_mode & X_MIRROR;
+	screen->y_mirror = dev_drv->rotate_mode & Y_MIRROR;
 
 	dev_drv->screen0 = screen;
 	dev_drv->cur_screen = screen;
 	/* devie use one lcdc + rk61x scaler for dual display */
 	if (rk_fb->disp_mode == ONE_DUAL) {
-		struct rk_screen *screen1 = devm_kzalloc(dev_drv->dev,
-							 sizeof(struct rk_screen),
-							 GFP_KERNEL);
-		if (screen1) {
+		struct rk_screen *screen1 =
+				devm_kzalloc(dev_drv->dev,
+					     sizeof(struct rk_screen),
+					     GFP_KERNEL);
+		if (!screen1) {
 			dev_err(dev_drv->dev, "malloc screen1 for lcdc%d fail!",
 				dev_drv->id);
 			return -ENOMEM;
@@ -3299,15 +3592,22 @@ static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 	init_completion(&dev_drv->frame_done);
 	spin_lock_init(&dev_drv->cpl_lock);
 	mutex_init(&dev_drv->fb_win_id_mutex);
-	dev_drv->ops->fb_win_remap(dev_drv, FB_DEFAULT_ORDER);
+	dev_drv->ops->fb_win_remap(dev_drv, dev_drv->fb_win_map);
 	dev_drv->first_frame = 1;
+	dev_drv->overscan.left = 100;
+	dev_drv->overscan.top = 100;
+	dev_drv->overscan.right = 100;
+	dev_drv->overscan.bottom = 100;
 	rk_disp_pwr_ctr_parse_dt(dev_drv);
 	if (dev_drv->prop == PRMRY) {
-		dev_drv->ops->set_dsp_cabc(dev_drv, dev_drv->cabc_mode);
+		if (dev_drv->ops->set_dsp_cabc)
+			dev_drv->ops->set_dsp_cabc(dev_drv, dev_drv->cabc_mode);
 		rk_fb_set_prmry_screen(screen);
 		rk_fb_get_prmry_screen(screen);
 	}
 	dev_drv->trsm_ops = rk_fb_trsm_ops_get(screen->type);
+	if (dev_drv->prop != PRMRY)
+		rk_fb_get_prmry_screen(screen);
 
 	return 0;
 }
@@ -3335,7 +3635,6 @@ static void fb_show_bmp_logo(struct fb_info *info, int rotate)
 	for (i = 0; i < Needheight; i++)
 		memcpy(dst + info->var.xres * i * 4,
 		       src + bmp_logo->width * i * 4, Needwidth * 4);
-
 }
 #endif
 
@@ -3346,11 +3645,11 @@ static void fb_show_bmp_logo(struct fb_info *info, int rotate)
 bool is_prmry_rk_lcdc_registered(void)
 {
 	struct rk_fb *rk_fb = platform_get_drvdata(fb_pdev);
+
 	if (rk_fb->lcdc_dev_drv[0])
 		return true;
 	else
 		return false;
-
 }
 
 int rk_fb_register(struct rk_lcdc_driver *dev_drv,
@@ -3359,9 +3658,11 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 	struct rk_fb *rk_fb = platform_get_drvdata(fb_pdev);
 	struct fb_info *fbi;
 	int i = 0, ret = 0, index = 0;
+/*
 #if defined(CONFIG_ROCKCHIP_IOMMU)
 	struct device *mmu_dev = NULL;
 #endif
+*/
 	if (rk_fb->num_lcdc == RK30_MAX_LCDC_SUPPORT)
 		return -ENXIO;
 
@@ -3458,7 +3759,6 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 			    sw_sync_timeline_create("fb-timeline");
 			dev_drv->timeline_max = 1;
 		}
-
 	}
 
 	/* show logo for primary display device */
@@ -3466,26 +3766,28 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 	if (dev_drv->prop == PRMRY) {
 		struct fb_info *main_fbi = rk_fb->fb[0];
 		main_fbi->fbops->fb_open(main_fbi, 1);
+/*
 #if defined(CONFIG_ROCKCHIP_IOMMU)
 		if (dev_drv->iommu_enabled) {
 			mmu_dev =
-			    rockchip_get_sysmmu_device_by_compatible(dev_drv->mmu_dts_name);
+			    rk_fb_get_sysmmu_device_by_compatible(dev_drv->mmu_dts_name);
 			if (mmu_dev) {
-				platform_set_sysmmu(mmu_dev, dev_drv->dev);
-				rockchip_sysmmu_set_fault_handler(dev_drv->dev,
+				rk_fb_platform_set_sysmmu(mmu_dev, dev_drv->dev);
+				rockchip_iovmm_set_fault_handler(dev_drv->dev,
 								  rk_fb_sysmmu_fault_handler);
-				iovmm_activate(dev_drv->dev);
+				rockchip_iovmm_activate(dev_drv->dev);
 			} else
 				dev_err(dev_drv->dev,
 					"failed to get rockchip iommu device\n");
 		}
 #endif
+*/
 		rk_fb_alloc_buffer(main_fbi, 0);	/* only alloc memory for main fb */
 		if (support_uboot_display()) {
 			if (dev_drv->iommu_enabled) {
 				rk_fb_copy_from_loader(main_fbi);
 				dev_drv->ops->direct_set_addr(dev_drv, 0,
-							      main_fbi->fix.smem_start);
+					main_fbi->fix.smem_start);
 			}
 			return 0;
 		}
@@ -3506,18 +3808,16 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 #if !defined(CONFIG_ROCKCHIP_IOMMU)
 		struct fb_info *extend_fbi = rk_fb->fb[rk_fb->num_fb >> 1];
 		int extend_fb_id = get_extend_fb_id(extend_fbi);
+
 		rk_fb_alloc_buffer(extend_fbi, extend_fb_id);
 #endif
 	}
 #endif
-
 	return 0;
-
 }
 
 int rk_fb_unregister(struct rk_lcdc_driver *dev_drv)
 {
-
 	struct rk_fb *fb_inf = platform_get_drvdata(fb_pdev);
 	struct fb_info *fbi;
 	int fb_index_base = dev_drv->fb_index_base;
@@ -3571,7 +3871,7 @@ static int rk_fb_probe(struct platform_device *pdev)
 	}
 
 	if (!of_property_read_u32(np, "rockchip,uboot-logo-on", &uboot_logo_on))
-		printk("uboot-logo-on:%d\n", uboot_logo_on);
+		printk(KERN_DEBUG "uboot-logo-on:%d\n", uboot_logo_on);
 
 	dev_set_name(&pdev->dev, "rockchip-fb");
 #if defined(CONFIG_ION_ROCKCHIP)
@@ -3592,6 +3892,7 @@ static int rk_fb_probe(struct platform_device *pdev)
 static int rk_fb_remove(struct platform_device *pdev)
 {
 	struct rk_fb *rk_fb = platform_get_drvdata(pdev);
+
 	kfree(rk_fb);
 	platform_set_drvdata(pdev, NULL);
 	return 0;
@@ -3601,12 +3902,11 @@ static void rk_fb_shutdown(struct platform_device *pdev)
 {
 	struct rk_fb *rk_fb = platform_get_drvdata(pdev);
 	int i;
+
 	for (i = 0; i < rk_fb->num_lcdc; i++) {
 		if (!rk_fb->lcdc_dev_drv[i])
 			continue;
-
 	}
-
 }
 
 static const struct of_device_id rkfb_dt_ids[] = {

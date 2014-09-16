@@ -194,6 +194,41 @@ static int camsys_mrv_flash_trigger_cb(void *ptr,unsigned int on)
     }
     return retval;
 }
+static struct device *rockchip_get_sysmmu_device_by_compatible(const char *compt)
+{
+	struct device_node *dn = NULL;
+	struct platform_device *pd = NULL;
+	struct device *ret = NULL ;
+
+	dn = of_find_compatible_node(NULL,NULL,compt);
+	if(!dn)
+	{
+		printk("can't find device node %s \r\n",compt);
+		return NULL;
+	}
+	
+	pd = of_find_device_by_node(dn);
+	if(!pd)
+	{	
+		printk("can't find platform device in device node %s \r\n",compt);
+		return  NULL;
+	}
+	ret = &pd->dev;
+	
+	return ret;
+
+}
+#ifdef CONFIG_IOMMU_API
+static inline void platform_set_sysmmu(struct device *iommu, struct device *dev)
+{
+	dev->archdata.iommu = iommu;
+}
+#else
+static inline void platform_set_sysmmu(struct device *iommu, struct device *dev)
+{
+}
+#endif
+
 
 static int camsys_mrv_iommu_cb(void *ptr,camsys_sysctrl_t *devctl)
 {
@@ -212,7 +247,7 @@ static int camsys_mrv_iommu_cb(void *ptr,camsys_sysctrl_t *devctl)
         goto iommu_end;
     }
     
-    iommu_dev = rockchip_get_sysmmu_device_by_compatible("iommu,isp_mmu");
+    iommu_dev = rockchip_get_sysmmu_device_by_compatible(ISP_IOMMU_COMPATIBLE_NAME);
     if(!iommu_dev){
         camsys_err("get iommu device erro!\n");
         ret = -1;
@@ -247,14 +282,14 @@ static int camsys_mrv_iommu_cb(void *ptr,camsys_sysctrl_t *devctl)
     }
     if(devctl->on){
         platform_set_sysmmu(iommu_dev,dev);
-        ret = iovmm_activate(dev);
+        ret = rockchip_iovmm_activate(dev);
         
         ret = ion_map_iommu(dev,client,handle,&(iommu->linear_addr),&(iommu->len));
         
     }else{
         ion_unmap_iommu(dev,client,handle);
         platform_set_sysmmu(iommu_dev,dev);
-        iovmm_deactivate(dev);
+        rockchip_iovmm_deactivate(dev);
     }
 iommu_end:
     return ret;
@@ -365,13 +400,14 @@ static irqreturn_t camsys_mrv_irq(int irq, void *data)
     camsys_dev_t *camsys_dev = (camsys_dev_t*)data;
     camsys_irqstas_t *irqsta;
     camsys_irqpool_t *irqpool;
-    unsigned int isp_mis,mipi_mis,mi_mis,*mis;
+    unsigned int isp_mis,mipi_mis,mi_mis,*mis,jpg_mis,jpg_err_mis;
 	
 	unsigned int mi_ris,mi_imis;
 
     isp_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_ISP_MIS));
     mipi_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MIPI_MIS));
-
+    jpg_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_JPG_MIS));
+    jpg_err_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_JPG_ERR_MIS));
 	mi_mis = __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_MIS));
 #if 1	
 	mi_ris =  __raw_readl((void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_RIS));
@@ -387,6 +423,8 @@ static irqreturn_t camsys_mrv_irq(int irq, void *data)
 
     __raw_writel(isp_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_ISP_ICR)); 
     __raw_writel(mipi_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MIPI_ICR)); 
+    __raw_writel(jpg_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_JPG_ICR));
+    __raw_writel(jpg_err_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_JPG_ERR_ICR));
 	__raw_writel(mi_mis, (void volatile *)(camsys_dev->devmems.registermem->vir_base + MRV_MI_ICR)); 
 
     spin_lock(&camsys_dev->irq.lock);
@@ -409,6 +447,18 @@ static irqreturn_t camsys_mrv_irq(int irq, void *data)
                     case MRV_MI_MIS:
                     {
                         mis = &mi_mis;
+                        break;
+                    }
+
+                    case MRV_JPG_MIS:
+                    {
+                        mis = &jpg_mis;
+                        break;
+                    }
+
+                    case MRV_JPG_ERR_MIS:
+                    {
+                        mis = &jpg_err_mis;
                         break;
                     }
 
