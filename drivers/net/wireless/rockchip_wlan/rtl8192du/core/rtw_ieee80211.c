@@ -809,6 +809,28 @@ u8 rtw_is_wps_ie(u8 *ie_ptr, uint *wps_ielen)
 	return match;
 }
 
+u8 *rtw_get_wps_ie_from_scan_queue(u8 *in_ie, uint in_len, u8 *wps_ie, uint *wps_ielen, u8 frame_type)
+{
+	u8*	wps = NULL;
+
+	DBG_871X( "[%s] frame_type = %d\n", __FUNCTION__, frame_type );
+	switch( frame_type )
+	{
+		case 1:
+		case 3:
+		{	//	Beacon or Probe Response
+			wps = rtw_get_wps_ie(in_ie + _PROBERSP_IE_OFFSET_, in_len - _PROBERSP_IE_OFFSET_, wps_ie, wps_ielen);
+			break;
+		}
+		case 2:
+		{	//	Probe Request
+			wps = rtw_get_wps_ie(in_ie + _PROBEREQ_IE_OFFSET_ , in_len - _PROBEREQ_IE_OFFSET_ , wps_ie, wps_ielen);
+			break;
+		}
+	}
+	return wps;
+}
+
 /**
  * rtw_get_wps_ie - Search WPS IE from a series of IEs
  * @in_ie: Address of IEs to search
@@ -1215,43 +1237,54 @@ u8 convert_ip_addr(u8 hch, u8 mch, u8 lch)
 }
 
 extern char* rtw_initmac;
+#include <linux/rfkill-wlan.h>
 void rtw_macaddr_cfg(u8 *mac_addr)
 {
-	u8 mac[ETH_ALEN];
-	if(mac_addr == NULL)	return;
-	
-	if ( rtw_initmac )
-	{	//	Users specify the mac address
-		int jj,kk;
+    u8 mac[ETH_ALEN];
 
-		for( jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3 )
-		{
-			mac[jj] = key_2char2num(rtw_initmac[kk], rtw_initmac[kk+ 1]);
-		}
-		_rtw_memcpy(mac_addr, mac, ETH_ALEN);
-	}
-	else
-	{	//	Use the mac address stored in the Efuse
-		_rtw_memcpy(mac, mac_addr, ETH_ALEN);
-	}
-	
-	if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
-	     (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||
-	    ((mac[0]==0x0) && (mac[1]==0x0) && (mac[2]==0x0) &&
-	     (mac[3]==0x0) && (mac[4]==0x0) &&(mac[5]==0x0)))
-	{
-		mac[0] = 0x00;
-		mac[1] = 0xe0;
-		mac[2] = 0x4c;
-		mac[3] = 0x87;
-		mac[4] = 0x00;
-		mac[5] = 0x00;
-		// use default mac addresss
-		_rtw_memcpy(mac_addr, mac, ETH_ALEN);
-		DBG_871X("MAC Address from efuse error, assign default one !!!\n");
-	}	
+    if(mac_addr == NULL)    return;
 
-	DBG_871X("rtw_macaddr_cfg MAC Address  = "MAC_FMT"\n", MAC_ARG(mac_addr));
+    if ( rtw_initmac )
+    {   //  Users specify the mac address
+        int jj,kk;
+
+        for( jj = 0, kk = 0; jj < ETH_ALEN; jj++, kk += 3 )
+        {
+            mac[jj] = key_2char2num(rtw_initmac[kk], rtw_initmac[kk+ 1]);
+        }
+        _rtw_memcpy(mac_addr, mac, ETH_ALEN);
+    }
+    else
+    {
+        printk("Wifi Efuse Mac => %02x:%02x:%02x:%02x:%02x:%02x\n", mac_addr[0], mac_addr[1],
+            mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        if (!rockchip_wifi_mac_addr(mac)) {
+            printk("=========> get mac address from flash=[%02x:%02x:%02x:%02x:%02x:%02x]\n", mac[0], mac[1],
+                mac[2], mac[3], mac[4], mac[5]);
+            _rtw_memcpy(mac_addr, mac, ETH_ALEN);
+        } else {
+            //  Use the mac address stored in the Efuse
+            _rtw_memcpy(mac, mac_addr, ETH_ALEN);
+        }
+    }
+
+    if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
+         (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||
+        ((mac[0]==0x0) && (mac[1]==0x0) && (mac[2]==0x0) &&
+         (mac[3]==0x0) && (mac[4]==0x0) &&(mac[5]==0x0)))
+    {
+        mac[0] = 0x00;
+        mac[1] = 0xe0;
+        mac[2] = 0x4c;
+        mac[3] = 0x87;
+        mac[4] = 0x00;
+        mac[5] = 0x00;
+        // use default mac addresss
+        _rtw_memcpy(mac_addr, mac, ETH_ALEN);
+        DBG_871X("MAC Address from efuse error, assign default one !!!\n");
+    }
+
+    DBG_871X("rtw_macaddr_cfg MAC Address  = "MAC_FMT"\n", MAC_ARG(mac_addr));
 }
 
 void dump_ies(u8 *buf, u32 buf_len) {
@@ -1388,6 +1421,28 @@ void dump_p2p_ie(u8 *ie, u32 ie_len) {
 
 		pos+=(3+len);
 	}	
+}
+
+u8 *rtw_get_p2p_ie_from_scan_queue(u8 *in_ie, int in_len, u8 *p2p_ie, uint *p2p_ielen, u8 frame_type)
+{
+	u8*	p2p = NULL;
+
+	DBG_871X( "[%s] frame_type = %d\n", __FUNCTION__, frame_type );
+	switch( frame_type )
+	{
+		case 1:
+		case 3:
+		{	//	Beacon or Probe Response
+			p2p = rtw_get_p2p_ie(in_ie + _PROBERSP_IE_OFFSET_, in_len - _PROBERSP_IE_OFFSET_, p2p_ie, p2p_ielen);
+			break;
+		}
+		case 2:
+		{	//	Probe Request
+			p2p = rtw_get_p2p_ie(in_ie + _PROBEREQ_IE_OFFSET_ , in_len - _PROBEREQ_IE_OFFSET_ , p2p_ie, p2p_ielen);
+			break;
+		}
+	}
+	return p2p;
 }
 
 /**
@@ -1691,6 +1746,30 @@ int rtw_get_wfd_ie(u8 *in_ie, int in_len, u8 *wfd_ie, uint *wfd_ielen)
 	
 	return match;
 
+}
+
+int rtw_get_wfd_ie_from_scan_queue(u8 *in_ie, int in_len, u8 *wfd_ie, uint *wfd_ielen, u8 frame_type)
+{
+	int match;
+
+	match=_FALSE;
+
+	DBG_871X( "[%s] frame_type = %d\n", __FUNCTION__, frame_type );
+	switch( frame_type )
+	{
+		case 1:
+		case 3:
+		{	//	Beacon or Probe Response
+			match = rtw_get_wfd_ie(in_ie + _PROBERSP_IE_OFFSET_, in_len - _PROBERSP_IE_OFFSET_, wfd_ie, wfd_ielen);
+			break;
+		}
+		case 2:
+		{	//	Probe Request
+			match = rtw_get_wfd_ie(in_ie + _PROBEREQ_IE_OFFSET_ , in_len - _PROBEREQ_IE_OFFSET_ , wfd_ie, wfd_ielen);
+			break;
+		}
+	}
+	return match;
 }
 
 //	attr_content: The output buffer, contains the "body field" of WFD attribute.
