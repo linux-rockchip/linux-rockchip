@@ -27,6 +27,7 @@ struct rksdmmc_pmu {
 struct rksdmmc_gpio_wifi_moudle {
     int sdio_vol;    //sdio reference voltage
     bool vref_ctrl_enble;
+    bool wifi_power_remain;
     struct rksdmmc_pmu    mregulator;
     struct rksdmmc_pmu    ioregulator;
     struct rksdmmc_gpio   power_n;  //PMU_EN  
@@ -41,10 +42,10 @@ struct rksdmmc_gpio_wifi_moudle {
 };
 
 enum {
-    WIFI_RKWIFI,
-    WIFI_RTL8188EU,
+    WIFI_BCMWIFI,
+    WIFI_RTKWIFI,
     WIFI_ESP8089,
-    WIFI_RTL8723BS
+    TYPE_MAX,
 };
 
 int rfkill_get_wifi_power_state(int *power, int *vref_ctrl_enable);

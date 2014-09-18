@@ -2418,7 +2418,8 @@ int rk_fb_switch_screen(struct rk_screen *screen , int enable, int lcdc_id)
 	if(!enable)
 	{
 		// if screen type is different, we do not disable lcdc.
-		if( dev_drv->cur_screen->type != screen->type )
+		if( dev_drv->cur_screen->type != screen->type ||
+		    rk_fb->num_lcdc < 2)
 			return 0;
 			
 		for(i = 0; i < dev_drv->lcdc_win_num; i++) {
