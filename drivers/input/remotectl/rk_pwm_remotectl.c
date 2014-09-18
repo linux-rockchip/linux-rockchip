@@ -240,7 +240,7 @@ static void rk_pwm_remotectl_do_something(unsigned long  data)
             }
             ddata->count ++;
             if (ddata->count == 0x10){//16 bit user code
-                DBG_CODE("GET USERCODE=0x%x\n",((ddata->scanData) && 0xffff));
+                DBG_CODE("GET USERCODE=0x%x\n",((ddata->scanData) & 0xffff));
                 if (remotectl_keybdNum_lookup(ddata)){
                     ddata->state = RMC_GETDATA;
                     ddata->scanData = 0;
@@ -386,6 +386,8 @@ static int rk_pwm_probe(struct platform_device *pdev)
     struct resource *r;
     struct input_dev *input;
     struct clk *clk;
+    struct cpumask cpumask;
+    int cpu;
     int irq;
     int ret;
     //int val;
@@ -472,20 +474,23 @@ static int rk_pwm_probe(struct platform_device *pdev)
     ret = input_register_device(input);
     if (ret) {
         pr_err("rk pwm remotectl: Unable to register input device, ret: %d\n", ret);
-    }
+    }	
     
-    input_set_capability(input, EV_KEY, KEY_WAKEUP);
+    	input_set_capability(input, EV_KEY, KEY_WAKEUP);
     
-    device_init_wakeup(&pdev->dev, 1);
+    	device_init_wakeup(&pdev->dev, 1);
     
-    #ifdef RK_PWM_REMOTECTL_PROC	
-    // rk_pwm_remotectl_proc_init();
-    #endif
+    	#ifdef RK_PWM_REMOTECTL_PROC	
+    	// rk_pwm_remotectl_proc_init();
+    	#endif
+    	cpu = 2;
+    	cpumask_clear(&cpumask);
+	cpumask_set_cpu(cpu, &cpumask); 
+	irq_set_affinity(irq, &cpumask); 
+    	rk_pwm_remotectl_hw_init(ddata);
+   	DBG("%s end \n",__FUNCTION__);
     
-    rk_pwm_remotectl_hw_init(ddata);
-    DBG("%s end \n",__FUNCTION__);
-    
-    return ret;
+    	return ret;
 }
 
 static int rk_pwm_remove(struct platform_device *pdev)
@@ -496,30 +501,29 @@ static int rk_pwm_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int remotectl_suspend(struct device *dev)
 {
+	int cpu = 0;
+	struct cpumask cpumask;
 	struct platform_device *pdev = to_platform_device(dev);
-    struct rkxx_remotectl_drvdata *ddata = platform_get_drvdata(pdev);
-
-	if (device_may_wakeup(&pdev->dev)) {
-		if (ddata->wakeup) {
-            ;//enable_irq_wake(ddata->irq);
-		}
-	}
+  	struct rkxx_remotectl_drvdata *ddata = platform_get_drvdata(pdev);
+  	
+	cpumask_clear(&cpumask);
+	cpumask_set_cpu(cpu, &cpumask); 
+	irq_set_affinity(ddata->irq, &cpumask); 
 	return 0;
 }
 
 
 static int remotectl_resume(struct device *dev)
 {
-    struct platform_device *pdev = to_platform_device(dev);
-    struct rkxx_remotectl_drvdata *ddata = platform_get_drvdata(pdev);
-
-    if (device_may_wakeup(&pdev->dev)) {
-        if (ddata->wakeup) {
-    	    ;//disable_irq_wake(ddata->irq);
-        }
-    }
-   
-    return 0;
+	int cpu = 2;
+	struct cpumask cpumask;
+	struct platform_device *pdev = to_platform_device(dev);
+  	struct rkxx_remotectl_drvdata *ddata = platform_get_drvdata(pdev);
+  	
+	cpumask_clear(&cpumask);
+	cpumask_set_cpu(cpu, &cpumask); 
+	irq_set_affinity(ddata->irq, &cpumask); 
+	return 0;
 }
 
 static const struct dev_pm_ops remotectl_pm_ops = {
@@ -537,15 +541,15 @@ static const struct of_device_id rk_pwm_of_match[] = {
 MODULE_DEVICE_TABLE(of, rk_pwm_of_match);
 
 static struct platform_driver rk_pwm_driver = {
-    .driver = {
-        .name = "rk-pwm0",
-        .of_match_table = rk_pwm_of_match,
-    #ifdef CONFIG_PM
-        .pm	= &remotectl_pm_ops,
-    #endif	
-    },
-    .probe = rk_pwm_probe,
-    .remove = rk_pwm_remove,
+	.driver = {
+        	.name = "rk-pwm0",
+        	.of_match_table = rk_pwm_of_match,
+    		#ifdef CONFIG_PM
+        	.pm	= &remotectl_pm_ops,
+    		#endif	
+    	},
+	.probe = rk_pwm_probe,
+    	.remove = rk_pwm_remove,
 };
 
 module_platform_driver(rk_pwm_driver);
