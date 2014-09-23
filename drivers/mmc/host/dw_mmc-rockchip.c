@@ -20,7 +20,7 @@
 #include <linux/slab.h>
 #include <linux/rockchip/cpu.h>
 #include <linux/rockchip/cru.h>
-
+#include <linux/delay.h>
 #include "rk_sdmmc.h"
 #include "dw_mmc-pltfm.h"
 #include "../../clk/rockchip/clk-ops.h"
@@ -403,8 +403,16 @@ re_phase:
                                 candidates_degree[index] = start_degree;
                                 index++;
                          }
-               }              
-                
+                }
+                /* eMMC spec does not require a delay between tuning cycles
+                 * but eMMC should be guaranteed to complete a sequence of 40 times CMD21
+                 * withnin 150ms, some eMMC may limit 4ms gap between any two sequential CMD21
+                 */
+                if (opcode == MMC_SEND_TUNING_BLOCK)
+                        mdelay(1);
+                else
+                        /* MMC_SEND_TUNING_BLOCK_HS200 */
+                        mdelay(5);
         }
         
         MMC_DBG_BOOT_FUNC(host->mmc,"\n execute tuning: candidates_degree = %s \t%s \t%s \t%s[%s]",
