@@ -43,7 +43,7 @@
 #include "rk_i2s.h"
 #include "../../../drivers/video/rockchip/hdmi/rk_hdmi.h"
 
-#if 1
+#if 0
 #define I2S_DBG(x...) printk(KERN_INFO x)
 #else
 #define I2S_DBG(x...) do { } while (0)

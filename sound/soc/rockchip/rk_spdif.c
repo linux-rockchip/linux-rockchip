@@ -43,7 +43,7 @@
 
 #include "rk_pcm.h"
 
-#if 1
+#if 0
 #define RK_SPDIF_DBG(x...) printk(KERN_INFO "rk_spdif:"x)
 #else
 #define RK_SPDIF_DBG(x...) do { } while (0)
