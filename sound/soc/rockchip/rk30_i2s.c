@@ -533,15 +533,17 @@ static const struct snd_soc_component_driver rockchip_i2s_component = {
 static int rockchip_i2s_suspend_noirq(struct device *dev)
 {
 	I2S_DBG("Enter %s, %d\n", __func__, __LINE__);
-
-	return pinctrl_select_state(dev->pins->p, dev->pins->sleep_state);
+	//if((dev->pins->p)&&(dev->pins->sleep_state))
+	//	pinctrl_select_state(dev->pins->p, dev->pins->sleep_state);
+	return 0;
 }
 
 static int rockchip_i2s_resume_noirq(struct device *dev)
 {
 	I2S_DBG("Enter %s, %d\n", __func__, __LINE__);
-
-	return pinctrl_select_state(dev->pins->p, dev->pins->default_state);
+	//if((dev->pins->p)&&(dev->pins->sleep_state))
+	//	pinctrl_select_state(dev->pins->p, dev->pins->default_state);
+	return 0;
 }
 #else
 #define rockchip_i2s_suspend_noirq NULL
@@ -736,13 +738,26 @@ static struct platform_driver rockchip_i2s_driver = {
 		.pm	= &rockchip_i2s_pm_ops,
 	},
 };
-module_platform_driver(rockchip_i2s_driver);
+//module_platform_driver(rockchip_i2s_driver);
+static int __init rk30_i2s_init(void)
+{
+    I2S_DBG("rk_i2s_init\n");
+    return platform_driver_register(&rockchip_i2s_driver);
+}
+
+static void __exit rk30_i2s_exit(void)
+{
+    I2S_DBG("rk_i2s_exit\n");
+    platform_driver_unregister(&rockchip_i2s_driver);
+}
 
 /* Module information */
 MODULE_AUTHOR("rockchip");
 MODULE_DESCRIPTION("ROCKCHIP IIS ASoC Interface");
 MODULE_LICENSE("GPL");
 
+subsys_initcall_sync(rk30_i2s_init);
+module_exit(rk30_i2s_exit);
 
 #ifdef CONFIG_PROC_FS
 #include <linux/proc_fs.h>

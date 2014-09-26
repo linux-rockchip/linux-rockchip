@@ -46,21 +46,21 @@
 		ldo2_reg: regulator@5 {
 			reg = <5>;
 			regulator-compatible = "act_ldo2";
-			regulator-always-on;
+			//regulator-always-on;
 			regulator-boot-on;
 		};
 
 		ldo3_reg: regulator@6 {
 			reg = <6>;
 			regulator-compatible = "act_ldo3";
-			regulator-always-on;
+			//regulator-always-on;
 			regulator-boot-on;
 		};
 
 		ldo4_reg:regulator@7 {
 			reg = <7>;
 			regulator-compatible = "act_ldo4";
-			regulator-always-on;
+			//regulator-always-on;
 			regulator-boot-on;
 		};
 
@@ -88,7 +88,7 @@
 		ldo8_reg: regulator@11 {
 			reg = <11>;
 			regulator-compatible = "act_ldo8";
-			regulator-always-on;
+			//regulator-always-on;
 			regulator-boot-on;
 		};
 	};

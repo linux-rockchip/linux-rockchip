@@ -159,6 +159,9 @@
 &pinctrl {
 	//used for init some gpio
 	
+	init-gpios = <&gpio8 GPIO_A1 GPIO_ACTIVE_HIGH
+		&gpio7 GPIO_B1 GPIO_ACTIVE_HIGH		
+		&gpio4 GPIO_B0 GPIO_ACTIVE_HIGH>;
 	gpio0_gpio {
 			gpio0_c2: gpio0-c2 {
 				rockchip,pins = <GPIO0_C2>;
@@ -378,7 +381,7 @@
 			regulator-initial-state = <3>;
 			regulator-state-mem {
 				regulator-state-mode = <0x2>;
-				regulator-state-disabled;
+				regulator-state-enabled;
 				regulator-state-uv = <900000>;
 			};
 		};
@@ -403,7 +406,7 @@
 			regulator-initial-state = <3>;
 			regulator-state-mem {
 				regulator-state-mode = <0x2>;
-				regulator-state-enabled;
+				regulator-state-disabled;
 				regulator-state-uv = <900000>;
 			};	
 		};
@@ -445,8 +448,8 @@
 		gpio-reset = <&gpio7 GPIO_C5 GPIO_ACTIVE_LOW>;
 		clocks = <&clk_i2s>, <&clk_i2s_out>;
 		clock-names = "i2s_clk","i2s_mclk";
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2s_mclk>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&i2s_mclk>;
 	};
 	rk1000_tve@42 {
 		compatible = "rockchip,rk1000_tve";
@@ -458,9 +461,9 @@
 	rk1000_codec: rk1000_codec@60 {
 		compatible = "rockchip,rk1000_codec";
 		reg = <0x60>;
-		spk_ctl_io = <&gpio7 GPIO_A5 1>;
+		spk_ctl_io = <&gpio7 GPIO_A5 GPIO_ACTIVE_LOW>;
 		boot_depop = <1>;
-		pa_enable_time = <1000>;
+		pa_enable_time = <5000>;
 	};
 };
 
@@ -468,11 +471,13 @@
 	status = "disabled";
 };
 
-&i2s{
-    pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&i2s_sclk &i2s_lrckrx &i2s_lrcktx &i2s_sdi &i2s_sdo0 &i2s_sdo1 &i2s_sdo2 &i2s_sdo3>;
-		pinctrl-1 = <&i2s_gpio>;
-};
+/*$_rbox_$_modify_$_begin_huangzhibao for rk1000*/
+//&i2s{
+//    pinctrl-names = "default", "sleep";
+//		pinctrl-0 = <&i2s_sclk &i2s_lrckrx &i2s_lrcktx &i2s_sdi &i2s_sdo0 &i2s_sdo1 &i2s_sdo2 &i2s_sdo3>;
+//		pinctrl-1 = <&i2s_gpio>;
+//};
+/*$_rbox_$_modify_$_end*/
 
 &fb {
 	rockchip,disp-mode = <DUAL>;

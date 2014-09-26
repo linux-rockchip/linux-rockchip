@@ -2537,7 +2537,7 @@
 
 						"reserved",		"reserved",
 						"reserved",		"reserved";
-                                               rockchip,suspend-clkgating-setting=<0x0033 0x0033>;
+                                               rockchip,suspend-clkgating-setting=<0x0833 0x0833>;
 
 					#clock-cells = <1>;
 				};

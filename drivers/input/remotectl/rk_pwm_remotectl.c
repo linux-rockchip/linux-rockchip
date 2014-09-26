@@ -283,13 +283,13 @@ static void rk_pwm_remotectl_do_something(unsigned long  data)
             DBG( "S=%d\n",ddata->period);
             if ((RK_PWM_TIME_RPT_MIN < ddata->period) && (ddata->period < RK_PWM_TIME_RPT_MAX)){
                  DBG( "S1\n");
-                mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(110));
+                mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(130));
             }else if ((RK_PWM_TIME_SEQ1_MIN < ddata->period) && (ddata->period < RK_PWM_TIME_SEQ1_MAX)){
                 DBG( "S2\n");
-                mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(110));
+                mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(130));
             }else if ((RK_PWM_TIME_SEQ2_MIN < ddata->period) && (ddata->period < RK_PWM_TIME_SEQ2_MAX)){
                 DBG( "S3\n");
-                mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(110));
+                mod_timer(&ddata->timer,jiffies + msecs_to_jiffies(130));
             }else{
                 DBG( "S4\n");
                 input_event(ddata->input, EV_KEY, ddata->keycode, 0);
@@ -328,7 +328,7 @@ static irqreturn_t rockchip_pwm_irq(int irq, void *dev_id)
     
     val = readl_relaxed(ddata->base + PWM_REG_INTSTS);
     if (val&PWM_CH0_INT){
-        if (val&PWM_CH0_POL){
+        if ((val&PWM_CH0_POL)==0){
             val = readl_relaxed(ddata->base + PWM_REG_HPR);
             ddata->period = val;
             tasklet_hi_schedule(&ddata->remote_tasklet); 

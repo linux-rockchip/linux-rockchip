@@ -91,7 +91,7 @@ enum pwm_div {
 #define RK_PWM_TIME_BIT0_MAX     5
 
 #define RK_PWM_TIME_BIT1_MIN     7  /*Bit1  2.25ms*/
-#define RK_PWM_TIME_BIT1_MAX     11
+#define RK_PWM_TIME_BIT1_MAX     14
 
 #define RK_PWM_TIME_RPT_MIN      0x215   /*101000*/
 #define RK_PWM_TIME_RPT_MAX      0x235   /*103000*/         /*Repeat  105-2.81=102.19ms*/  //110-9-2.25-0.56=98.19ms

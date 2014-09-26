@@ -136,7 +136,8 @@
 #define INTCR_SDBEIE_DISABLE        (0<<4)
 #define INTCR_SDBEIE_ENABLE         (1<<4)
 #define INTCR_SDBEIE_MASK           (1<<4)
-
+#define INTCR_BTTIC_CLEAR           (1<<16)
+#define INTCR_UDTIC_CLEAR           (1<<17)
  
 struct rockchip_spdif_info {
 	spinlock_t	lock;
@@ -347,15 +348,25 @@ err:
 #ifdef CONFIG_PM
 static int spdif_suspend(struct snd_soc_dai *cpu_dai)
 {
-	RK_SPDIF_DBG( "spdif:Entered %s\n", __func__);
+	struct rockchip_spdif_info *spdif = to_info(cpu_dai);
+	void __iomem *regs = spdif->regs;
+	u32 intc;
 
+	RK_SPDIF_DBG( "Entered %s\n", __func__);
+	//g_intc = readl(regs + INTCR);
+	writel(0, regs + INTCR); //
+	RK_SPDIF_DBG( "spdif:Entered %s\n", __func__);
 	return 0;
 }
 
 static int spdif_resume(struct snd_soc_dai *cpu_dai)
 {
+	struct rockchip_spdif_info *spdif = to_info(cpu_dai);
+	void __iomem *regs = spdif->regs;
+	u32 intc;
+	
 	RK_SPDIF_DBG( "spdif:Entered %s\n", __func__);
-
+	//writel(g_intc, regs + INTCR); //
 	return 0;
 }
 #else

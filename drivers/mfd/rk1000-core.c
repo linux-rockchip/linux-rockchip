@@ -11,6 +11,7 @@
 #include <linux/mfd/rk1000.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/regulator/consumer.h>
 
 #if 1
 #define	DBG(x...)	printk(KERN_INFO x)
@@ -35,21 +36,17 @@ struct rk1000 {
 };
 
 static struct rk1000 *rk1000;
+extern void rk1000_codec_reg_set(void);
 
-void rk1000_power_ctrl(int enable) {
-	if(rk1000 && gpio_is_valid(rk1000->io_power.gpio)) {
+void rk1000_reset_ctrl(int enable) {
+	printk("rk1000_reset_ctrl \n");
+	if(rk1000 && gpio_is_valid(rk1000->io_reset.gpio)) {
 		if(enable) {
-			gpio_set_value(rk1000->io_power.gpio, rk1000->io_power.active);
-			msleep(10);
-			// after power up, rk1000 need to reset
-			if (gpio_is_valid(rk1000->io_power.gpio)) {
-				gpio_set_value(rk1000->io_reset.gpio, rk1000->io_reset.active);
-				msleep(100);
-				gpio_set_value(rk1000->io_reset.gpio, !(rk1000->io_reset.active));
-			}
+			gpio_set_value(rk1000->io_reset.gpio,!(rk1000->io_reset.active));		
+		}else{
+			printk("rk1000 reset pull low \n");
+			gpio_set_value(rk1000->io_reset.gpio, (rk1000->io_reset.active));
 		}
-		else
-			gpio_set_value(rk1000->io_power.gpio, !(rk1000->io_power.active));
 	}
 }
 
@@ -113,6 +110,170 @@ int rk1000_i2c_recv(const u8 addr, const u8 reg, const char *buf)
 	return (ret == 2)? 0 : -1;
 }
 
+
+#ifdef CONFIG_PM
+static int rk1000_control_suspend(struct device *dev)
+{
+	int ret;
+	struct regulator *ldo;
+	
+	printk("rk1000_control_suspend \n");
+	ret = rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_CODEC, 0x22);
+	printk("ret=0x%x\n",ret);
+	ret = rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_TVE, 0x00);
+	printk("ret=0x%x\n",ret);
+	ret = rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_TVE, 0x07);
+	printk("ret=0x%x\n",ret);
+
+	rk1000_reset_ctrl(0);
+	
+	ldo = regulator_get(NULL, "act_ldo3");
+	if (ldo == NULL) {
+		pr_err("%s get ldo3 failed\n", __func__);
+	} else {
+		if(regulator_is_enabled(ldo)) {
+			ret = regulator_disable(ldo);
+			if(ret != 0)
+				pr_err("%s: faild to disableldo3\n", __func__);
+			else
+				pr_info("turn off ldo3 done.\n");
+		} else 
+			pr_warn("is disabled before disable ldo3");
+		regulator_put(ldo);
+	}
+	ldo = regulator_get(NULL, "act_ldo4");
+	if (ldo == NULL)
+		pr_err("\n%s get ldo4 failed \n", __func__);
+	else {
+		if(regulator_is_enabled(ldo)) {
+			ret = regulator_disable(ldo);
+			if(ret != 0)
+				pr_err("%s: faild to disable ldo4.\n", __func__);
+			else
+				pr_info("turn off ldo4 done.\n");
+		} else
+			pr_warn("is disabled before disable ldo4");
+		regulator_put(ldo);
+	}
+	ldo = regulator_get(NULL, "act_ldo2");
+	if (ldo == NULL)
+		pr_err("\n%s get ldo2 failed \n", __func__);
+	else {
+		if(regulator_is_enabled(ldo)) {
+			ret = regulator_disable(ldo);
+			if(ret != 0)
+				pr_err("%s: faild to disable  ldo2.\n", __func__);
+			else
+				pr_info("turn off ldo2 done.\n");
+		}else	
+			pr_warn("is disabled before disable ldo2");
+		regulator_put(ldo);
+	}
+	ldo = regulator_get(NULL, "act_ldo8");
+	if (ldo == NULL)
+		pr_err("\n%s get ldo8 failed \n", __func__);
+	else {
+		if(regulator_is_enabled(ldo)) {
+			ret = regulator_disable(ldo);
+			if(ret != 0)
+				pr_err("%s: faild to disable  ldo8.\n", __func__);
+			else
+				pr_info("turn off ldo8 done.\n");
+		} else 
+			pr_warn("is disabled before disable ldo8");
+		regulator_put(ldo);
+	}
+	return 0;
+}
+
+static int rk1000_control_resume(struct device *dev)
+{
+	int ret;
+  struct regulator * ldo;
+  
+	rk1000_reset_ctrl(1);
+		ldo = regulator_get(NULL, "act_ldo3");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo3 failed\n", __func__);
+		} else{
+				if(!regulator_is_enabled(ldo)) {
+						regulator_set_voltage(ldo, 1800000, 1800000);
+						ret = regulator_enable(ldo);
+						if(ret != 0){
+								pr_err("%s: faild to enable ldo3\n", __func__);
+						} else {
+								pr_info("turn on ldo3 done.\n");
+						}
+				} else {
+						pr_warn("ldo3 is enabled before enable ");
+				}
+		}
+		ldo = regulator_get(NULL, "act_ldo4");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo failed\n", __func__);
+		} else{
+				if(!regulator_is_enabled(ldo)) {
+						regulator_set_voltage(ldo, 3300000, 3300000);
+						ret = regulator_enable(ldo);
+						if(ret != 0){
+								pr_err("%s: faild to enable ldo4.\n", __func__);
+						} else {
+								pr_info("turn on ldo done.\n");
+						}
+				} else {
+						pr_warn("ldo4 is enabled before enable\n");
+				}
+		}
+	ldo = regulator_get(NULL, "act_ldo2");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo2 failed\n", __func__);
+		} else{
+				if(!regulator_is_enabled(ldo)) {
+						regulator_set_voltage(ldo, 1000000, 1000000);
+						ret = regulator_enable(ldo);
+						if(ret != 0){
+								pr_err("%s: faild to enable ldo2.\n", __func__);
+						} else {
+								pr_info("turn on ldo done.\n");
+						}
+				} else {
+						pr_warn("ldo2 is enabled before enable\n");
+				}
+		}
+		ldo = regulator_get(NULL, "act_ldo8");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo failed\n", __func__);
+		} else{
+				if(!regulator_is_enabled(ldo)) {
+						regulator_set_voltage(ldo, 1800000, 1800000);
+						ret = regulator_enable(ldo);
+						if(ret != 0){
+								pr_err("%s: faild to enable ldo8.\n", __func__);
+						} else {
+								pr_info("turn on ldo done.\n");
+						}
+				} else {
+						pr_warn("ldo8 is enabled before enable\n");
+				}
+		}
+	
+	printk("rk1000_control_resume \n");
+	rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_ADC, 0x88); //ADC power off
+	#ifdef CONFIG_SND_SOC_RK1000
+	rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_CODEC, 0x00);
+	#else
+	rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_CODEC, 0x0d);
+	#endif
+	rk1000_i2c_send(I2C_ADDR_CTRL, CTRL_I2C, 0x22);
+	printk("ret=0x%x\n",ret);
+	rk1000_codec_reg_set();
+	return 0;
+}
+#endif
+
+
+
+
 static int rk1000_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -120,8 +281,58 @@ static int rk1000_probe(struct i2c_client *client,
     enum of_gpio_flags flags;
     struct clk *i2s_clk,*i2s_mclk;
     int ret;
-    
+		struct regulator * ldo;
+		
     DBG("[%s] start\n", __FUNCTION__);
+    
+    ldo = regulator_get(NULL, "act_ldo3");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo3 failed\n", __func__);
+		} else{
+				regulator_set_voltage(ldo, 1800000, 1800000);
+				ret = regulator_enable(ldo);
+				if(ret != 0){
+						pr_err("%s: faild to enable ldo3\n", __func__);
+				} else {
+						pr_info("%s: turn on ldo3 done.\n", __func__);
+				}
+		}
+		ldo = regulator_get(NULL, "act_ldo4");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo failed\n", __func__);
+		} else{
+				regulator_set_voltage(ldo, 3300000, 3300000);
+				ret = regulator_enable(ldo);
+				if(ret != 0){
+						pr_err("%s: faild to enable ldo4.\n", __func__);
+				} else {
+						pr_info("%s: turn on ldo done.\n", __func__);
+				}
+		}
+		 ldo = regulator_get(NULL, "act_ldo2");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo2 failed\n", __func__);
+		} else{
+				regulator_set_voltage(ldo, 1000000, 1000000);
+				ret = regulator_enable(ldo);
+				if(ret != 0){
+						pr_err("%s: faild to enable ldo2\n", __func__);
+				} else {
+						pr_info("%s: turn on ldo2 done.\n", __func__);
+				}
+		}
+		ldo = regulator_get(NULL, "act_ldo8");
+		if (ldo == NULL) {
+				pr_err("\n%s get ldo8 failed\n", __func__);
+		} else{
+				regulator_set_voltage(ldo, 1800000, 1800000);
+				ret = regulator_enable(ldo);
+				if(ret != 0){
+						pr_err("%s: faild to enable ldo8.\n", __func__);
+				} else {
+						pr_info("%s: turn on ldo done.\n", __func__);
+				}
+		}
     rk1000 = kmalloc(sizeof(struct rk1000), GFP_KERNEL);
     if(!rk1000) {
         dev_err(&client->dev, ">> rk1000 core inf kmalloc fail!");
@@ -225,14 +436,29 @@ static const struct i2c_device_id rk1000_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, rk1000_id);
 
+static const struct dev_pm_ops rockchip_rk1000_pm_ops = {
+        //SET_RUNTIME_PM_OPS(rockchip_i2s_suspend_noirq,
+        //                        rockchip_i2s_resume_noirq, NULL)
+        .suspend_late = rk1000_control_suspend,
+        .resume_early = rk1000_control_resume,
+};
+
 static struct i2c_driver rk1000_driver = {
 	.driver = {
 		.name = "rk1000_control",
+#ifdef CONFIG_PM		
+		.pm	= &rockchip_rk1000_pm_ops,
+#endif		
 	},
 	.probe = rk1000_probe,
 	.remove = rk1000_remove,
 	.id_table = rk1000_id,
+//#ifdef CONFIG_PM
+//	.suspend = rk1000_control_suspend,
+//	.resume = rk1000_control_resume,
+//#endif
 };
+
 
 static int __init rk1000_init(void)
 {
@@ -244,7 +470,7 @@ static void __exit rk1000_exit(void)
 	i2c_del_driver(&rk1000_driver);
 }
 
-subsys_initcall_sync(rk1000_init);
+module_init(rk1000_init);
 module_exit(rk1000_exit);
 
 

@@ -31,6 +31,7 @@
 #include <linux/clk.h>
 #include <linux/gpio.h>
 #include "rk1000_codec.h"
+#include <linux/regulator/consumer.h>
 
 #define RK1000_CODEC_PROC
 
@@ -98,41 +99,41 @@ struct rk1000_codec_priv {
 
 	struct delayed_work rk1000_delayed_work;
 	unsigned int spk_ctrl_io;
+	enum of_gpio_flags flags;
 	/*
 		Some amplifiers enable a longer time.
 		config after pa_enable_io delay pa_enable_time(ms)
-		default = 0,preferably not more than 1000ms
-		so value range is 0 - 1000.
+		so value range is 0 - 8000.
 	*/	
 	unsigned int pa_enable_time;
 	int boot_depop;//if found boot pop,set boot_depop 1 test	
-#if RESUME_PROBLEM
-	int rk610_workstatus;
-#endif
 	int call_enable;	
 	int headset_status;	
 };
 
+
 static void spk_ctrl_fun(int status)
 {
 	struct rk1000_codec_priv *rk1000_codec = NULL;
+	
 	if(rk1000_codec_codec == NULL)
 		return;
 	rk1000_codec = snd_soc_codec_get_drvdata(rk1000_codec_codec);
 	if(rk1000_codec == NULL)
 		return;
-#ifdef CONFIG_MODEM_SOUND
-	if(rk1000_codec->call_enable){
-		DBG("%s:: is calling cannot set spk\n",__FUNCTION__);
+	if(!rk1000_codec->spk_ctrl_io)
 		return;
-	}	
-#endif		
-	if(rk1000_codec->spk_ctrl_io)
-	{
-		DBG("%s:: spk status = %d\n",__FUNCTION__,status);
-		gpio_set_value(rk1000_codec->spk_ctrl_io, status);//status
-	}
+	printk("%s:: spk status = %d\n",__FUNCTION__,status);
+	if (status)
+		gpio_set_value(rk1000_codec->spk_ctrl_io, rk1000_codec->flags);//status
+	else
+		gpio_set_value(rk1000_codec->spk_ctrl_io, !rk1000_codec->flags);//status
 }
+
+//static void rk1000_delayed_work(struct work_struct *work)
+//{
+//	 spk_ctrl_fun(GPIO_HIGH);
+//}
 
 /*
  * read rk1000 register cache
@@ -192,9 +193,9 @@ static int rk1000_codec_write(struct snd_soc_codec *codec, unsigned int reg,
 	if(rk1000_codec->call_enable)
 		return 0;
 #endif	
-	if(value == rk1000_codec_read_reg_cache(codec,reg))
-		return 0;
-	DBG("Enter::%s, %d, reg=0x%02X, value=0x%02X\n",__FUNCTION__,__LINE__, reg, value);
+	//if(value == rk1000_codec_read_reg_cache(codec,reg))
+		//return 0;
+	//DBG("Enter::%s, %d, reg=0x%02X, value=0x%02X\n",__FUNCTION__,__LINE__, reg, value);
 	data[0] = value & 0x00ff;
 
 	i2c->addr = (i2c->addr & 0x60)|reg;
@@ -383,9 +384,7 @@ static struct snd_pcm_hw_constraint_list constraints_12 = {
 static int rk1000_codec_set_bias_level(struct snd_soc_codec *codec,
 				 enum snd_soc_bias_level level)
 {
-#if RESUME_PROBLEM	
-	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
-#endif
+
 	DBG("Enter::%s----%d now_level =%d  old_level = %d\n",__FUNCTION__,__LINE__,level,codec->dapm.bias_level);
 	switch (level) {
 	case SND_SOC_BIAS_ON:
@@ -396,19 +395,11 @@ static int rk1000_codec_set_bias_level(struct snd_soc_codec *codec,
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
-#if RESUME_PROBLEM	
-		if(rk1000_codec->rk1000_workstatus == SND_SOC_DAPM_STREAM_RESUME)
-		{
-			DBG("rk1000 is resume,have not into standby\n");
-			rk1000_codec->rk1000_workstatus = SND_SOC_DAPM_STREAM_NOP;
-			break;
-		}
-#endif
+
 		printk("dgl rk1000 standby\n");
-		spk_ctrl_fun(GPIO_HIGH);
 		//rk1000_codec_write(codec,ACCELCODEC_R0A, ASC_CLK_DISABLE);
-		#if 0
-		rk1000_codec_write(codec, ACCELCODEC_R1D, 0xFE);
+		#if 1
+		rk1000_codec_write(codec, ACCELCODEC_R1D, 0xFF);
 		rk1000_codec_write(codec, ACCELCODEC_R1E, 0xFF);
 		rk1000_codec_write(codec, ACCELCODEC_R1F, 0xFF);
 		#endif
@@ -416,7 +407,7 @@ static int rk1000_codec_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_OFF:
 		printk("dgl rk1000 power off\n");
-		spk_ctrl_fun(GPIO_HIGH);
+		spk_ctrl_fun(GPIO_LOW);		
 		//rk1000_codec_write(codec,ACCELCODEC_R0A, ASC_CLK_DISABLE);		
 		rk1000_codec_write(codec, ACCELCODEC_R1D, 0xFF);
 		rk1000_codec_write(codec, ACCELCODEC_R1E, 0xFF);
@@ -435,7 +426,9 @@ static int rk1000_codec_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
-	struct rk1000_codec_priv *rk1000_codec = snd_soc_codec_get_drvdata(codec);
+	struct rk1000_codec_priv *rk1000_codec;
+
+	rk1000_codec = snd_soc_codec_get_drvdata(codec);
 	
 	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
 	
@@ -469,14 +462,10 @@ static int rk1000_codec_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
-	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
+	struct rk1000_codec_priv *rk1000_codec;
 	u16 iface = 0;
 
-	if(rk1000_codec->pa_enable_time < 300)
-		spk_ctrl_fun(GPIO_HIGH);
-	else
-		spk_ctrl_fun(GPIO_LOW);
-		
+        rk1000_codec = snd_soc_codec_get_drvdata(codec);
 	rk1000_codec_write(codec,ACCELCODEC_R1D, 0x2a);  //setup Vmid and Vref, other module power down
 	rk1000_codec_write(codec,ACCELCODEC_R1E, 0x40);  ///|ASC_PDASDML_ENABLE);
 
@@ -596,23 +585,17 @@ static int rk1000_codec_pcm_hw_params(struct snd_pcm_substream *substream,
 static int rk1000_codec_mute(struct snd_soc_dai *dai, int mute)
 {
     struct snd_soc_codec *codec = dai->codec;
-    struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
+    struct rk1000_codec_priv *rk1000_codec;
+    
     DBG("Enter::%s----%d--mute=%d\n",__FUNCTION__,__LINE__,mute);
-
+    rk1000_codec =snd_soc_codec_get_drvdata(codec);
+    
     if (mute)
     {
-        //spk_ctrl_fun(GPIO_HIGH);
         rk1000_codec_write(codec,ACCELCODEC_R17, 0xFF);  //AOL
         rk1000_codec_write(codec,ACCELCODEC_R18, 0xFF);  //AOR
         rk1000_codec_write(codec,ACCELCODEC_R19, 0xFF);  //AOM
         rk1000_codec_write(codec,ACCELCODEC_R04, ASC_INT_MUTE_L|ASC_INT_MUTE_R|ASC_SIDETONE_L_OFF|ASC_SIDETONE_R_OFF);  //soft mute
-        //add for standby
-        //	if(!dai->capture_active)
-        //	{
-        //		rk1000_codec_write(codec, ACCELCODEC_R1D, 0xFE);
-        //		rk1000_codec_write(codec, ACCELCODEC_R1E, 0xFF);
-        //		rk1000_codec_write(codec, ACCELCODEC_R1F, 0xFF);
-        //	}
     }
 	else    //unmute
 	{
@@ -624,31 +607,15 @@ static int rk1000_codec_mute(struct snd_soc_dai *dai, int mute)
         rk1000_codec_write(codec,ACCELCODEC_R04, ASC_INT_ACTIVE_L|ASC_INT_ACTIVE_R|ASC_SIDETONE_L_OFF|ASC_SIDETONE_R_OFF);
 		rk1000_codec_write(codec,ACCELCODEC_R19, 0x7F);  //AOM
 
-		if(rk1000_codec->pa_enable_time == 0){
-			msleep(300);
-		}
+		//if(rk1000_codec->pa_enable_time == 0){
+		//	msleep(300);
+		//}
 		#if OUT_CAPLESS
     	rk1000_codec_write(codec,ACCELCODEC_R1F, 0x09|ASC_PDMIXM_ENABLE);
     	#else
     	rk1000_codec_write(codec,ACCELCODEC_R1F, 0x09|ASC_PDMIXM_ENABLE|ASC_PDPAM_ENABLE);
 		#endif
-	    //schedule_delayed_work(&rk1000_codec->rk1000_delayed_work, 0);
-	    //rk1000_codec_reg_read();
-	    //spk_ctrl_fun(GPIO_LOW);
-/*	    
-		if(rk1000_codec->hdmi_ndet){
-			if(rk1000_codec->pa_enable_time == 0 ){
-				spk_ctrl_fun(GPIO_HIGH);
-			}
-			else if(rk1000_codec->pa_enable_time > 0 && rk1000_codec->pa_enable_time < 300){
-				spk_ctrl_fun(GPIO_HIGH);
-				msleep(rk1000_codec->pa_enable_time)	;
-			}
-			else if(rk1000_codec->pa_enable_time >=300 && rk1000_codec->pa_enable_time < 1000){
-				msleep(rk1000_codec->pa_enable_time);
-			}
-		}
-*/
+	  
     }
 	return 0;
 }
@@ -666,7 +633,7 @@ static void rk1000_delayedwork_fun(struct work_struct *work)
 		rk1000_codec_write(codec,ACCELCODEC_R1F, 0x09|ASC_PDMIXM_ENABLE|ASC_PDPAM_ENABLE);
 		#endif
 	}
-	spk_ctrl_fun(GPIO_LOW);
+	spk_ctrl_fun(GPIO_HIGH);
 }
 
 
@@ -703,27 +670,6 @@ static struct snd_soc_dai_driver rk1000_codec_dai[] = {
 	}
 };
 
-static int rk1000_codec_suspend(struct snd_soc_codec *codec)
-{
-	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
-	rk1000_codec_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	return 0;
-}
-
-static int rk1000_codec_resume(struct snd_soc_codec *codec)
-{
-#if RESUME_PROBLEM
-	struct rk1000_codec_priv *rk1000_codec =snd_soc_codec_get_drvdata(codec);
-#endif
-	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
-	/* Sync reg_cache with the hardware */
-	
-//	rk1000_codec_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-#if RESUME_PROBLEM
-	rk1000_codec->rk1000_workstatus = SND_SOC_DAPM_STREAM_RESUME;
-#endif
-	return 0;
-}
 #define FREQ441kHz                   (0x11 << 1)
 #define USE_MIC_IN
 #define USE_LPF
@@ -801,7 +747,34 @@ void rk1000_codec_reg_set(void)
 		rk1000_codec_write(codec,ACCELCODEC_R1F, 0x09|ASC_PDMIXM_ENABLE|ASC_PDPAM_ENABLE);
 		#endif
 	}	
-    //rk1000_codec_write(codec,ACCELCODEC_R1C, ASC_DEM_ENABLE);  //0x00);  //use default value
+}
+//extern int rk1000_i2c_send(const u8 addr, const u8 reg, const u8 value);
+//extern void rk1000_power_ctrl(int enable);
+static int rk1000_codec_suspend(struct snd_soc_codec *codec)
+{
+		spk_ctrl_fun(GPIO_LOW);
+		//rk1000_codec_set_bias_level(codec, SND_SOC_BIAS_OFF);
+
+		printk("Enter::%s----%d \n",__FUNCTION__,__LINE__);
+		//rk1000_power_ctrl(0);
+	return 0;
+}
+
+static int rk1000_codec_resume(struct snd_soc_codec *codec)
+{
+		
+		//spk_ctrl_fun(GPIO_LOW);
+		//rk1000_power_ctrl(1);
+	
+		
+		//mdelay(3);
+    //rk1000_codec_set_bias_level(codec, SND_SOC_BIAS_PREPARE);
+	
+	  //rk1000_i2c_send(0x40, 1, 0x00);
+	  //rk1000_i2c_send(0x40, 2, 0x22);	
+	  //rk1000_codec_reg_set();
+		spk_ctrl_fun(GPIO_HIGH);
+		return 0;
 }
 
 static int rk1000_codec_probe(struct snd_soc_codec *codec)
@@ -836,23 +809,22 @@ static int rk1000_codec_probe(struct snd_soc_codec *codec)
 	        printk("rk1000_control request gpio fail!\n");
 			return ret;
 	    }
-	    gpio_direction_output(rk1000_codec->spk_ctrl_io, GPIO_HIGH);//set hight disable codec lr output
-	    gpio_set_value(rk1000_codec->spk_ctrl_io, GPIO_HIGH);	
+	    gpio_direction_output(rk1000_codec->spk_ctrl_io, !rk1000_codec->flags);//set hight disable codec lr output
+	    gpio_set_value(rk1000_codec->spk_ctrl_io, !rk1000_codec->flags);	
 	}
 
 	//rk1000_codec->hdmi_ndet = true;
 	rk1000_codec->call_enable = 0;
 	rk1000_codec->headset_status = HP_OUT;
-#if RESUME_PROBLEM	
-	rk1000_codec->rk1000_workstatus = SND_SOC_DAPM_STREAM_NOP;
-#endif
-	
+
  //rk1000_control_init_codec();
-    rk1000_codec_reg_set();
-//	rk1000_codec_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	schedule_delayed_work(&rk1000_codec->rk1000_delayed_work, msecs_to_jiffies(5000));
+  rk1000_codec_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+
+	schedule_delayed_work(&rk1000_codec->rk1000_delayed_work, msecs_to_jiffies(rk1000_codec->pa_enable_time));
 
 	codec->dapm.bias_level = SND_SOC_BIAS_PREPARE;
+	rk1000_codec_reg_set();
+	printk("rk1000_codec_probe ret=0x%x\n",ret);
 	return ret;
 }
 
@@ -888,25 +860,20 @@ static int rk1000_codec_i2c_probe(struct i2c_client *i2c,
 	struct rk1000_codec_priv *rk1000_codec;
 	struct device_node *rk1000_np = i2c->dev.of_node;
 	int ret;
-	int val = 0;
+	
 	DBG("%s::%d\n",__FUNCTION__,__LINE__);
 	rk1000_codec = kzalloc(sizeof(struct rk1000_codec_priv), GFP_KERNEL);
 	if (rk1000_codec == NULL)
 		return -ENOMEM;
 
-	if(!of_property_read_u32(rk1000_np, "boot_depop", &val))
-		rk1000_codec->boot_depop = val;
-	if(!of_property_read_u32(rk1000_np, "pa_enable_time", &val))
-		rk1000_codec->pa_enable_time = val;
-	if(rk1000_codec->pa_enable_time > 1000)
-		rk1000_codec->pa_enable_time = 1000;
 		
-	rk1000_codec->spk_ctrl_io = of_get_named_gpio(rk1000_np,"spk_ctl_io", 0);
+	rk1000_codec->spk_ctrl_io = of_get_named_gpio_flags(rk1000_np,"spk_ctl_io", 0, &(rk1000_codec->flags));
 	if (!gpio_is_valid(rk1000_codec->spk_ctrl_io)){
 		printk("invalid core_info->reset_gpio: %d\n",rk1000_codec->spk_ctrl_io);
 		return -1;
 	}
-
+  of_property_read_u32(rk1000_np, "pa_enable_time", &(rk1000_codec->pa_enable_time));
+  of_property_read_u32(rk1000_np, "boot_depop", &(rk1000_codec->boot_depop));
 	i2c_set_clientdata(i2c, rk1000_codec);
 	rk1000_codec->control_type = SND_SOC_I2C;
 	
@@ -1077,48 +1044,21 @@ static ssize_t rk1000_codec_proc_write(struct file *file, const char __user *buf
 	return len;
 }
 
-//static int proc_rk1000_codec_open(struct inode *inode, struct file *file)
-//{
-//	return single_open(file, (void *)rk1000_codec_reg_read, NULL);
-//}
 
 static const struct file_operations rk1000_codec_proc_fops = {
 	.owner		= THIS_MODULE,
 	//.open		= proc_rk1000_codec_open,
 	//.read		= seq_read,
-//#ifdef CONFIG_PCI
 	.write		= rk1000_codec_proc_write,
-//#endif
-	//.llseek	= seq_lseek,
-	//.release	= single_release,
 };
 
 
-/*
-static int rk1000_codec_proc_init(void)
-{
-	struct proc_dir_entry *rk1000_codec_proc_entry;
-	rk1000_codec_proc_entry = create_proc_entry("driver/rk1000_codec", 0777, NULL);
-	if(rk1000_codec_proc_entry != NULL)
-	{
-		rk1000_codec_proc_entry->write_proc = rk1000_codec_proc_write;
-		return -1;
-	}
-	else
-	{
-		printk("create rk1000_codec proc error !\n");
-	}
-	return 0;
-}
-*/
 static int rk1000_codec_proc_init(void)
 {
 	proc_create("rk1000_codec_reg", 0, NULL, &rk1000_codec_proc_fops);
 	return 0;
 }
 late_initcall(rk1000_codec_proc_init);
-
-
 #endif
 
 
@@ -1222,7 +1162,7 @@ static void __exit rk1000_control_exit(void)
 	i2c_del_driver(&rk1000_control_driver);
 }
 
-module_init(rk1000_control_init);
+device_initcall_sync(rk1000_control_init);
 module_exit(rk1000_control_exit);
 
 MODULE_DESCRIPTION("ASoC RK1000 CODEC driver");

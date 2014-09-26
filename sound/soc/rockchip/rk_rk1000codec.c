@@ -205,13 +205,27 @@ static struct platform_driver rockchip_rk1000_audio_driver = {
                 .name   = "rockchip-rk1000",
                 .owner  = THIS_MODULE,
                 .of_match_table = of_match_ptr(rockchip_rk1000_of_match),
+                .pm = &snd_soc_pm_ops,
         },
         .probe          = rockchip_rk1000_audio_probe,
         .remove         = rockchip_rk1000_audio_remove,
 };
 
-module_platform_driver(rockchip_rk1000_audio_driver);
+//module_platform_driver(rockchip_rk1000_audio_driver);
+static int __init rk1000_codec_init(void)
+{
+    DBG("rk_i2s_init\n");
+    return platform_driver_register(&rockchip_rk1000_audio_driver);
+}
 
+static void __exit rk1000_codec_exit(void)
+{
+    DBG("rk_i2s_exit\n");
+    platform_driver_unregister(&rockchip_rk1000_audio_driver);
+}
+
+device_initcall_sync(rk1000_codec_init);
+module_exit(rk1000_codec_exit);
 /* Module information */
 MODULE_AUTHOR("rockchip");
 MODULE_DESCRIPTION("ROCKCHIP i2s ASoC Interface");

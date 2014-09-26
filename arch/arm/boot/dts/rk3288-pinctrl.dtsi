@@ -631,6 +631,10 @@
 				//rockchip,tristate = <VALUE_TRI_DEFAULT>;
 
 			};
+			spdif_gpio: spdif-gpio {
+				rockchip,pins =  <FUNC_TO_GPIO(SPDIF_TX)>;
+				rockchip,drive = <VALUE_DRV_DEFAULT>;
+			};
 		};
 
 		gpio7_pwm {
