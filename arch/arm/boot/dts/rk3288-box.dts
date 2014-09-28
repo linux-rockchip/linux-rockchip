@@ -13,7 +13,7 @@
 	       	
 	/* wifi_chip_type - wifi chip define
 	* bcmwifi ==> like ap6xxx, rk90x;
-	* rtkwifi ==> like rtl8188xx, rtl8723xx;
+	* rtkwifi ==> like rtl8188xx, rtl8723xx,rtl8812auv;
 	* esp8089 ==> esp8089;
 	* other   ==> for other wifi;
 	*/
