@@ -974,9 +974,9 @@ static int hdmi_dev_config_vsi(struct hdmi *hdmi, unsigned char vic_3d, unsigned
         HDMIDBG("[%s] vic %d format %d.\n", __FUNCTION__, vic_3d, format);
 
         hdmi_msk_reg(hdmi_dev, FC_DATAUTO0, m_VSD_AUTO, v_VSD_AUTO(0));
-	hdmi_writel(hdmi_dev, FC_VSDIEEEID0, id & 0xff);
+	hdmi_writel(hdmi_dev, FC_VSDIEEEID2, id & 0xff);
 	hdmi_writel(hdmi_dev, FC_VSDIEEEID1, (id >> 8) & 0xff);
-	hdmi_writel(hdmi_dev, FC_VSDIEEEID2, (id >> 16) & 0xff);
+	hdmi_writel(hdmi_dev, FC_VSDIEEEID0, (id >> 16) & 0xff);
 
 	data[0] = format << 5;	/* PB4 --HDMI_Video_Format */
 	switch (format) {
@@ -996,9 +996,11 @@ static int hdmi_dev_config_vsi(struct hdmi *hdmi, unsigned char vic_3d, unsigned
 
 	for (i = 0; i < 3; i++)
 		hdmi_writel(hdmi_dev, FC_VSDPAYLOAD0 + i, data[i]);
-
+	hdmi_writel(hdmi_dev, FC_VSDSIZE, 0x6);
 /*	if (auto_send) { */
-		hdmi_msk_reg(hdmi_dev, FC_DATAUTO0, m_VSD_AUTO, v_VSD_AUTO(1));
+	hdmi_writel(hdmi_dev, FC_DATAUTO1, 1);
+	hdmi_writel(hdmi_dev, FC_DATAUTO2, 0x11);
+	hdmi_msk_reg(hdmi_dev, FC_DATAUTO0, m_VSD_AUTO, v_VSD_AUTO(1));
 /*	}
 	else {
 		hdmi_msk_reg(hdmi_dev, FC_DATMAN, m_VSD_MAN, v_VSD_MAN(1));
