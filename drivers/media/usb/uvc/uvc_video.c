@@ -36,9 +36,6 @@ static int __uvc_query_ctrl(struct uvc_device *dev, __u8 query, __u8 unit,
 {
 	__u8 type = USB_TYPE_CLASS | USB_RECIP_INTERFACE;
 	unsigned int pipe;
-	
-	printk("%s:%d, query = %d, unit = %d, intfnum = %d, cs = %d, size = %d\n",
-		__FUNCTION__, __LINE__, query, unit, intfnum, cs, size);
 
 	pipe = (query & 0x80) ? usb_rcvctrlpipe(dev->udev, 0)
 			      : usb_sndctrlpipe(dev->udev, 0);
@@ -173,11 +170,6 @@ static int uvc_get_video_ctrl(struct uvc_streaming *stream,
 	data = kmalloc(size, GFP_KERNEL);
 	if (data == NULL)
 		return -ENOMEM;
-		
-	if(probe)
-		printk("%s:%d, UVC_VS_PROBE_CONTROL\n", __FUNCTION__, __LINE__);
-	else
-		printk("%s:%d, UVC_VS_COMMIT_CONTROL\n", __FUNCTION__, __LINE__);
 
 	ret = __uvc_query_ctrl(stream->dev, query, 0, stream->intfnum,
 		probe ? UVC_VS_PROBE_CONTROL : UVC_VS_COMMIT_CONTROL, data,
@@ -1314,7 +1306,6 @@ static void uvc_video_complete(struct urb *urb)
 	unsigned long flags;
 	int ret;
 
-	//printk("%s:%d\n", __func__, __LINE__);
 	switch (urb->status) {
 	case 0:
 		break;
@@ -1667,7 +1658,7 @@ static int uvc_init_video(struct uvc_streaming *stream, gfp_t gfp_flags)
 	for (i = 0; i < UVC_URBS; ++i) {
 		ret = usb_submit_urb(stream->urb[i], gfp_flags);
 		if (ret < 0) {
-			uvc_printk(KERN_ERR, "*******1******Failed to submit URB %u "
+			uvc_printk(KERN_ERR, "Failed to submit URB %u "
 					"(%d).\n", i, ret);
 			uvc_uninit_video(stream, 1);
 			return ret;

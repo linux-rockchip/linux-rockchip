@@ -24,7 +24,7 @@ module_param(debug, int, S_IRUGO|S_IWUSR);
 #define SENSOR_ID 0x2035
 #define SENSOR_BUS_PARAM                     (V4L2_MBUS_MASTER |\
 														 V4L2_MBUS_PCLK_SAMPLE_RISING|V4L2_MBUS_HSYNC_ACTIVE_HIGH| V4L2_MBUS_VSYNC_ACTIVE_HIGH|\
-														 V4L2_MBUS_DATA_ACTIVE_HIGH | SOCAM_DATAWIDTH_8  |SOCAM_MCLK_24MHZ)
+														 V4L2_MBUS_DATA_ACTIVE_HIGH  |SOCAM_MCLK_24MHZ)
 #define SENSOR_PREVIEW_W					 800
 #define SENSOR_PREVIEW_H					 600
 #define SENSOR_PREVIEW_FPS					 15000	   // 15fps 
@@ -1259,6 +1259,8 @@ static int sensor_s_fmt_cb_th(struct i2c_client *client,struct v4l2_mbus_framefm
 */
 static int sensor_s_fmt_cb_bh (struct i2c_client *client,struct v4l2_mbus_framefmt *mf, bool capture)
 {
+	/* add delay for rk312x*/
+	msleep(300); 
 	return 0;
 }
 static int sensor_softrest_usr_cb(struct i2c_client *client,struct rk_sensor_reg *series)

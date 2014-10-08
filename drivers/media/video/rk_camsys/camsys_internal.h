@@ -95,8 +95,16 @@
 *v0.0x13.0:
          1) camsys_extdev_register return failed when this dev_id has been registered;
          2) add support JPG irq connect;
+*v0.0x14.0:
+         1) camsys_extdev_register return -EBUSY when this dev_id has been registered;
+*v0.0x15.0:
+         1) check extdev name when dev_id has been registered;
+*v0.0x16.0:
+		 1) enable or disable IOMMU just depending on CONFIG_ROCKCHIP_IOMMU. 
+*v0.0x17.0:
+		 1) isp iommu status depend on vpu iommu status.
 */
-#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0,0x13,0)
+#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0,0x17,0)
 
 
 #define CAMSYS_PLATFORM_DRV_NAME                "RockChip-CamSys"
@@ -191,6 +199,7 @@ typedef struct camsys_flash_s {
     camsys_gpio_t        fl;
 } camsys_flash_t;
 typedef struct camsys_extdev_s {
+    unsigned char            dev_name[CAMSYS_NAME_LEN];
     unsigned int             dev_id;
     camsys_regulator_t       avdd;
     camsys_regulator_t       dovdd;

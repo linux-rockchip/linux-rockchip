@@ -1130,10 +1130,8 @@ static int v4l_s_fmt(const struct v4l2_ioctl_ops *ops,
 
 	switch (p->type) {
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
-		if (unlikely(!is_rx || !is_vid || !ops->vidioc_s_fmt_vid_cap)){
-			printk("~~~~~~~~~~~~~~~%s:%d\n", __func__, __LINE__);
+		if (unlikely(!is_rx || !is_vid || !ops->vidioc_s_fmt_vid_cap))
 			break;
-		}
 		CLEAR_AFTER_FIELD(p, fmt.pix);
 		return ops->vidioc_s_fmt_vid_cap(file, fh, arg);
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:

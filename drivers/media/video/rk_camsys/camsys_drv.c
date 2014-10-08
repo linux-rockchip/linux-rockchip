@@ -167,9 +167,13 @@ static int camsys_extdev_register(camsys_devio_name_t *devio, camsys_dev_t *cams
 
     extdev = camsys_find_extdev(devio->dev_id, camsys_dev);
     if (extdev != NULL) {
-        err = -EINVAL;    /* ddl@rock-chips.com: v0.0x13.0 */
-        camsys_warn("Extdev(dev_id: 0x%x) has been registered in %s!",
-            devio->dev_id, dev_name(camsys_dev->miscdev.this_device));
+        if (strcmp(extdev->dev_name, devio->dev_name) == 0) {
+            err = 0;
+        } else {
+            err = -EINVAL;    /* ddl@rock-chips.com: v0.0x13.0 */
+            camsys_warn("Extdev(dev_id: 0x%x dev_name: %s) has been registered in %s!",
+                extdev->dev_id, extdev->dev_name,dev_name(camsys_dev->miscdev.this_device));
+        }
         goto end;
     }
 
@@ -245,7 +249,10 @@ static int camsys_extdev_register(camsys_devio_name_t *devio, camsys_dev_t *cams
 
     camsys_dev->iomux(extdev, (void*)camsys_dev);
 
-    camsys_trace(1,"Extdev(dev_id: 0x%x) register success",extdev->dev_id);
+    memcpy(extdev->dev_name,devio->dev_name, sizeof(extdev->dev_name));
+    camsys_trace(1,"Extdev(dev_id: 0x%x  dev_name: %s) register success",
+        extdev->dev_id,
+        extdev->dev_name);
 
     return 0;
 fail:
@@ -783,8 +790,18 @@ static long camsys_ioctl(struct file *filp,unsigned int cmd, unsigned long arg)
 	    {
             int iommu_enabled = 0;
             #ifdef CONFIG_ROCKCHIP_IOMMU
-                of_property_read_u32(camsys_dev->pdev->dev.of_node, "rockchip,isp,iommu_enable", &iommu_enabled);
-            #endif
+				struct device_node * vpu_node =NULL;
+				int vpu_iommu_enabled = 0;
+                vpu_node = of_find_compatible_node(NULL,NULL, "vpu_service");
+				if(vpu_node){
+					of_property_read_u32(vpu_node, "iommu_enabled", &vpu_iommu_enabled);
+					of_property_read_u32(camsys_dev->pdev->dev.of_node, "rockchip,isp,iommu_enable", &iommu_enabled);
+					if(iommu_enabled != vpu_iommu_enabled){
+						camsys_err("iommu status not consistent,check the dts file ! isp:%d,vpu:%d",iommu_enabled,vpu_iommu_enabled);
+						return -EFAULT;
+					}
+				}
+			#endif
             if (copy_to_user((void __user *)arg,(void*)&iommu_enabled, sizeof(iommu_enabled)))
                 return -EFAULT;
             break;
@@ -1028,7 +1045,6 @@ static int camsys_platform_probe(struct platform_device *pdev){
         goto fail_end;
     }
 
- 
     //map irqs
     irq_id = irq_of_parse_and_map(dev->of_node, 0);
     if (irq_id < 0) {

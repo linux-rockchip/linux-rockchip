@@ -246,7 +246,6 @@ static int camsys_mrv_iommu_cb(void *ptr,camsys_sysctrl_t *devctl)
         ret = -1;
         goto iommu_end;
     }
-    
     iommu_dev = rockchip_get_sysmmu_device_by_compatible(ISP_IOMMU_COMPATIBLE_NAME);
     if(!iommu_dev){
         camsys_err("get iommu device erro!\n");
