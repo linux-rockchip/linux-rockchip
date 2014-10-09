@@ -538,6 +538,13 @@ config 5V_EN
 	  This driver is control enable 5v power when startup and disable it
 	  when suspend and no insert otg. if your board is control this power
 	  by a gpio please select it. 
+	  
+config HISC_HUB_RST
+	bool "hsic usb hub reset pin control"
+	default n
+	help
+	  This driver is control enable whenhsic usb hub reset pin control. 
+	  if your board is control this reset by a gpio please select it. 
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
