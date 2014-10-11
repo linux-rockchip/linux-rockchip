@@ -167,13 +167,9 @@ static int camsys_extdev_register(camsys_devio_name_t *devio, camsys_dev_t *cams
 
     extdev = camsys_find_extdev(devio->dev_id, camsys_dev);
     if (extdev != NULL) {
-        if (strcmp(extdev->dev_name, devio->dev_name) == 0) {
-            err = 0;
-        } else {
-            err = -EINVAL;    /* ddl@rock-chips.com: v0.0x13.0 */
-            camsys_warn("Extdev(dev_id: 0x%x dev_name: %s) has been registered in %s!",
-                extdev->dev_id, extdev->dev_name,dev_name(camsys_dev->miscdev.this_device));
-        }
+        err = -EINVAL;    /* ddl@rock-chips.com: v0.0x13.0 */
+        camsys_warn("Extdev(dev_id: 0x%x) has been registered in %s!",
+            devio->dev_id, dev_name(camsys_dev->miscdev.this_device));
         goto end;
     }
 
@@ -249,10 +245,7 @@ static int camsys_extdev_register(camsys_devio_name_t *devio, camsys_dev_t *cams
 
     camsys_dev->iomux(extdev, (void*)camsys_dev);
 
-    memcpy(extdev->dev_name,devio->dev_name, sizeof(extdev->dev_name));
-    camsys_trace(1,"Extdev(dev_id: 0x%x  dev_name: %s) register success",
-        extdev->dev_id,
-        extdev->dev_name);
+    camsys_trace(1,"Extdev(dev_id: 0x%x) register success",extdev->dev_id);
 
     return 0;
 fail:
