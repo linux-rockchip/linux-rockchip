@@ -57,3 +57,4 @@ obj-y += inv_mpu/
 obj-$(CONFIG_SRAM)		+= sram.o
 
 obj-$(CONFIG_5V_EN)	+= 5v_en.o
+obj-$(CONFIG_HISC_HUB_RST)	+= hsic_hub_reset.o
