@@ -692,8 +692,8 @@
 
 		ldo2_reg: regulator@5 {
 			regulator-name= "act_ldo2";
-			regulator-min-microvolt = <1000000>;
-			regulator-max-microvolt = <1000000>;
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
 		
 		};
 
@@ -720,8 +720,8 @@
 
 		ldo6_reg: regulator@9 {
 			regulator-name= "act_ldo6";
-			regulator-min-microvolt = <1000000>;
-			regulator-max-microvolt = <1000000>;
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
 			regulator-initial-state = <3>;
 			regulator-state-mem {
 				regulator-state-enabled;
@@ -742,8 +742,8 @@
 
 		ldo8_reg: regulator@11 {
 			regulator-name= "act_ldo8";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
+			regulator-min-microvolt = <1850000>;
+			regulator-max-microvolt = <1850000>;
 		
 		};
 	};
