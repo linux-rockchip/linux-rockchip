@@ -348,7 +348,11 @@ static int rk3288_lcdc_pre_init(struct rk_lcdc_driver *dev_drv)
 	lcdc_cfg_done(lcdc_dev);
 	if (dev_drv->iommu_enabled) /*disable win0 to workaround iommu pagefault*/
 		win0_enable(lcdc_dev, 0);
-
+	// enable bcsh
+	lcdc_writel(lcdc_dev,BCSH_BCS,0xd0010000);
+	lcdc_writel(lcdc_dev,BCSH_H,0x01000000);
+	lcdc_writel(lcdc_dev,BCSH_COLOR_BAR,0x1);
+	
 	lcdc_dev->pre_init = true;
 
 
