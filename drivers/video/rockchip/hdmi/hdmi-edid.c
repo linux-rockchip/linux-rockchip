@@ -183,8 +183,8 @@ static int hdmi_edid_parse_3dinfo(unsigned char *buf, struct list_head *head)
 	struct list_head *pos;
 	struct display_modelist *modelist;
 	
-	if(buf[1] & 0xF0) {
-		len = (buf[1] & 0xF0) >> 4;
+	if(buf[1] & 0xe0) {
+		len = (buf[1] & 0xe0) >> 5;
 		for(i = 0; i < len; i++) {
 			if(buf[offset])
 				hdmi_add_vic( (96 - buf[offset++]), head);
