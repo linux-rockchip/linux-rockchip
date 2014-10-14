@@ -125,10 +125,51 @@ int rockchip_get_leakage(int ch)
 	return efuse_buf[23+ch];
 }
 
+#ifdef CONFIG_PROC_FS
+#include <linux/proc_fs.h>
+#define EFUSE_IOCTL_MAGIC                         'M'
+
+#define EFUSE_DECRYPT                         _IOW(EFUSE_IOCTL_MAGIC, 0x00, int)
+#define EFUSE_ECRYPT                          _IOW(EFUSE_IOCTL_MAGIC, 0x01, int)
+#define EFUSE_FULLINFO                        _IOW(EFUSE_IOCTL_MAGIC, 0x02, int)
+
+static long proc_efuse_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	int ret = 0,i;
+	u8 *num = (u8 *)arg;
+	switch (cmd) {
+	case EFUSE_DECRYPT:
+		for(i=0; i<16; i++){
+			num[i] =  efuse_buf[i+6];
+		}
+		break;
+
+	case EFUSE_ECRYPT:
+		break;
+
+	case EFUSE_FULLINFO:
+		for(i=0; i<32; i++){
+			num[i] =  efuse_buf[i];
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return ret;
+}
+static const struct file_operations proc_efuse_fops = {
+	.unlocked_ioctl = proc_efuse_ioctl,
+};
+#endif
+
 static int efuse_init(void)
 {
 	efuse_readregs(0, 32, efuse_buf);
-
+#ifdef CONFIG_PROC_FS
+	proc_create ("efuse", 0, NULL, &proc_efuse_fops);
+#endif
 	return 0;
 }
 
