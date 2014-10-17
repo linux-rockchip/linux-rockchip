@@ -436,6 +436,9 @@ static void hdmi_sort_modelist(struct hdmi_edid *edid)
 //		printk("%s vic %d\n", __FUNCTION__, modelist->vic);
 		for(i = 0; i < ARRAY_SIZE(hdmi_mode); i++) {	    	
 			if (modelist->vic == hdmi_mode[i].vic || modelist->vic == hdmi_mode[i].vic_2nd) {
+				 if (hdmi_mode[i].mode.pixclock > 340000000 &&
+					edid->maxtmdsclock < 340000000)
+					continue;
 				modelist->mode = hdmi_mode[i].mode;
 				compare = 1;
 				list_for_each(pos_new, &head_new) {
