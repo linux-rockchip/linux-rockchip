@@ -227,7 +227,7 @@
         supports-highspeed;
 	supports-emmc;
         bootpart-no-access;
-
+	//supports-tSD;//only tsd-sdcard mode 
 	supports-DDR_MODE;
 	caps2-mmc-hs200;
 
