@@ -41,10 +41,12 @@ int eth_mac_read_from_IDB(u8 *mac)
         return -EFAULT;
 
     GetSNSectorInfo(tempBuf);
-    for (i = 0; i < 512; i++) {
+    /*
+	for (i = 0; i < 512; i++) {
         printk("%02x, ", tempBuf[i]);
 		if(((i+1)%16) == 0) printk("\n");
     }
+	*/
 
     for (i = 506; i <= 511; i++)
 		mac[i-506] = tempBuf[i];
