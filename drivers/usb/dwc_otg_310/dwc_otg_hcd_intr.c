@@ -833,6 +833,7 @@ static void release_channel(dwc_otg_hcd_t *hcd,
 {
 	dwc_otg_transaction_type_e tr_type;
 	int free_qtd;
+	int continue_trans = 1;
 
 	DWC_DEBUGPL(DBG_HCDV, "  %s: channel %d, halt_status %d\n",
 		    __func__, hc->hc_num, halt_status);
@@ -884,6 +885,7 @@ static void release_channel(dwc_otg_hcd_t *hcd,
 		 * deactivated. Don't want to do anything except release the
 		 * host channel and try to queue more transfers.
 		 */
+		continue_trans = 0;
 		goto cleanup;
 	case DWC_OTG_HC_XFER_NO_HALT_STATUS:
 		free_qtd = 0;
@@ -899,6 +901,10 @@ static void release_channel(dwc_otg_hcd_t *hcd,
 		break;
 	}
 
+	if (hc->csplit_nak) {
+		continue_trans = 0;
+		hc->csplit_nak = 0;
+	}
 	deactivate_qh(hcd, hc->qh, free_qtd);
 
 cleanup:
@@ -926,9 +932,10 @@ cleanup:
 	}
 
 	/* Try to queue more transfers now that there's a free channel. */
-	tr_type = dwc_otg_hcd_select_transactions(hcd);
-	if (tr_type != DWC_OTG_TRANSACTION_NONE) {
-		dwc_otg_hcd_queue_transactions(hcd, tr_type);
+	if (continue_trans) {
+		tr_type = dwc_otg_hcd_select_transactions(hcd);
+		if (tr_type != DWC_OTG_TRANSACTION_NONE)
+			dwc_otg_hcd_queue_transactions(hcd, tr_type);
 	}
 }
 
@@ -1365,6 +1372,7 @@ static int32_t handle_hc_nak_intr(dwc_otg_hcd_t *hcd,
 		if (hc->complete_split) {
 			qtd->error_count = 0;
 		}
+		hc->csplit_nak = 1;
 		qtd->complete_split = 0;
 		halt_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_NAK);
 		goto handle_nak_done;
