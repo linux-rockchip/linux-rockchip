@@ -4443,10 +4443,10 @@ static int ddr_init(uint32 dram_speed_bin, uint32 freq)
         ddr_print("failed to get ddr clk\n");
         clk = NULL;
     }
-    if(freq != 0)
-        tmp = clk_set_rate(clk, 1000*1000*freq);
-    else
-        tmp = clk_set_rate(clk, clk_get_rate(clk));
+    //if(freq != 0)
+    //    tmp = clk_set_rate(clk, 1000*1000*freq);
+    //else
+    //    tmp = clk_set_rate(clk, clk_get_rate(clk));
     ddr_print("init success!!! freq=%luMHz\n", clk ? clk_get_rate(clk)/1000000 : freq);
 
     for(ch=0;ch<CH_MAX;ch++)
