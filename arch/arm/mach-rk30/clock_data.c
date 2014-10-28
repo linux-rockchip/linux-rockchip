@@ -27,6 +27,7 @@
 #include <mach/pmu.h>
 #include <mach/dvfs.h>
 #include <mach/ddr.h>
+#include <plat/efuse.h>
 
 #define MHZ			(1000*1000)
 #define KHZ			(1000)
