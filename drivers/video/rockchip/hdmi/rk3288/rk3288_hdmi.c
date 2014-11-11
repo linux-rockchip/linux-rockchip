@@ -147,6 +147,7 @@ static void rk3288_hdmi_early_resume(struct early_suspend *h)
 #define HDMI_PD_ON			(1 << 0)
 #define HDMI_PCLK_ON		(1 << 1)
 #define HDMI_HDCPCLK_ON		(1 << 2)
+#define HDMI_CECCLK_ON		(1 << 3)
 
 static int rk3288_hdmi_clk_enable(struct hdmi_dev *hdmi_dev)
 {
@@ -191,6 +192,17 @@ static int rk3288_hdmi_clk_enable(struct hdmi_dev *hdmi_dev)
 		hdmi_dev->clk_on |= HDMI_HDCPCLK_ON;
 	}
 
+	if ((hdmi_dev->clk_on & HDMI_CECCLK_ON) == 0) {
+		if (hdmi_dev->cec_clk == NULL) {
+			hdmi_dev->cec_clk = devm_clk_get(hdmi_dev->dev, "cec_clk_hdmi");
+			if (IS_ERR(hdmi_dev->cec_clk)) {
+				dev_err(hdmi_dev->dev, "Unable to get hdmi cec_clk\n");
+				return -1;
+			}
+		}
+		clk_prepare_enable(hdmi_dev->cec_clk);
+		hdmi_dev->clk_on |= HDMI_CECCLK_ON;
+	}
 	return 0;
 }
 
@@ -265,7 +277,7 @@ static void rk3288_hdmi_irq_work_func(struct work_struct *work)
 {
 	if (hdmi_dev->enable) {
 		hdmi_dev_irq(0, hdmi_dev);
-		queue_delayed_work(hdmi_dev->workqueue, &(hdmi_dev->delay_work), msecs_to_jiffies(50));
+		queue_delayed_work(hdmi_dev->workqueue, &(hdmi_dev->delay_work), msecs_to_jiffies(30));
 	}
 }
 
@@ -281,6 +293,9 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	int ret = -1;
 	struct resource *res;
 	struct delayed_work *delaywork;
+	struct device_node *np = pdev->dev.of_node;
+	const struct of_device_id *match;
+	int val = 0;
 
 	HDMIDBG("%s\n", __FUNCTION__);
 
@@ -329,6 +344,15 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	fb_register_client(&rk3288_hdmi_fb_notifier);
 	/*lcdc source select*/
 	grf_writel(HDMI_SEL_LCDC(rk3288_hdmi_property.videosrc), RK3288_GRF_SOC_CON6);
+	/* select GPIO7_C0 as cec pin */
+	grf_writel((1 << 12) | ( 1 << 28), RK3288_GRF_SOC_CON8);
+	match = of_match_node(rk3288_hdmi_dt_ids, np);
+	if (!match)
+		return PTR_ERR(match);
+	if (of_property_read_u32(np, "hdmi_cec", &val))
+		hdmi_dev->hdmi->cecenable= 0;
+	else
+		hdmi_dev->hdmi->cecenable = val;
 	hdmi_dev_initial(hdmi_dev);
 	pinctrl_select_state(hdmi_dev->dev->pins->p,
 			     hdmi_dev->dev->pins->default_state);

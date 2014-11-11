@@ -353,6 +353,7 @@ struct hdmi {
 	int mode_3d;					/* HDMI output video 3d mode*/
 	struct hdmi_audio audio;			/* HDMI output audio information.*/
 	struct hdmi_scdc scdc;				/*HDMI scdc information*/
+	int cecenable;				/*HDMI CEC switch*/
 };
 
 /* HDMI EDID Block Size */

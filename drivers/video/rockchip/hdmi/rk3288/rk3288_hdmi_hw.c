@@ -1383,6 +1383,7 @@ void hdmi_dev_initial(struct hdmi_dev *hdmi_dev)
 
 		hdmi_writel(hdmi_dev, PHY_MASK, 0xf1);
 	}
+	rk3288_hdmi_cec_init(hdmi);
 }
 
 irqreturn_t hdmi_dev_irq(int irq, void *priv)
@@ -1471,9 +1472,8 @@ irqreturn_t hdmi_dev_irq(int irq, void *priv)
 		hdmi_writel(hdmi_dev, MC_SWRSTZREQ, 0xF7);
 	}
 	/*CEC*/
-	if (cec_int) {	/*TODO Daisen wait to modify*/
-	}
-
+	if (cec_int)
+		rk3288_hdmi_cec_isr(hdmi_dev, cec_int);
 	/*HDCP
 	if (hdmi_drv->hdcp_irq_cb)
 		hdmi_drv->hdcp_irq_cb(i2cm_int);*/

@@ -1,5 +1,6 @@
 #include <linux/delay.h>
 #include "rk_hdmi.h"
+#include "hdmi-cec.h"
 
 struct hdmi_delayed_work {
 	struct delayed_work work;
@@ -21,7 +22,7 @@ struct delayed_work *hdmi_submit_work(struct hdmi *hdmi, int event, int delay, v
 {
 	struct hdmi_delayed_work *work;
 
-	DBG("%s event %04x delay %d", __func__, event, delay);
+	DBG("%s event %04x delay %d\n", __func__, event, delay);
 
 	work = kmalloc(sizeof(struct hdmi_delayed_work), GFP_ATOMIC);
 
@@ -201,6 +202,7 @@ static void hdmi_wq_insert(struct hdmi *hdmi)
 	if (hdmi->ops->insert)
 		hdmi->ops->insert(hdmi);
 	hdmi_wq_parse_edid(hdmi);
+	hdmi_cec_set_physical_address(hdmi->edid.cecaddress);
 	hdmi_send_uevent(hdmi, KOBJ_ADD);
 	if (hdmi->enable) {
 		if (!hdmi->uboot)

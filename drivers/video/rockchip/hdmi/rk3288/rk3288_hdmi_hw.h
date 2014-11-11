@@ -1,6 +1,7 @@
 #ifndef _RK3288_HDMI_HW_H
 #define _RK3288_HDMI_HW_H
 #include "../rk_hdmi.h"
+#include <linux/interrupt.h>
 
 #define HDMI_INT_USE_POLL 1	//TODO Daisen wait to modify
 
@@ -1259,6 +1260,15 @@ enum {
 #define CEC_ENGINE_BASE			0x7d00
 
 #define	CEC_CTRL 			0x7d00
+	#define m_CEC_STANBY		(1 << 4)
+	#define m_CEC_BC_NCK		(1 << 3)
+	#define m_CEC_FRAME_TYPE	(3 << 1)
+	#define m_CEC_SEND		(1 << 0)
+
+	#define v_CEC_STANBY(n)		((n & 0x1) << 4)
+	#define v_CEC_BC_NCK(n)		((n & 0x1) << 3)
+	#define v_CEC_FRAME_TYPE(n)	((n & 0x3) << 1)
+	#define v_CEC_SEND(n)		(n & 0x1)
 #define	CEC_MASK 			0x7d02
 #define	CEC_ADDR_L 			0x7d05
 #define	CEC_ADDR_H			0x7d06
@@ -1488,4 +1498,6 @@ static inline int hdmi_msk_reg(struct hdmi_dev *hdmi_dev, u16 offset, u32 msk, u
 void hdmi_dev_init_ops(struct hdmi_ops *ops);
 void hdmi_dev_initial(struct hdmi_dev *hdmi_dev);
 irqreturn_t hdmi_dev_irq(int irq, void *priv);
+void rk3288_hdmi_cec_init(struct hdmi *hdmi);
+void rk3288_hdmi_cec_isr(struct hdmi_dev *hdmi_dev, char cec_int);
 #endif
