@@ -363,11 +363,8 @@ static int rk3288_hdmi_probe (struct platform_device *pdev)
 	else
 		debugfs_create_file("hdmi", S_IRUSR, hdmi_dev->debugfs_dir, hdmi_dev, &rk3288_hdmi_reg_fops);
 #endif
-	if (!hdmi_dev->hdmi->uboot) {
-		delaywork = hdmi_submit_work(hdmi_dev->hdmi, HDMI_HPD_CHANGE, 0, NULL);
-		if (delaywork)
-			flush_delayed_work(delaywork);
-	}
+	delaywork = hdmi_submit_work(hdmi_dev->hdmi, HDMI_HPD_CHANGE, 0, NULL);
+
 	{
 		hdmi_dev->workqueue = create_singlethread_workqueue("rk3288 hdmi irq");
 		INIT_DELAYED_WORK(&(hdmi_dev->delay_work), rk3288_hdmi_irq_work_func);

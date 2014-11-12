@@ -661,7 +661,31 @@ struct device *rk_fb_get_sysmmu_device_by_compatible(const char *compt)
 
         return ret;
 }
+#ifdef CONFIG_ROCKCHIP_IOMMU
+static struct device *rockchip_get_sysmmu_device_by_compatible(const char *compt)
+{
+        struct device_node *dn = NULL;
+        struct platform_device *pd = NULL;
+        struct device *ret = NULL ;
 
+        dn = of_find_compatible_node(NULL,NULL,compt);
+        if(!dn)
+        {
+                printk("can't find device node %s \r\n",compt);
+                return NULL;
+        }
+
+        pd = of_find_device_by_node(dn);
+        if(!pd)
+        {
+                printk("can't find platform device in device node %s \r\n",compt);
+                return  NULL;
+        }
+        ret = &pd->dev;
+
+        return ret;
+
+}
 #ifdef CONFIG_IOMMU_API
 void rk_fb_platform_set_sysmmu(struct device *sysmmu, struct device *dev)
 {
@@ -673,7 +697,7 @@ void rk_fb_platform_set_sysmmu(struct device *sysmmu, struct device *dev)
 
 }
 #endif
-
+#endif
 static int rk_fb_open(struct fb_info *info, int user)
 {
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
@@ -2740,6 +2764,17 @@ static void fb_show_bmp_logo(struct fb_info *info, int rotate)
 }
 #endif
 
+#ifdef CONFIG_IOMMU_API
+static inline void platform_set_sysmmu(struct device *iommu, struct device *dev)
+{
+        dev->archdata.iommu = iommu;
+}
+#else
+static inline void platform_set_sysmmu(struct device *iommu, struct device *dev)
+{
+}
+#endif
+
 /*
  * check if the primary lcdc has registerd,
  * the primary lcdc mas register first
@@ -2866,29 +2901,25 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 #if !defined(CONFIG_FRAMEBUFFER_CONSOLE) && defined(CONFIG_LOGO)
 	if (dev_drv->prop == PRMRY) {
 		struct fb_info *main_fbi = rk_fb->fb[0];
-	main_fbi->fbops->fb_open(main_fbi, 2);
-//#if defined(CONFIG_ROCKCHIP_IOMMU)
-//	if (dev_drv->iommu_enabled) {/* only alloc memory for main fb*/	
-//		mmu_dev = rockchip_get_sysmmu_device_by_compatible(dev_drv->mmu_dts_name);
-//		if (mmu_dev) {
-//			platform_set_sysmmu(mmu_dev, dev_drv->dev);
-//			/*rockchip_sysmmu_set_fault_handler(dev_drv->dev,
-//					rk_fb_sysmmu_fault_handler);*/
-//			iovmm_activate(dev_drv->dev);
-//		}
-//		else
-//			dev_err(dev_drv->dev, "failed to get rockchip iommu device\n");
-//	}
-//#endif
+#if defined(CONFIG_ROCKCHIP_IOMMU)
+	if (dev_drv->iommu_enabled) {/* only alloc memory for main fb*/	
+		if(!dev_drv->mmu_dev)
+			dev_drv->mmu_dev = rockchip_get_sysmmu_device_by_compatible(dev_drv->mmu_dts_name);
+		if (dev_drv->mmu_dev)
+			platform_set_sysmmu(dev_drv->mmu_dev, dev_drv->dev);
+	}
+#endif
 		rk_fb_alloc_buffer(main_fbi, 0);	/* only alloc memory for main fb */
 		if (support_uboot_display()) {
 			if (dev_drv->iommu_enabled) {
+				dev_drv->ops->open(dev_drv, 0, 1);
 				rk_fb_copy_from_loader(main_fbi);
 				dev_drv->ops->direct_set_addr(dev_drv, 0,
 							      main_fbi->fix.smem_start);
 			}
 			return 0;
 		}
+		main_fbi->fbops->fb_open(main_fbi, 2);
 		main_fbi->fbops->fb_set_par(main_fbi);
 #if  defined(CONFIG_LOGO_LINUX_BMP)
 		if (fb_prewine_bmp_logo(main_fbi, FB_ROTATE_UR)) {

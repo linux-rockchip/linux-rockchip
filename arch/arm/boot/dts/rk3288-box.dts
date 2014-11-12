@@ -486,7 +486,9 @@
 /*$_rbox_$_modify_$_end*/
 
 &fb {
-	rockchip,disp-mode = <DUAL>;
+//	rockchip,disp-mode = <DUAL>;
+	rockchip,disp-mode = <NO_DUAL>;
+	rockchip,uboot-logo-on = <1>;
 };
 
 &rk_screen {
