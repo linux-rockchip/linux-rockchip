@@ -913,7 +913,7 @@ void rk_fd_fence_wait(struct rk_lcdc_driver *dev_drv, struct sync_fence *fence)
 	if (err < 0)
 		printk("error waiting on fence\n");
 }
-
+#if 0
 static int rk_fb_copy_from_loader(struct fb_info *info)
 {
 	struct rk_lcdc_driver *dev_drv = (struct rk_lcdc_driver *)info->par;
@@ -935,7 +935,7 @@ static int rk_fb_copy_from_loader(struct fb_info *info)
 	}
 	return 0;
 }
-
+#endif
 #ifdef CONFIG_ROCKCHIP_IOMMU
 static int g_last_addr[4];
 int g_last_timeout;
@@ -2913,9 +2913,11 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 		if (support_uboot_display()) {
 			if (dev_drv->iommu_enabled) {
 				dev_drv->ops->open(dev_drv, 0, 1);
+				#if 0
 				rk_fb_copy_from_loader(main_fbi);
 				dev_drv->ops->direct_set_addr(dev_drv, 0,
 							      main_fbi->fix.smem_start);
+				#endif
 			}
 			return 0;
 		}

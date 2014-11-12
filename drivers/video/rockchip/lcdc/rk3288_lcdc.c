@@ -346,8 +346,8 @@ static int rk3288_lcdc_pre_init(struct rk_lcdc_driver *dev_drv)
 	val  =  v_AUTO_GATING_EN(0);
 	lcdc_msk_reg(lcdc_dev, SYS_CTRL, mask,val);
 	lcdc_cfg_done(lcdc_dev);
-	if (dev_drv->iommu_enabled) /*disable win0 to workaround iommu pagefault*/
-		win0_enable(lcdc_dev, 0);
+//	if (dev_drv->iommu_enabled) /*disable win0 to workaround iommu pagefault*/
+//		win0_enable(lcdc_dev, 0);
 	// enable bcsh
 	lcdc_writel(lcdc_dev,BCSH_BCS,0xd0010000);
 	lcdc_writel(lcdc_dev,BCSH_H,0x01000000);
@@ -967,6 +967,25 @@ static int rk3288_win_hwc_reg_update(struct rk_lcdc_driver *dev_drv,int win_id)
 
 }
 
+static int rk3288_lcdc_mmu_en(struct rk_lcdc_driver *dev_drv)
+{
+	u32 mask,val;
+	struct lcdc_device *lcdc_dev =
+	    container_of(dev_drv, struct lcdc_device, driver);
+
+//	spin_lock(&lcdc_dev->reg_lock);
+	if (likely(lcdc_dev->clk_on)) {
+		mask = m_MMU_EN;
+		val = v_MMU_EN(1);
+		lcdc_msk_reg(lcdc_dev, SYS_CTRL, mask, val);
+		mask = m_AXI_MAX_OUTSTANDING_EN | m_AXI_OUTSTANDING_MAX_NUM;
+		val = v_AXI_OUTSTANDING_MAX_NUM(31) | v_AXI_MAX_OUTSTANDING_EN(1);
+		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, mask, val);
+	}
+//	spin_unlock(&lcdc_dev->reg_lock);
+	return 0;
+}
+
 static int rk3288_lcdc_reg_update(struct rk_lcdc_driver *dev_drv)
 {
 	struct lcdc_device *lcdc_dev =
@@ -1009,27 +1028,7 @@ static int rk3288_lcdc_reg_update(struct rk_lcdc_driver *dev_drv)
 
 static int rk3288_lcdc_reg_restore(struct lcdc_device *lcdc_dev)
 {
-	if (lcdc_dev->driver.iommu_enabled)
-		memcpy((u8 *) lcdc_dev->regs, (u8 *) lcdc_dev->regsbak, 0x330);
-	else
-		memcpy((u8 *) lcdc_dev->regs, (u8 *) lcdc_dev->regsbak, 0x1fc);
-	return 0;
-}
-static int rk3288_lcdc_mmu_en(struct rk_lcdc_driver *dev_drv)
-{
-	u32 mask,val;
-	struct lcdc_device *lcdc_dev =
-	    container_of(dev_drv, struct lcdc_device, driver);
-	spin_lock(&lcdc_dev->reg_lock);
-	if (likely(lcdc_dev->clk_on)) {
-		mask = m_MMU_EN;
-		val = v_MMU_EN(1);
-		lcdc_msk_reg(lcdc_dev, SYS_CTRL, mask, val);
-		mask = m_AXI_MAX_OUTSTANDING_EN | m_AXI_OUTSTANDING_MAX_NUM;
-		val = v_AXI_OUTSTANDING_MAX_NUM(31) | v_AXI_MAX_OUTSTANDING_EN(1);
-		lcdc_msk_reg(lcdc_dev, SYS_CTRL1, mask, val);
-	}
-	spin_unlock(&lcdc_dev->reg_lock);
+	memcpy((u8 *) lcdc_dev->regs, (u8 *) lcdc_dev->regsbak, 0x1fc);
 	return 0;
 }
 
@@ -1410,23 +1409,10 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 					struct lcdc_device, driver);
 	int sys_status = (dev_drv->id == 0) ?
 			SYS_STATUS_LCDC0 : SYS_STATUS_LCDC1;
-	int reg;
 	/*enable clk,when first layer open */
 	if ((open) && (!lcdc_dev->atv_layer_cnt)) {
 		rockchip_set_system_status(sys_status);
 		rk3288_lcdc_pre_init(dev_drv);
-#if defined(CONFIG_ROCKCHIP_IOMMU)
-		if (dev_drv->iommu_enabled) {
-			if (dev_drv->mmu_dev) {
-				/*rk_fb_platform_set_sysmmu(dev_drv->mmu_dev,dev_drv->dev);*/
-				rockchip_iovmm_activate(dev_drv->dev);
-			} else {
-				dev_err(dev_drv->dev,
-						"failed to get rockchip iommu device\n");
-				return -1;
-			}
-		}
-#endif
 		rk3288_lcdc_clk_enable(lcdc_dev);
 		rk3288_lcdc_reg_restore(lcdc_dev);
 		if (dev_drv->iommu_enabled)
@@ -1460,15 +1446,7 @@ static int rk3288_lcdc_open(struct rk_lcdc_driver *dev_drv, int win_id,
 	if ((!open) && (!lcdc_dev->atv_layer_cnt)) {
 		rk3288_lcdc_disable_irq(lcdc_dev);
 		rk3288_lcdc_reg_update(dev_drv);
-//		#if defined(CONFIG_ROCKCHIP_IOMMU)
-//		if (dev_drv->iommu_enabled) {
-//			for (reg = MMU_DTE_ADDR; reg <= MMU_AUTO_GATING; reg +=4)
-//			lcdc_readl(lcdc_dev, reg);
-//			if(dev_drv->mmu_dev)
-//				rockchip_iovmm_deactivate(dev_drv->dev);
-//		}
-//		#endif
-
+		
 		rk3288_lcdc_clk_disable(lcdc_dev);
 		rockchip_clear_system_status(sys_status);
 	}
@@ -2482,7 +2460,6 @@ static int rk3288_lcdc_ioctl(struct rk_lcdc_driver *dev_drv, unsigned int cmd,
 
 static int rk3288_lcdc_early_suspend(struct rk_lcdc_driver *dev_drv)
 {
-	u32 reg;
 	struct lcdc_device *lcdc_dev =
 	    container_of(dev_drv, struct lcdc_device, driver);
 	if (dev_drv->suspend_flag)
@@ -3233,10 +3210,32 @@ static int rk3288_lcdc_config_done(struct rk_lcdc_driver *dev_drv)
 	int i;
 	unsigned int mask, val;
 	struct rk_lcdc_win *win = NULL;
+	
 	spin_lock(&lcdc_dev->reg_lock);
+	
+#if defined(CONFIG_ROCKCHIP_IOMMU)
+	if(dev_drv->iommu_enabled) {
+		if (!lcdc_dev->iommu_status && dev_drv->mmu_dev) {
+			lcdc_dev->iommu_status = 1;
+			if ((support_uboot_display()&&(lcdc_dev->prop == PRMRY))) {
+				lcdc_writel(lcdc_dev,WIN0_CTRL1,0x0);
+				mask =  m_WIN0_EN;
+				val  =  v_WIN0_EN(0);
+				lcdc_msk_reg(lcdc_dev, WIN0_CTRL0, mask,val);
+			}
+			lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_STANDBY_EN,
+			    		v_STANDBY_EN(1));
+			lcdc_cfg_done(lcdc_dev);
+			mdelay(50);
+			rockchip_iovmm_activate(dev_drv->dev);
+			rk3288_lcdc_mmu_en(dev_drv);
+		}
+	}
+#endif
+	
 	lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_STANDBY_EN,
 			     v_STANDBY_EN(lcdc_dev->standby));
-	for (i=0;i<5;i++) {
+	for (i=0; i<5; i++) {
 		win = dev_drv->win[i];
 		if ((win->state == 0)&&(win->last_state == 1)) {
 			switch (win->id) {
