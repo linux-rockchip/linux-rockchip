@@ -411,13 +411,24 @@ static int rk3288_hdmi_video_frameComposer(struct hdmi *hdmi_drv, struct hdmi_vi
 		vpara->color_output_depth = 8;
 		tmdsclk = mode->pixclock;
 	}
-	printk("pixel clk is %u tmds clk is %u\n",mode->pixclock, tmdsclk);
+	pr_info("pixel clk is %u tmds clk is %u\n",mode->pixclock, tmdsclk);
 	if ( (tmdsclk > 340000000 && hdmi_dev->tmdsclk < 340000000) ||
 	    (tmdsclk < 340000000 && hdmi_dev->tmdsclk > 340000000) )
 		hdmi_dev->tmdsclk_ratio_change = true;
 	else
 		hdmi_dev->tmdsclk_ratio_change = false;
 
+	hdmi_dev->tmdsclk = tmdsclk;
+	hdmi_dev->pixelclk = mode->pixclock;
+	hdmi_dev->pixelrepeat = timing->pixelrepeat;
+	hdmi_dev->colordepth = vpara->color_output_depth;
+
+	/* Video Register has already been set in uboot,
+	   so we no need to set again */
+
+	if (hdmi_drv->uboot)
+		return -1;
+	
 	if (hdmi_drv->scdc.scdc_present == 1) {
 		if (tmdsclk > 340000000) {/* used for HDMI 2.0 TX */
 			/*
@@ -441,11 +452,7 @@ static int rk3288_hdmi_video_frameComposer(struct hdmi *hdmi_drv, struct hdmi_vi
 			rk3288_hdmi_scrambling_enable(hdmi_dev,0);
 			mutex_unlock(&hdmi_dev->ddc_lock);
 		}
-        }
-	hdmi_dev->tmdsclk = tmdsclk;
-	hdmi_dev->pixelclk = mode->pixclock;
-	hdmi_dev->pixelrepeat = timing->pixelrepeat;
-	hdmi_dev->colordepth = vpara->color_output_depth;
+	}
 
 	hdmi_msk_reg(hdmi_dev, A_HDCPCFG0, m_ENCRYPT_BYPASS | m_HDMI_DVI,
 		v_ENCRYPT_BYPASS(1) | v_HDMI_DVI(vpara->sink_hdmi));	/* cfg to bypass hdcp data encrypt */
@@ -1018,24 +1025,30 @@ static int hdmi_dev_config_video(struct hdmi *hdmi, struct hdmi_video *vpara)
 		__FUNCTION__, vpara->vic, vpara->format_3d,
 		vpara->color_output, vpara->color_output_depth);
 	vpara->color_output_depth = 8;
-	// befor configure video, we power off phy
-//	hdmi_msk_reg(hdmi_dev, PHY_CONF0, m_PDDQ_SIG | m_TXPWRON_SIG, v_PDDQ_SIG(1) | v_TXPWRON_SIG(0));
-//	msleep(10);
-	/* force output blue */
-	if (vpara->color_output == HDMI_COLOR_RGB_0_255) {
-		hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x00);	/*R*/
-		hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x00);	/*G*/
-		hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x00);	/*B*/
-	} else if (vpara->color_output == HDMI_COLOR_RGB_16_235) {
-		hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x10);	/*R*/
-		hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x10);	/*G*/
-		hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x10);	/*B*/
-	} else {
-		hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x80);	/*R*/
-		hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x10);	/*G*/
-		hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x80);	/*B*/
+	
+	if (!hdmi->uboot) {
+		/* befor configure video, we power off phy */
+		hdmi_msk_reg(hdmi_dev, PHY_CONF0,
+			     m_PDDQ_SIG | m_TXPWRON_SIG,
+			     v_PDDQ_SIG(1) | v_TXPWRON_SIG(0));
+	
+		/* force output blue */
+		if (vpara->color_output == HDMI_COLOR_RGB_0_255) {
+			hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x00);	/*R*/
+			hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x00);	/*G*/
+			hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x00);	/*B*/
+		} else if (vpara->color_output == HDMI_COLOR_RGB_16_235) {
+			hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x10);	/*R*/
+			hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x10);	/*G*/
+			hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x10);	/*B*/
+		} else {
+			hdmi_writel(hdmi_dev, FC_DBGTMDS2, 0x80);	/*R*/
+			hdmi_writel(hdmi_dev, FC_DBGTMDS1, 0x10);	/*G*/
+			hdmi_writel(hdmi_dev, FC_DBGTMDS0, 0x80);	/*B*/
+		}
+		hdmi_msk_reg(hdmi_dev, FC_DBGFORCE,
+			     m_FC_FORCEVIDEO, v_FC_FORCEVIDEO(1));
 	}
-	hdmi_msk_reg(hdmi_dev, FC_DBGFORCE, m_FC_FORCEVIDEO, v_FC_FORCEVIDEO(1));
 
 	if (rk3288_hdmi_video_frameComposer(hdmi, vpara) < 0)
 		return -1;

@@ -205,12 +205,8 @@ static void hdmi_wq_insert(struct hdmi *hdmi)
 	hdmi_cec_set_physical_address(hdmi->edid.cecaddress);
 	hdmi_send_uevent(hdmi, KOBJ_ADD);
 	if (hdmi->enable) {
-		if (!hdmi->uboot)
-			hdmi_wq_set_video(hdmi);
-		else {
-			hdmi->autoset = 0;
-			hdmi_set_lcdc(hdmi);
-		}
+		hdmi->autoset = 0;
+		hdmi_wq_set_video(hdmi);
 		#ifdef CONFIG_SWITCH
 		switch_set_state(&(hdmi->switchdev), 1);
 		#endif
@@ -221,6 +217,8 @@ static void hdmi_wq_insert(struct hdmi *hdmi)
 		if (hdmi->ops->setCEC)
 			hdmi->ops->setCEC(hdmi);
 	}
+	if (hdmi->uboot)
+		hdmi->uboot = 0;
 }
 
 static void hdmi_wq_remove(struct hdmi *hdmi)
@@ -424,10 +422,12 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 	if (uboot_vic > 0) {
 		hdmi->vic = uboot_vic;
 		hdmi->uboot = 1;
-	} else if (hdmi->autoset)
+		hdmi->autoset = 0;
+	} else if (hdmi->autoset) {
 		hdmi->vic = 0;
-	else
+	} else {
 		hdmi->vic = HDMI_VIDEO_DEFAULT_MODE;
+	}
 	hdmi->colormode = HDMI_VIDEO_DEFAULT_COLORMODE;
 	hdmi->colordepth = HDMI_DEPP_COLOR_AUTO;
 	hdmi->mode_3d = HDMI_3D_NONE;
