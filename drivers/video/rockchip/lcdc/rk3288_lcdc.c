@@ -3223,8 +3223,8 @@ static int rk3288_lcdc_config_done(struct rk_lcdc_driver *dev_drv)
 				val  =  v_WIN0_EN(0);
 				lcdc_msk_reg(lcdc_dev, WIN0_CTRL0, mask,val);
 			}
-			lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_STANDBY_EN,
-			    		v_STANDBY_EN(1));
+//			lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_STANDBY_EN,
+//			    		v_STANDBY_EN(1));
 			lcdc_cfg_done(lcdc_dev);
 			mdelay(50);
 			rockchip_iovmm_activate(dev_drv->dev);
