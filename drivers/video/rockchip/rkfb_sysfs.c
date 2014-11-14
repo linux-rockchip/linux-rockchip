@@ -42,7 +42,7 @@ static ssize_t show_screen_info(struct device *dev,
 	int fps;
 	u32 x = (screen->mode.left_margin + screen->mode.right_margin + screen->mode.xres + screen->mode.hsync_len);
 	u32 y = (screen->mode.upper_margin + screen->mode.lower_margin + screen->mode.yres + screen->mode.vsync_len);
-	u64 ft = (u64)x * y * (screen->mode.pixclock);	// one frame time ,(pico seconds)
+	u64 ft = (u64)x * y * (dev_drv->pixclock);	// one frame time ,(pico seconds)
 	fps = div64_u64(1000000000000llu, ft);
 	return snprintf(buf, PAGE_SIZE, "xres:%d\nyres:%d\nfps:%d\n",
 			screen->mode.xres, screen->mode.yres, fps);
