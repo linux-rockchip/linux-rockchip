@@ -219,6 +219,9 @@ static ssize_t display_show_3dmode(struct device *dev,
 	struct fb_videomode mode;
 	int i = 0, cur_3d_mode = -1;
 	
+	char mode_str[128];
+	int mode_strlen, format_3d;
+	
 	if(dsp->ops && dsp->ops->getmodelist)
 	{
 		if(dsp->ops->getmodelist(dsp, &modelist)) {
@@ -238,6 +241,7 @@ static ssize_t display_show_3dmode(struct device *dev,
 		return 0;
 	}
 
+	i = 0;
 	list_for_each(pos, modelist) {
 		display_modelist = list_entry(pos, struct display_modelist, list);
 		if(fb_mode_is_equal(&mode, &display_modelist->mode))
@@ -249,10 +253,21 @@ static ssize_t display_show_3dmode(struct device *dev,
 		i = snprintf(buf, PAGE_SIZE, "3dmodes=%d\n", display_modelist->format_3d);
 	else
 		i = snprintf(buf, PAGE_SIZE, "3dmodes=0\n");
-	
+		
 	if(dsp->ops && dsp->ops->get3dmode)
 		cur_3d_mode = dsp->ops->get3dmode(dsp);
-	i += snprintf(buf + i, PAGE_SIZE - i, "cur3dmode=%d", cur_3d_mode);
+	i += snprintf(buf + i, PAGE_SIZE - i, "cur3dmode=%d\n", cur_3d_mode);
+	
+	list_for_each(pos, modelist) {
+		display_modelist = list_entry(pos, struct display_modelist, list);
+		mode_strlen = mode_string(mode_str, 0, &(display_modelist->mode));
+		mode_str[mode_strlen-1] = 0;
+		format_3d = display_modelist->format_3d;
+	//	if (format_3d == 0)
+	//		continue;
+		
+		i += snprintf(buf+i, PAGE_SIZE, "%s,%d\n", mode_str, format_3d);
+	}
 	return i;
 }
 
