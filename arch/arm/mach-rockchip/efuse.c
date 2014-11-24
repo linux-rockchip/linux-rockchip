@@ -1,35 +1,39 @@
 /*
- * Copyright (C) 2013 ROCKCHIP, Inc.
+ * Copyright (C) 2013-2014 ROCKCHIP, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
+#include <linux/crc32.h>
 #include <linux/delay.h>
-#include <linux/spinlock.h>
+#include <linux/rockchip/cpu.h>
 #include <linux/rockchip/iomap.h>
-#include <linux/kobject.h>
+#include <asm/system_info.h>
 #include "efuse.h"
 
 #define efuse_readl(offset) readl_relaxed(RK_EFUSE_VIRT + offset)
 #define efuse_writel(val, offset) writel_relaxed(val, RK_EFUSE_VIRT + offset)
 
-static u8 efuse_buf[32 + 1] = {0, 0};
+static u8 efuse_buf[32] = {};
 
-static int efuse_readregs(u32 addr, u32 length, u8 *buf)
+struct rockchip_efuse {
+	int (*get_leakage)(int ch);
+	int efuse_version;
+	int process_version;
+};
+
+static struct rockchip_efuse efuse;
+
+static int __init rk3288_efuse_readregs(u32 addr, u32 length, u8 *buf)
 {
-#ifndef efuse_readl
-	return 0;
-#else
-	unsigned long flags;
-	static DEFINE_SPINLOCK(efuse_lock);
 	int ret = length;
 
 	if (!length)
 		return 0;
-
-	spin_lock_irqsave(&efuse_lock, flags);
+	if (!buf)
+		return 0;
 
 	efuse_writel(EFUSE_CSB, REG_EFUSE_CTRL);
 	efuse_writel(EFUSE_LOAD | EFUSE_PGENB, REG_EFUSE_CTRL);
@@ -55,69 +59,23 @@ static int efuse_readregs(u32 addr, u32 length, u8 *buf)
 	efuse_writel(efuse_readl(REG_EFUSE_CTRL) | EFUSE_CSB, REG_EFUSE_CTRL);
 	udelay(1);
 
-	spin_unlock_irqrestore(&efuse_lock, flags);
 	return ret;
-#endif
 }
 
-/*
-static int efuse_writeregs(u32 addr, u32 length, u8 *buf)
-{
-	u32 j=0;
-	unsigned long flags;
-	static DEFINE_SPINLOCK(efuse_lock);
-	spin_lock_irqsave(&efuse_lock, flags);
-
-	efuse_writel(EFUSE_CSB|EFUSE_LOAD|EFUSE_PGENB,REG_EFUSE_CTRL);
-	udelay(10);
-	efuse_writel((~EFUSE_PGENB)&(efuse_readl(REG_EFUSE_CTRL)),
-		REG_EFUSE_CTRL);
-	udelay(10);
-	efuse_writel((~(EFUSE_LOAD | EFUSE_CSB))&(efuse_readl(REG_EFUSE_CTRL)),
-		REG_EFUSE_CTRL);
-	udelay(1);
-
-	do {
-		for(j=0; j<8; j++){
-			if(*buf & (1<<j)){
-				efuse_writel(efuse_readl(REG_EFUSE_CTRL) &
-					(~(EFUSE_A_MASK << EFUSE_A_SHIFT)),
-					REG_EFUSE_CTRL);
-				efuse_writel(efuse_readl(REG_EFUSE_CTRL) |
-					(((addr + (j<<5))&EFUSE_A_MASK) << EFUSE_A_SHIFT),
-					REG_EFUSE_CTRL);
-				udelay(1);
-				efuse_writel(efuse_readl(REG_EFUSE_CTRL) |
-				EFUSE_STROBE, REG_EFUSE_CTRL);
-				udelay(10);
-				efuse_writel(efuse_readl(REG_EFUSE_CTRL) &
-				(~EFUSE_STROBE), REG_EFUSE_CTRL);
-				udelay(1);
-			}
-		}
-		buf++;
-		addr++;
-	} while (--length);
-
-	udelay(1);
-	efuse_writel(efuse_readl(REG_EFUSE_CTRL) |
-		EFUSE_CSB | EFUSE_LOAD, REG_EFUSE_CTRL);
-	udelay(1);
-	efuse_writel(efuse_readl(REG_EFUSE_CTRL)|EFUSE_PGENB, REG_EFUSE_CTRL);
-	udelay(1);
-
-	spin_unlock_irqrestore(&efuse_lock, flags);
-	return 0;
-}
-*/
-
-int rockchip_efuse_version(void)
+static int __init rk3288_get_efuse_version(void)
 {
 	int ret = efuse_buf[4] & (~(0x1 << 3));
 	return ret;
 }
 
-int rockchip_get_leakage(int ch)
+static int __init rk3288_get_process_version(void)
+{
+	int ret = efuse_buf[6]&0x0f;
+
+	return ret;
+}
+
+static int rk3288_get_leakage(int ch)
 {
 	if ((ch < 0) || (ch > 2))
 		return 0;
@@ -125,52 +83,51 @@ int rockchip_get_leakage(int ch)
 	return efuse_buf[23+ch];
 }
 
-#ifdef CONFIG_PROC_FS
-#include <linux/proc_fs.h>
-#define EFUSE_IOCTL_MAGIC                         'M'
-
-#define EFUSE_DECRYPT                         _IOW(EFUSE_IOCTL_MAGIC, 0x00, int)
-#define EFUSE_ECRYPT                          _IOW(EFUSE_IOCTL_MAGIC, 0x01, int)
-#define EFUSE_FULLINFO                        _IOW(EFUSE_IOCTL_MAGIC, 0x02, int)
-
-static long proc_efuse_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static void __init rk3288_set_system_serial(void)
 {
-	int ret = 0,i;
-	u8 *num = (u8 *)arg;
-	switch (cmd) {
-	case EFUSE_DECRYPT:
-		for(i=0; i<16; i++){
-			num[i] =  efuse_buf[i+6];
-		}
-		break;
+	int i;
+	u8 buf[16];
 
-	case EFUSE_ECRYPT:
-		break;
-
-	case EFUSE_FULLINFO:
-		for(i=0; i<32; i++){
-			num[i] =  efuse_buf[i];
-		}
-		break;
-
-	default:
-		break;
+	for (i = 0; i < 8; i++) {
+		buf[i] = efuse_buf[8 + (i << 1)];
+		buf[i + 8] = efuse_buf[7 + (i << 1)];
 	}
 
-	return ret;
+	system_serial_low = crc32(0, buf, 8);
+	system_serial_high = crc32(system_serial_low, buf + 8, 8);
 }
-static const struct file_operations proc_efuse_fops = {
-	.unlocked_ioctl = proc_efuse_ioctl,
-};
-#endif
 
-static int efuse_init(void)
+int rockchip_efuse_version(void)
 {
-	efuse_readregs(0, 32, efuse_buf);
-#ifdef CONFIG_PROC_FS
-	proc_create ("efuse", 0, NULL, &proc_efuse_fops);
-#endif
+	return efuse.efuse_version;
+}
+
+int rockchip_process_version(void)
+{
+	return efuse.process_version;
+}
+
+int rockchip_get_leakage(int ch)
+{
+	if (efuse.get_leakage)
+		return efuse.get_leakage(ch);
 	return 0;
 }
 
-core_initcall(efuse_init);
+void __init rockchip_efuse_init(void)
+{
+	int ret;
+
+	if (cpu_is_rk3288()) {
+		ret = rk3288_efuse_readregs(0, 32, efuse_buf);
+		if (ret == 32) {
+			efuse.get_leakage = rk3288_get_leakage;
+			efuse.efuse_version = rk3288_get_efuse_version();
+			efuse.process_version = rk3288_get_process_version();
+			rockchip_set_cpu_version((efuse_buf[6] >> 4) & 3);
+			rk3288_set_system_serial();
+		} else {
+			pr_err("failed to read eFuse, return %d\n", ret);
+		}
+	}
+}

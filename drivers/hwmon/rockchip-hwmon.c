@@ -445,7 +445,14 @@ static struct platform_driver rockchip_temp_driver = {
 	.remove = rockchip_temp_remove,
 };
 
-module_platform_driver(rockchip_temp_driver);
+static int __init rockchip_tsadc_init(void)
+{
+	return platform_driver_register(&rockchip_temp_driver);
+}
+subsys_initcall(rockchip_tsadc_init);
+
+
+//module_platform_driver(rockchip_temp_driver);
 
 MODULE_AUTHOR("<rockchip>");
 MODULE_DESCRIPTION("rockchip temperature driver");

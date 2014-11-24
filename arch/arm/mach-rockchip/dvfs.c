@@ -23,7 +23,11 @@
 #include <linux/rockchip/common.h>
 #include <linux/fb.h>
 #include <linux/reboot.h>
+#include <linux/rockchip/cpu.h>
+#include <linux/tick.h>
+#include <dt-bindings/clock/rk_system_status.h>
 #include "../../../drivers/clk/rockchip/clk-pd.h"
+#include "efuse.h"
 
 extern int rockchip_tsadc_get_temp(int chn);
 
@@ -33,7 +37,7 @@ static DEFINE_MUTEX(rk_dvfs_mutex);
 static struct workqueue_struct *dvfs_wq;
 static struct dvfs_node *clk_cpu_dvfs_node;
 static unsigned int target_temp = 80;
-static int temp_limit_enable = 1;
+static int temp_limit_enable;
 
 static int pd_gpu_off, early_suspend;
 static DEFINE_MUTEX(switch_vdd_gpu_mutex);
@@ -855,6 +859,223 @@ static void dvfs_temp_limit_work_func(struct work_struct *work)
 }
 #endif
 
+static struct cpufreq_frequency_table rk3288v0_arm_pvtm_table[] = {
+	{.frequency = 216000,  .index = 4006},
+	{.frequency = 408000,  .index = 6518},
+	{.frequency = 600000,  .index = 8345},
+	{.frequency = 816000,  .index = 11026},
+	{.frequency = 1008000,  .index = 12906},
+	{.frequency = 1200000,  .index = 15532},
+	{.frequency = 1416000,  .index = 18076},
+	{.frequency = 1608000,  .index = 21282},
+	{.frequency = 1800000,  .index = 21282},
+	{.frequency = CPUFREQ_TABLE_END, .index = 1},
+};
+
+static struct pvtm_info rk3288v0_arm_pvtm_info = {
+	.compatible = "rockchip,rk3288",
+	.pvtm_table = rk3288v0_arm_pvtm_table,
+	.channel = ARM_DVFS_CH,
+	.process_version = RK3288_PROCESS_V0,
+	.scan_rate_hz = 216000000,
+	.sample_time_us = 1000,
+	.volt_step_uv = 12500,
+	.delta_pvtm_by_volt = 400,
+	.delta_pvtm_by_temp = 14,
+	.volt_margin_uv = 25000,
+	.min_volt_uv = 900000,
+	.max_volt_uv = 1400000,
+};
+
+static struct cpufreq_frequency_table rk3288v1_arm_pvtm_table[] = {
+	{.frequency = 216000,  .index = 4710},
+	{.frequency = 408000,  .index = 7200},
+	{.frequency = 600000,  .index = 9192},
+	{.frequency = 816000,  .index = 12560},
+	{.frequency = 1008000,  .index = 14741},
+	{.frequency = 1200000,  .index = 16886},
+	{.frequency = 1416000,  .index = 20081},
+	{.frequency = 1608000,  .index = 24061},
+	{.frequency = 1800000,  .index = 24061},
+	{.frequency = CPUFREQ_TABLE_END, .index = 1},
+};
+
+static struct pvtm_info rk3288v1_arm_pvtm_info = {
+	.compatible = "rockchip,rk3288",
+	.pvtm_table = rk3288v1_arm_pvtm_table,
+	.channel = ARM_DVFS_CH,
+	.process_version = RK3288_PROCESS_V1,
+	.scan_rate_hz = 216000000,
+	.sample_time_us = 1000,
+	.volt_step_uv = 12500,
+	.delta_pvtm_by_volt = 450,
+	.delta_pvtm_by_temp = 7,
+	.volt_margin_uv = 25000,
+	.min_volt_uv = 900000,
+	.max_volt_uv = 1400000,
+};
+
+static struct pvtm_info *pvtm_info_table[] = {
+	&rk3288v0_arm_pvtm_info,
+	&rk3288v1_arm_pvtm_info,
+};
+
+static int pvtm_set_single_dvfs(struct dvfs_node *dvfs_node, u32 idx,
+				struct pvtm_info *info, int *pvtm_list,
+				u32 min_pvtm)
+{
+	struct cpufreq_frequency_table *dvfs_table = dvfs_node->dvfs_table;
+	struct cpufreq_frequency_table *pvtm_table = dvfs_node->pvtm_table;
+	int target_pvtm, pvtm_margin, volt_margin;
+	unsigned int n_voltages = dvfs_node->vd->n_voltages;
+	int *volt_list = dvfs_node->vd->volt_list;
+	int n, temp;
+
+	volt_margin = info->volt_margin_uv + pvtm_table[idx].index;
+	n = volt_margin/info->volt_step_uv;
+	if (volt_margin%info->volt_step_uv)
+		n++;
+
+	pvtm_margin = n*info->delta_pvtm_by_volt;
+	temp = rockchip_tsadc_get_temp(1);
+	target_pvtm = min_pvtm+temp * info->delta_pvtm_by_temp + pvtm_margin;
+
+	DVFS_DBG("=====%s: temp:%d, freq:%d, target pvtm:%d=====\n",
+		 __func__, temp, dvfs_table[idx].frequency, target_pvtm);
+
+	for (n = 0; n < n_voltages; n++) {
+		if (pvtm_list[n] >= target_pvtm) {
+			dvfs_table[idx].index = volt_list[n];
+			DVFS_DBG("freq[%d]=%d, volt=%d\n",
+				 idx, dvfs_table[idx].frequency, volt_list[n]);
+
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+
+	return 0;
+}
+
+static void pvtm_set_dvfs_table(struct dvfs_node *dvfs_node)
+{
+	struct cpufreq_frequency_table *dvfs_table = dvfs_node->dvfs_table;
+	struct pvtm_info *info = dvfs_node->pvtm_info;
+	struct regulator *regulator = dvfs_node->vd->regulator;
+	int i, j;
+	int ret = 0;
+	int pvtm_list[VD_VOL_LIST_CNT] = {0};
+	unsigned int n_voltages = dvfs_node->vd->n_voltages;
+	int *volt_list = dvfs_node->vd->volt_list;
+
+	if (!info)
+		return;
+
+	clk_set_rate(dvfs_node->clk, info->scan_rate_hz);
+	DVFS_DBG("%s:%lu\n", __func__, clk_get_rate(dvfs_node->clk));
+
+	for (i = 0; i < n_voltages; i++) {
+		if ((volt_list[i] >= info->min_volt_uv) &&
+		    (volt_list[i] <= info->max_volt_uv)) {
+			regulator_set_voltage(regulator, volt_list[i],
+					      volt_list[i]);
+			pvtm_list[i] = pvtm_get_value(info->channel,
+						      info->sample_time_us);
+		}
+	}
+
+	for (i = 0; dvfs_table[i].frequency != CPUFREQ_TABLE_END; i++) {
+		for (j = 0; info->pvtm_table[j].frequency !=
+		     CPUFREQ_TABLE_END; j++)
+			if (info->pvtm_table[j].frequency >=
+			    dvfs_table[i].frequency) {
+				int min_pvtm = info->pvtm_table[j].index;
+
+				ret = pvtm_set_single_dvfs(dvfs_node,
+							   i,
+							   info,
+							   pvtm_list,
+							   min_pvtm);
+				break;
+			}
+
+		if (ret) {
+			DVFS_WARNING("freq: %d can not reach target pvtm\n",
+				     dvfs_table[i].frequency);
+			break;
+		}
+
+		if (info->pvtm_table[j].frequency == CPUFREQ_TABLE_END) {
+			DVFS_WARNING("not support freq :%d, max freq is %d\n",
+				     dvfs_table[i].frequency,
+				     info->pvtm_table[j-1].frequency);
+			break;
+		}
+	}
+}
+
+static void dvfs_virt_temp_limit_work_func(void)
+{
+	const struct cpufreq_frequency_table *limits_table = NULL;
+	unsigned int new_temp_limit_rate = -1;
+	unsigned int nr_cpus = num_online_cpus();
+	static bool in_perf;
+	int i;
+
+	if (!soc_is_rk3126() && !soc_is_rk3128())
+		return;
+
+	if (rockchip_get_system_status() & SYS_STATUS_PERFORMANCE) {
+		in_perf = true;
+	} else if (in_perf) {
+		in_perf = false;
+	} else {
+		static u64 last_time_in_idle;
+		static u64 last_time_in_idle_timestamp;
+		u64 time_in_idle = 0, now;
+		u32 delta_idle;
+		u32 delta_time;
+		unsigned cpu, busy_cpus;
+
+		for_each_online_cpu(cpu) {
+			time_in_idle += get_cpu_idle_time_us(cpu, &now);
+		}
+		delta_time = now - last_time_in_idle_timestamp;
+		delta_idle = time_in_idle - last_time_in_idle;
+		last_time_in_idle = time_in_idle;
+		last_time_in_idle_timestamp = now;
+		delta_idle += delta_time >> 4; /* +6.25% */
+		if (delta_idle > (nr_cpus - 1)
+		    * delta_time && delta_idle < (nr_cpus + 1) * delta_time)
+			busy_cpus = 1;
+		else if (delta_idle > (nr_cpus - 2) * delta_time)
+			busy_cpus = 2;
+		else if (delta_idle > (nr_cpus - 3) * delta_time)
+			busy_cpus = 3;
+		else
+			busy_cpus = 4;
+
+		limits_table = clk_cpu_dvfs_node->virt_temp_limit_table[busy_cpus-1];
+		DVFS_DBG("delta time %6u us idle %6u us %u cpus select table %d\n",
+			 delta_time, delta_idle, nr_cpus, busy_cpus);
+	}
+
+	if (limits_table) {
+		new_temp_limit_rate = limits_table[0].frequency;
+		for (i = 0; limits_table[i].frequency != CPUFREQ_TABLE_END; i++) {
+			if (target_temp >= limits_table[i].index)
+				new_temp_limit_rate = limits_table[i].frequency;
+		}
+	}
+
+	if (clk_cpu_dvfs_node->temp_limit_rate != new_temp_limit_rate) {
+		clk_cpu_dvfs_node->temp_limit_rate = new_temp_limit_rate;
+		dvfs_clk_set_rate(clk_cpu_dvfs_node, clk_cpu_dvfs_node->last_set_rate);
+		DVFS_DBG("temp_limit_rate:%d\n", (int)clk_cpu_dvfs_node->temp_limit_rate);
+	}
+}
+
 static void dvfs_temp_limit_work_func(struct work_struct *work)
 {
 	int temp=0, delta_temp=0;
@@ -866,6 +1087,9 @@ static void dvfs_temp_limit_work_func(struct work_struct *work)
 	queue_delayed_work_on(0, dvfs_wq, to_delayed_work(work), delay);
 
 	temp = rockchip_tsadc_get_temp(1);
+
+	if (temp == INVALID_TEMP)
+		return dvfs_virt_temp_limit_work_func();
 
 	//debounce
 	delta_temp = (old_temp>temp) ? (old_temp-temp) : (temp-old_temp);
@@ -928,7 +1152,6 @@ static void dvfs_temp_limit_work_func(struct work_struct *work)
 }
 static DECLARE_DELAYED_WORK(dvfs_temp_limit_work, dvfs_temp_limit_work_func);
 
-
 int dvfs_clk_enable_limit(struct dvfs_node *clk_dvfs_node, unsigned int min_rate, unsigned int max_rate)
 {
 	u32 rate = 0, ret = 0;
@@ -961,9 +1184,10 @@ int dvfs_clk_enable_limit(struct dvfs_node *clk_dvfs_node, unsigned int min_rate
 
 	}
 
-	DVFS_DBG("%s:clk(%s) last_set_rate=%u; [min_rate, max_rate]=[%u, %u]\n",
-			__func__, __clk_get_name(clk_dvfs_node->clk), clk_dvfs_node->last_set_rate, 
-			clk_dvfs_node->min_rate, clk_dvfs_node->max_rate);
+	DVFS_DBG("%s:clk(%s) last_set_rate=%lu; [min_rate, max_rate]=[%u, %u]\n",
+		 __func__, __clk_get_name(clk_dvfs_node->clk),
+		 clk_dvfs_node->last_set_rate,
+		 clk_dvfs_node->min_rate, clk_dvfs_node->max_rate);
 
 	return 0;
 }
@@ -987,8 +1211,11 @@ int dvfs_clk_disable_limit(struct dvfs_node *clk_dvfs_node)
 		mutex_unlock(&clk_dvfs_node->vd->mutex);
 	}
 
-	DVFS_DBG("%s: clk(%s) last_set_rate=%u; [min_rate, max_rate]=[%u, %u]\n",
-			__func__, __clk_get_name(clk_dvfs_node->clk), clk_dvfs_node->last_set_rate, clk_dvfs_node->min_rate, clk_dvfs_node->max_rate);
+	DVFS_DBG("%s: clk(%s) last_set_rate=%lu; [min_rate, max_rate]=[%u, %u]\n",
+		 __func__, __clk_get_name(clk_dvfs_node->clk),
+		 clk_dvfs_node->last_set_rate,
+		 clk_dvfs_node->min_rate, clk_dvfs_node->max_rate);
+
 	return 0;
 }
 EXPORT_SYMBOL(dvfs_clk_disable_limit);
@@ -1073,7 +1300,6 @@ int clk_enable_dvfs(struct dvfs_node *clk_dvfs_node)
 	unsigned int mode;
 	int ret;
 
-
 	if (!clk_dvfs_node)
 		return -EINVAL;
 	
@@ -1113,6 +1339,8 @@ int clk_enable_dvfs(struct dvfs_node *clk_dvfs_node)
 		dvfs_table_round_clk_rate(clk_dvfs_node);
 		dvfs_get_rate_range(clk_dvfs_node);
 		clk_dvfs_node->freq_limit_en = 1;
+		if (clk_dvfs_node->support_pvtm)
+			pvtm_set_dvfs_table(clk_dvfs_node);
 		dvfs_table_round_volt(clk_dvfs_node);
 		clk_dvfs_node->set_freq = clk_dvfs_node_get_rate_kz(clk_dvfs_node->clk);
 		clk_dvfs_node->last_set_rate = clk_dvfs_node->set_freq*1000;
@@ -1262,11 +1490,8 @@ static int dvfs_target(struct dvfs_node *clk_dvfs_node, unsigned long rate)
 	if (!clk)
 		return -EINVAL;
 
-	if (!clk_dvfs_node->enable_count){
-		DVFS_WARNING("%s:dvfs(%s) is disable\n", 
-			__func__, clk_dvfs_node->name);
+	if (!clk_dvfs_node->enable_count)
 		return 0;
-	}
 	
 	if (clk_dvfs_node->vd->volt_set_flag == DVFS_SET_VOLT_FAILURE) {
 		/* It means the last time set voltage error */
@@ -1519,25 +1744,6 @@ int rk_regist_clk(struct dvfs_node *clk_dvfs_node)
 }
 EXPORT_SYMBOL_GPL(rk_regist_clk);
 
-static int rk_convert_cpufreq_table(struct dvfs_node *dvfs_node)
-{
-	struct opp *opp;
-	struct device *dev;
-	struct cpufreq_frequency_table *table;
-	int i;
-
-	table = dvfs_node->dvfs_table;
-	dev = &dvfs_node->dev;
-
-	for (i = 0; table[i].frequency!= CPUFREQ_TABLE_END; i++){
-		opp = opp_find_freq_exact(dev, table[i].frequency * 1000, true);
-		if (IS_ERR(opp))
-			return PTR_ERR(opp);
-		table[i].index = opp_get_voltage(opp);
-	}
-	return 0;
-}
-
 static struct cpufreq_frequency_table *of_get_temp_limit_table(struct device_node *dev_node, const char *propname)
 {
 	struct cpufreq_frequency_table *temp_limt_table = NULL;
@@ -1574,6 +1780,167 @@ static struct cpufreq_frequency_table *of_get_temp_limit_table(struct device_nod
 
 }
 
+static int of_get_dvfs_table(struct device_node *dev_node,
+			     struct cpufreq_frequency_table **dvfs_table)
+{
+	struct cpufreq_frequency_table *tmp_dvfs_table = NULL;
+	const struct property *prop;
+	const __be32 *val;
+	int nr, i;
+
+	prop = of_find_property(dev_node, "operating-points", NULL);
+	if (!prop)
+		return -EINVAL;
+	if (!prop->value)
+		return -EINVAL;
+
+	nr = prop->length / sizeof(u32);
+	if (nr % 2) {
+		pr_err("%s: Invalid freq list\n", __func__);
+		return -EINVAL;
+	}
+
+	tmp_dvfs_table = kzalloc(sizeof(*tmp_dvfs_table) *
+			     (nr/2 + 1), GFP_KERNEL);
+	val = prop->value;
+
+	for (i = 0; i < nr/2; i++) {
+		tmp_dvfs_table[i].frequency = be32_to_cpup(val++);
+		tmp_dvfs_table[i].index = be32_to_cpup(val++);
+	}
+
+	tmp_dvfs_table[i].index = 0;
+	tmp_dvfs_table[i].frequency = CPUFREQ_TABLE_END;
+
+	*dvfs_table = tmp_dvfs_table;
+
+	return 0;
+}
+
+
+static int of_get_dvfs_pvtm_table(struct device_node *dev_node,
+				  struct cpufreq_frequency_table **dvfs_table,
+				  struct cpufreq_frequency_table **pvtm_table)
+{
+	struct cpufreq_frequency_table *tmp_dvfs_table = NULL;
+	struct cpufreq_frequency_table *tmp_pvtm_table = NULL;
+	const struct property *prop;
+	const __be32 *val;
+	int nr, i;
+
+	prop = of_find_property(dev_node, "pvtm-operating-points", NULL);
+	if (!prop)
+		return -EINVAL;
+	if (!prop->value)
+		return -EINVAL;
+
+	nr = prop->length / sizeof(u32);
+	if (nr % 3) {
+		pr_err("%s: Invalid freq list\n", __func__);
+		return -EINVAL;
+	}
+
+	tmp_dvfs_table = kzalloc(sizeof(*tmp_dvfs_table) *
+			     (nr/3 + 1), GFP_KERNEL);
+
+	tmp_pvtm_table = kzalloc(sizeof(*tmp_pvtm_table) *
+			     (nr/3 + 1), GFP_KERNEL);
+
+	val = prop->value;
+
+	for (i = 0; i < nr/3; i++) {
+		tmp_dvfs_table[i].frequency = be32_to_cpup(val++);
+		tmp_dvfs_table[i].index = be32_to_cpup(val++);
+
+		tmp_pvtm_table[i].frequency = tmp_dvfs_table[i].frequency;
+		tmp_pvtm_table[i].index = be32_to_cpup(val++);
+	}
+
+	tmp_dvfs_table[i].index = 0;
+	tmp_dvfs_table[i].frequency = CPUFREQ_TABLE_END;
+
+	tmp_pvtm_table[i].index = 0;
+	tmp_pvtm_table[i].frequency = CPUFREQ_TABLE_END;
+
+	*dvfs_table = tmp_dvfs_table;
+	*pvtm_table = tmp_pvtm_table;
+
+	return 0;
+}
+
+static int dvfs_node_parse_dt(struct device_node *np,
+			      struct dvfs_node *dvfs_node)
+{
+	int process_version = rockchip_process_version();
+	int i = 0;
+	int ret;
+
+	of_property_read_u32_index(np, "channel", 0, &dvfs_node->channel);
+
+	pr_info("channel:%d, lkg:%d\n",
+		dvfs_node->channel, rockchip_get_leakage(dvfs_node->channel));
+
+	of_property_read_u32_index(np, "regu-mode-en", 0,
+				   &dvfs_node->regu_mode_en);
+	if (dvfs_node->regu_mode_en)
+		dvfs_node->regu_mode_table = of_get_regu_mode_table(np);
+	else
+		dvfs_node->regu_mode_table = NULL;
+
+	of_property_read_u32_index(np, "temp-limit-enable", 0,
+				   &temp_limit_enable);
+	if (temp_limit_enable) {
+		of_property_read_u32_index(np, "target-temp", 0, &target_temp);
+		pr_info("target-temp:%d\n", target_temp);
+		dvfs_node->nor_temp_limit_table =
+			of_get_temp_limit_table(np,
+						"normal-temp-limit");
+		dvfs_node->per_temp_limit_table =
+			of_get_temp_limit_table(np,
+						"performance-temp-limit");
+		dvfs_node->virt_temp_limit_table[0] =
+			of_get_temp_limit_table(np,
+						"virt-temp-limit-1-cpu-busy");
+		dvfs_node->virt_temp_limit_table[1] =
+			of_get_temp_limit_table(np,
+						"virt-temp-limit-2-cpu-busy");
+		dvfs_node->virt_temp_limit_table[2] =
+			of_get_temp_limit_table(np,
+						"virt-temp-limit-3-cpu-busy");
+		dvfs_node->virt_temp_limit_table[3] =
+			of_get_temp_limit_table(np,
+						"virt-temp-limit-4-cpu-busy");
+	}
+	dvfs_node->temp_limit_rate = -1;
+
+	ret = of_property_read_u32_index(np, "support-pvtm", 0,
+					 &dvfs_node->support_pvtm);
+	if (!ret) {
+		if (of_get_dvfs_pvtm_table(np, &dvfs_node->dvfs_table,
+					   &dvfs_node->pvtm_table))
+			return -EINVAL;
+
+		for (i = 0; i < ARRAY_SIZE(pvtm_info_table); i++) {
+			struct pvtm_info *pvtm_info = pvtm_info_table[i];
+
+			if ((pvtm_info->channel == dvfs_node->channel) &&
+			    (pvtm_info->process_version == process_version) &&
+			     of_machine_is_compatible(pvtm_info->compatible)) {
+				dvfs_node->pvtm_info = pvtm_info;
+				break;
+			}
+		}
+
+		if (!dvfs_node->pvtm_info)
+			dvfs_node->support_pvtm = 0;
+	} else {
+		if (of_get_dvfs_table(np, &dvfs_node->dvfs_table))
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
 int of_dvfs_init(void)
 {
 	struct vd_node *vd;
@@ -1581,25 +1948,15 @@ int of_dvfs_init(void)
 	struct device_node *dvfs_dev_node, *clk_dev_node, *vd_dev_node, *pd_dev_node;
 	struct dvfs_node *dvfs_node;
 	struct clk *clk;
-	const __be32 *val;
 	int ret;
 
 	DVFS_DBG("%s\n", __func__);
+	pr_info("process version: %d\n", rockchip_process_version());
 
 	dvfs_dev_node = of_find_node_by_name(NULL, "dvfs");
 	if (IS_ERR_OR_NULL(dvfs_dev_node)) {
 		DVFS_ERR("%s get dvfs dev node err\n", __func__);
 		return PTR_ERR(dvfs_dev_node);
-	}
-
-	val = of_get_property(dvfs_dev_node, "target-temp", NULL);
-	if (val) {
-		target_temp = be32_to_cpup(val);
-	}
-
-	val = of_get_property(dvfs_dev_node, "temp-limit-enable", NULL);
-	if (val) {
-		temp_limit_enable = be32_to_cpup(val);
 	}
 
 	for_each_available_child_of_node(dvfs_dev_node, vd_dev_node) {
@@ -1659,42 +2016,8 @@ int of_dvfs_init(void)
 				dvfs_node->pd = pd;
 				dvfs_node->vd = vd;
 
-				val = of_get_property(clk_dev_node, "regu-mode-en", NULL);
-				if (val)
-					dvfs_node->regu_mode_en = be32_to_cpup(val);
-				if (dvfs_node->regu_mode_en)
-					dvfs_node->regu_mode_table = of_get_regu_mode_table(clk_dev_node);
-				else
-					dvfs_node->regu_mode_table = NULL;
-
-				if (temp_limit_enable) {
-					val = of_get_property(clk_dev_node, "temp-channel", NULL);
-					if (val) {
-						dvfs_node->temp_channel = be32_to_cpup(val);
-					}
-					dvfs_node->nor_temp_limit_table = of_get_temp_limit_table(clk_dev_node, "normal-temp-limit");
-					dvfs_node->per_temp_limit_table = of_get_temp_limit_table(clk_dev_node, "performance-temp-limit");
-				}
-				dvfs_node->temp_limit_rate = -1;
-				dvfs_node->dev.of_node = clk_dev_node;
-				ret = of_init_opp_table(&dvfs_node->dev);
-				if (ret) {
-					DVFS_ERR("%s:clk(%s) get opp table err:%d\n", __func__, dvfs_node->name, ret);
-					kfree(dvfs_node);
+				if (dvfs_node_parse_dt(clk_dev_node, dvfs_node))
 					continue;
-				}
-				
-				ret = opp_init_cpufreq_table(&dvfs_node->dev, &dvfs_node->dvfs_table);
-				if (ret) {
-					DVFS_ERR("%s:clk(%s) get cpufreq table err:%d\n", __func__, dvfs_node->name, ret);
-					kfree(dvfs_node);
-					continue;
-				}
-				ret = rk_convert_cpufreq_table(dvfs_node);
-				if (ret) {
-					kfree(dvfs_node);
-					continue;
-				}
 				
 				clk = clk_get(NULL, clk_dev_node->name);
 				if (IS_ERR(clk)){
