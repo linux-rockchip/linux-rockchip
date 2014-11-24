@@ -654,6 +654,7 @@ static int hci_register_dev(struct hci_dev *hdev)
 
 	write_unlock(&hci_dev_lock);
 
+	printk("hci_register_dev success\n");
 	return id;
 }
 
