@@ -1338,7 +1338,9 @@ static void uvc_video_complete_fun (struct urb *urb)
 	if (urb_state == NULL) {
 		printk("urb(%p) cann't be finded in stream->urb(%p, %p, %p, %p, %p)\n",
 			urb,stream->urb[0],stream->urb[1],stream->urb[2],stream->urb[3],stream->urb[4]);
-		BUG();
+		/* BUG(); */
+		uvc_queue_cancel(queue, urb->status == -ESHUTDOWN);
+		return;
 	}
 
 	if (atomic_read(urb_state)==UrbDeactive) {
@@ -1362,7 +1364,7 @@ static void uvc_video_complete_fun (struct urb *urb)
 }
 static void uvc_video_complete_tasklet(unsigned long data)
 {
-	struct urb *urb = (struct urb*)data;   
+	struct urb *urb = (struct urb*)data;
 
 	uvc_video_complete_fun(urb);    
 
@@ -1384,7 +1386,7 @@ static void uvc_video_complete(struct urb *urb)
 	}
 
 	if ((tasklet != NULL)&&(atomic_read(urb_state)==UrbActive)) {
-		tasklet_schedule(tasklet);
+		tasklet_hi_schedule(tasklet);
 	} else {
 		uvc_video_complete_fun(urb);
 	}
