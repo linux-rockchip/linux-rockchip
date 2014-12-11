@@ -1360,6 +1360,8 @@ static void uvc_video_complete_fun (struct urb *urb)
 	if ((ret = usb_submit_urb(urb, GFP_ATOMIC)) < 0) {
 		uvc_printk(KERN_ERR, "Failed to resubmit video URB (%d).\n",
 			ret);
+		uvc_queue_cancel(queue, urb->status == -ESHUTDOWN);
+		return;
 	}
 }
 static void uvc_video_complete_tasklet(unsigned long data)
