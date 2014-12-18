@@ -332,13 +332,31 @@ static int rockchip_i2s_hw_params(struct snd_pcm_substream *substream,
 		iismod |= I2S_DATA_WIDTH(19);
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
+	case SNDRV_PCM_FORMAT_S24_3LE:
 		iismod |= I2S_DATA_WIDTH(23);
 		break;
 	case SNDRV_PCM_FORMAT_S32_LE:
 		iismod |= I2S_DATA_WIDTH(31);
 		break;
 	}
-
+	iismod &= ~CHANNLE_4_EN;
+	switch (params_channels(params)) {
+		case 8:
+			iismod |= CHANNLE_4_EN;
+			break;
+		case 6:
+			iismod |= CHANNEL_3_EN;
+			break;
+		case 4:
+			iismod |= CHANNEL_2_EN;
+			break;
+		case 2:
+			iismod |= CHANNEL_1_EN;
+			break;
+		default:
+			I2S_DBG("%d channels not supported\n", params_channels(params));
+			return -EINVAL;
+	}
 	//set hdmi codec params
 	if(HW_PARAMS_FLAG_NLPCM == params->flags)
 		hdmi_audio_cfg.type = HDMI_AUDIO_NLPCM;

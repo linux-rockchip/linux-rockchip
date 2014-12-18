@@ -1216,6 +1216,9 @@ static int rt5616_hw_params(struct snd_pcm_substream *substream,
 	unsigned int val_len = 0, val_clk, mask_clk;
 	int pre_div, bclk_ms, frame_size;
 
+	if(params_rate(params) >=192000)
+		return 0;
+
 	rt5616->lrck[dai->id] = params_rate(params);
 	pre_div = get_clk_info(rt5616->sysclk, rt5616->lrck[dai->id]);
 
@@ -1696,7 +1699,7 @@ static int rt5616_resume(struct snd_soc_codec *codec)
 #define rt5616_resume NULL
 #endif
 
-#define RT5616_STEREO_RATES SNDRV_PCM_RATE_8000_96000
+#define RT5616_STEREO_RATES SNDRV_PCM_RATE_8000_192000
 #define RT5616_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S8)
 
@@ -1717,7 +1720,7 @@ struct snd_soc_dai_driver rt5616_dai[] = {
 		.playback = {
 			.stream_name = "AIF1 Playback",
 			.channels_min = 1,
-			.channels_max = 2,
+			.channels_max = 8,
 			.rates = RT5616_STEREO_RATES,
 			.formats = RT5616_FORMATS,
 		},

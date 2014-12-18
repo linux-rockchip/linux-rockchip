@@ -654,7 +654,7 @@ static struct snd_soc_dai_driver rk1000_codec_dai[] = {
 		.playback = {
 			.stream_name = "Playback",
 			.channels_min = 1,
-			.channels_max = 2,
+			.channels_max = 8,
 			.rates = RK1000_CODEC_RATES,
 			.formats = RK1000_CODEC_FORMATS,
 		},
