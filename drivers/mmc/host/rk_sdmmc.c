@@ -44,13 +44,13 @@
 #include <linux/mmc/slot-gpio.h>
 #include <linux/clk-private.h>
 #include <linux/rockchip/cpu.h>
-
+#include <linux/rfkill-wlan.h>
 #include "rk_sdmmc.h"
 #include "rk_sdmmc_dbg.h"
 #include <linux/regulator/rockchip_io_vol_domain.h>
 #include "../../clk/rockchip/clk-ops.h"
 
-#define RK_SDMMC_DRIVER_VERSION "Ver 1.12 2014-07-08"
+#define RK_SDMMC_DRIVER_VERSION "Ver 1.13 2014-09-05"
 
 /* Common flag combinations */
 #define DW_MCI_DATA_ERROR_FLAGS	(SDMMC_INT_DRTO | SDMMC_INT_DCRC | \
@@ -135,6 +135,8 @@ static inline bool dw_mci_fifo_reset(struct dw_mci *host);
 static inline bool dw_mci_ctrl_all_reset(struct dw_mci *host);
 static bool dw_mci_ctrl_reset(struct dw_mci *host, u32 reset);
 static void dw_mci_disable_low_power(struct dw_mci_slot *slot);
+
+
 
 /*printk the all register of current host*/
 #if 0
@@ -672,27 +674,43 @@ static void dw_mci_edmac_start_dma(struct dw_mci *host, unsigned int sg_len)
 
 static int dw_mci_edmac_init(struct dw_mci *host)
 {
-        /* 1) request external dma channel, SHOULD decide chn in dts */
-        host->dms = (struct dw_mci_dma_slave *)kmalloc(sizeof(struct dw_mci_dma_slave),GFP_KERNEL);
+        /* Request external dma channel, SHOULD decide chn in dts */
+        host->dms = NULL;
+        host->dms = (struct dw_mci_dma_slave *)kmalloc
+                                (sizeof(struct dw_mci_dma_slave), GFP_KERNEL);
+        if (NULL == host->dms) {
+                dev_err(host->dev, "No enough memory to alloc dms.\n");
+                goto err_exit;
+        }
+
         host->dms->ch = dma_request_slave_channel(host->dev, "dw_mci");
-        if (!host->dms->ch){
+        if (!host->dms->ch) {
                 dev_err(host->dev, "Failed to get external DMA channel: channel id = %d\n",
                                 host->dms->ch->chan_id);
                 goto err_exit;
         }
 
-        /* anything? */
-
         return 0;
 
 err_exit:
-        return -ENODEV;
+        if (NULL != host->dms) {
+                kfree(host->dms);
+                host->dms = NULL;
+        }
+        return -ENXIO;
 
 }
 
 static void dw_mci_edmac_exit(struct dw_mci *host)
 {
-        dma_release_channel(host->dms->ch);
+        if (NULL != host->dms) {
+                if (NULL != host->dms->ch) {
+                        dma_release_channel(host->dms->ch);
+                        host->dms->ch = NULL;
+                }
+                kfree(host->dms);
+                host->dms = NULL;
+        }
 }
 
 static const struct dw_mci_dma_ops dw_mci_edmac_ops = {
@@ -856,6 +874,7 @@ disable:
 static int dw_mci_submit_data_dma(struct dw_mci *host, struct mmc_data *data)
 {
 	int sg_len;
+	unsigned long flags;
 	u32 temp;
 
 	host->using_dma = 0;
@@ -894,9 +913,11 @@ static int dw_mci_submit_data_dma(struct dw_mci *host, struct mmc_data *data)
 	mci_writel(host, CTRL, temp);
 
 	/* Disable RX/TX IRQs, let DMA handle it */
+	spin_lock_irqsave(&host->slock, flags);
 	temp = mci_readl(host, INTMASK);
 	temp  &= ~(SDMMC_INT_RXDR | SDMMC_INT_TXDR);
 	mci_writel(host, INTMASK, temp);
+	spin_unlock_irqrestore(&host->slock, flags);
 
 	host->dma_ops->start(host, sg_len);
 
@@ -906,6 +927,7 @@ static int dw_mci_submit_data_dma(struct dw_mci *host, struct mmc_data *data)
 static void dw_mci_submit_data(struct dw_mci *host, struct mmc_data *data)
 {
 	u32 temp;
+	unsigned long flag;
 
 	data->error = -EINPROGRESS;
 
@@ -938,10 +960,12 @@ static void dw_mci_submit_data(struct dw_mci *host, struct mmc_data *data)
 		host->part_buf_start = 0;
 		host->part_buf_count = 0;
 
+		spin_lock_irqsave(&host->slock, flag);
 		mci_writel(host, RINTSTS, SDMMC_INT_TXDR | SDMMC_INT_RXDR);
 		temp = mci_readl(host, INTMASK);
 		temp |= SDMMC_INT_TXDR | SDMMC_INT_RXDR;
 		mci_writel(host, INTMASK, temp);
+		spin_unlock_irqrestore(&host->slock, flag);
 
 		temp = mci_readl(host, CTRL);
 		temp &= ~SDMMC_CTRL_DMA_ENABLE;
@@ -1096,7 +1120,7 @@ static void dw_mci_setup_bus(struct dw_mci_slot *slot, bool force_clkinit)
                          */
                         if ((div == 0) &&
                                 (host->mmc->caps & (MMC_CAP_1_8V_DDR | MMC_CAP_1_2V_DDR)) &&
-                                !(host->mmc->caps & MMC_CAP2_HS200)) {
+                                !(host->mmc->caps2 & MMC_CAP2_HS200)) {
                                 /*  Fixup DDR MMC */
                                 div = 1;
                                 host->set_div = div;
@@ -1499,12 +1523,40 @@ static int dw_mci_set_sdio_status(struct mmc_host *mmc, int val)
 
 static int dw_mci_get_cd(struct mmc_host *mmc)
 {
-	int present;
-	struct dw_mci_slot *slot = mmc_priv(mmc);
-	struct dw_mci_board *brd = slot->host->pdata;
-	struct dw_mci *host = slot->host;
-	int gpio_cd = mmc_gpio_get_cd(mmc);
-	
+        int present;
+        struct dw_mci_slot *slot = mmc_priv(mmc);
+        struct dw_mci_board *brd = slot->host->pdata;
+        struct dw_mci *host = slot->host;
+        int gpio_cd = mmc_gpio_get_cd(mmc);
+        int gpio_val;
+#if 0
+        if (cpu_is_rk312x() &&
+                soc_is_rk3126() &&
+                (mmc->restrict_caps & RESTRICT_CARD_TYPE_SD)) {
+                gpio_cd = slot->cd_gpio;
+                if (gpio_is_valid(gpio_cd)) {
+                        gpio_val = gpio_get_value_cansleep(gpio_cd);
+                        msleep(10);
+                        if (gpio_val == gpio_get_value_cansleep(gpio_cd)) {
+                                gpio_cd = gpio_get_value_cansleep(gpio_cd) == 0 ? 1 : 0;
+                                if (gpio_cd == 0) {
+                                        /* Enable force_jtag wihtout card in slot, ONLY for NCD-package */
+                                        grf_writel((0x1 << 24) | (1 << 8), RK312X_GRF_SOC_CON0);
+                                        dw_mci_ctrl_all_reset(host);
+                                } else {
+                                        /* Really card detected: SHOULD disable force_jtag */
+                                        grf_writel((0x1 << 24) | (0 << 8), RK312X_GRF_SOC_CON0);
+                                }
+                        } else {
+                                /* Jitter */
+                                return slot->last_detect_state;
+                        }
+                } else {
+                        dev_err(host->dev, "dw_mci_get_cd: invalid gpio_cd!\n");
+                }
+        }
+#endif
+
         if (mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO)
                 return test_bit(DW_MMC_CARD_PRESENT, &slot->flags);
 
@@ -1518,6 +1570,7 @@ static int dw_mci_get_cd(struct mmc_host *mmc)
 	else
 		present = (mci_readl(slot->host, CDETECT) & (1 << slot->id))
 			== 0 ? 1 : 0;
+
 	spin_lock_bh(&host->lock);
 	if (present) {
 		set_bit(DW_MMC_CARD_PRESENT, &slot->flags);
@@ -1660,8 +1713,11 @@ static void dw_mci_enable_sdio_irq(struct mmc_host *mmc, int enb)
 {
 	struct dw_mci_slot *slot = mmc_priv(mmc);
 	struct dw_mci *host = slot->host;
+	unsigned long flags;
 	u32 int_mask;
 	u32 sdio_int;
+
+        spin_lock_irqsave(&host->slock, flags);
 
 	/* Enable/disable Slot Specific SDIO interrupt */
 	int_mask = mci_readl(host, INTMASK);
@@ -1686,6 +1742,8 @@ static void dw_mci_enable_sdio_irq(struct mmc_host *mmc, int enb)
 		mci_writel(host, INTMASK,
 			   (int_mask & ~sdio_int));
 	}
+
+	spin_unlock_irqrestore(&host->slock, flags);
 }
 
 #ifdef CONFIG_MMC_DW_ROCKCHIP_SWITCH_VOLTAGE
@@ -1856,12 +1914,9 @@ static int dw_mci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	struct dw_mci_tuning_data tuning_data;
 	int err = -ENOSYS;
 
-        /* Fixme: 3036/3126 doesn't support 1.8 io domain, no sense exe tuning
-        if(cpu_is_3036() || cpu_is_3126())
-                return ENOSYS;
-        AND
-                what about audi-b?
-        */
+        /* Fixme: 3036/3126 doesn't support 1.8 io domain, no sense exe tuning */
+        if(cpu_is_rk3036() || cpu_is_rk312x())
+                return err;
 
 	if (opcode == MMC_SEND_TUNING_BLOCK_HS200) {
 		if (mmc->ios.bus_width == MMC_BUS_WIDTH_8) {
@@ -2741,22 +2796,20 @@ host_put:
 
 static void dw_mci_cmd_interrupt(struct dw_mci *host, u32 status)
 {
-        u32 multi, unit;
+        u32 multi, unit = SZ_2M;
 
         if (!host->cmd_status)
 	    host->cmd_status = status;
 	    
-	if(!host->cmd)
+        if (!host->cmd)
 		goto cmd_exit;
 
-	if((MMC_STOP_TRANSMISSION != host->cmd->opcode))
-        {
-                unit = 2*1024*1024;
-                multi = mci_readl(host, BYTCNT)/unit;
-                multi += ((mci_readl(host, BYTCNT) % unit) ? 1 :0 );
-                multi = (multi > 0) ? multi : 1;
-                multi += (host->cmd->retries > 2)? 2 : host->cmd->retries;
-                mod_timer(&host->dto_timer, jiffies + msecs_to_jiffies(4500 * multi));//max wait 8s larger
+        if ((MMC_STOP_TRANSMISSION != host->cmd->opcode)) {
+                multi = (mci_readl(host, BYTCNT) / unit) +
+                        ((mci_readl(host, BYTCNT) % unit) ? 1 :0 ) +
+                        ((host->cmd->retries > 2) ? 2 : host->cmd->retries);
+                /* Max limit time: 8s for dto */
+                mod_timer(&host->dto_timer, jiffies + msecs_to_jiffies(4000 * multi));
         }
 
 cmd_exit:
@@ -2876,13 +2929,16 @@ static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 	}
 
 #ifdef CONFIG_MMC_DW_IDMAC
-	/* Handle DMA interrupts */
-	pending = mci_readl(host, IDSTS);
-	if (pending & (SDMMC_IDMAC_INT_TI | SDMMC_IDMAC_INT_RI)) {
-		mci_writel(host, IDSTS, SDMMC_IDMAC_INT_TI | SDMMC_IDMAC_INT_RI);
-		mci_writel(host, IDSTS, SDMMC_IDMAC_INT_NI);
-		host->dma_ops->complete((void *)host);
-	}
+        /* External DMA Soc platform NOT need to ack interrupt IDSTS */
+        if(!(cpu_is_rk3036() || cpu_is_rk312x())){
+                /* Handle DMA interrupts */
+                pending = mci_readl(host, IDSTS);
+                if (pending & (SDMMC_IDMAC_INT_TI | SDMMC_IDMAC_INT_RI)) {
+                        mci_writel(host, IDSTS, SDMMC_IDMAC_INT_TI | SDMMC_IDMAC_INT_RI);
+                        mci_writel(host, IDSTS, SDMMC_IDMAC_INT_NI);
+                        host->dma_ops->complete((void *)host);
+                }
+        }
 #endif
 
 	return IRQ_HANDLED;
@@ -2967,7 +3023,8 @@ static void dw_mci_work_routine_card(struct work_struct *work)
 				/* Clear down the FIFO */
 				dw_mci_fifo_reset(host);
 #ifdef CONFIG_MMC_DW_IDMAC
-				dw_mci_idmac_reset(host);
+                                if(!(cpu_is_rk3036() || cpu_is_rk312x()))
+				        dw_mci_idmac_reset(host);
 #endif
 
 			}
@@ -3111,7 +3168,7 @@ static void dw_mci_of_get_cd_gpio(struct device *dev, u8 slot,
 	if (mmc_gpio_request_cd(mmc, gpio, 0))
 		dev_warn(dev, "gpio [%d] request failed\n", gpio);
 }
- #if 0 //add libing 
+
 static irqreturn_t dw_mci_gpio_cd_irqt(int irq, void *dev_id)
 {
         struct mmc_host *mmc = dev_id;
@@ -3125,10 +3182,11 @@ static irqreturn_t dw_mci_gpio_cd_irqt(int irq, void *dev_id)
         mmc_detect_change(mmc, msecs_to_jiffies(200));
         #endif
 
+        /* wakeup system whether gpio debounce or not */
+        rk_send_wakeup_key();
         queue_work(host->card_workqueue, &host->card_work);
         return IRQ_HANDLED;
 }
- 
 
 static void dw_mci_of_set_cd_gpio_irq(struct device *dev, u32 gpio,
                                         struct mmc_host *mmc)
@@ -3151,12 +3209,15 @@ static void dw_mci_of_set_cd_gpio_irq(struct device *dev, u32 gpio,
 		if (ret < 0) {
 			irq = ret;
 			dev_err(host->dev, "Request cd-gpio %d interrupt error!\n", gpio);
+		} else{
+		        /* enable wakeup event for gpio-cd in idle or deep suspend*/
+		        enable_irq_wake(irq);
 		}
 	} else {
 		dev_err(host->dev, "Cannot convert gpio %d to irq!\n", gpio);
 	}
 }
-#endif
+
 static void dw_mci_of_free_cd_gpio_irq(struct device *dev, u32 gpio,
                                         struct mmc_host *mmc)
 {
@@ -3221,18 +3282,17 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
 		mmc->f_min = DW_MCI_FREQ_MIN;
 		mmc->f_max = DW_MCI_FREQ_MAX;
 		
-        printk("%d..%s: fmin=%d, fmax=%d [%s]\n", __LINE__,__FUNCTION__,
-                mmc->f_min, mmc->f_max, mmc_hostname(mmc));    
+                printk("%d..%s: fmin=%d, fmax=%d [%s]\n", __LINE__, __FUNCTION__,
+                        mmc->f_min, mmc->f_max, mmc_hostname(mmc));
 	} else {
 		mmc->f_min = freq[0];
 		mmc->f_max = freq[1];
 		
-        printk("%d..%s: fmin=%d, fmax=%d [%s]\n", __LINE__,__FUNCTION__,
-                mmc->f_min, mmc->f_max,  mmc_hostname(mmc));    
+                printk("%d..%s: fmin=%d, fmax=%d [%s]\n", __LINE__, __FUNCTION__,
+                        mmc->f_min, mmc->f_max,  mmc_hostname(mmc));
 	}
-	
-    if(strstr("mmc0",mmc_hostname(mmc)))
-        printk("Line%d..%s: The rk_sdmmc %s",__LINE__, __FUNCTION__,RK_SDMMC_DRIVER_VERSION);
+
+	printk("%s : Rockchip specific MHSC: %s\n", mmc_hostname(mmc), RK_SDMMC_DRIVER_VERSION);
         
 	if (of_find_property(host->dev->of_node, "supports-sd", NULL))
 		mmc->restrict_caps |= RESTRICT_CARD_TYPE_SD;	
@@ -3244,6 +3304,20 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
         if (of_find_property(host->dev->of_node, "supports-tSD", NULL))
 		mmc->restrict_caps |= RESTRICT_CARD_TYPE_TSD;
 
+
+        /* We assume only low-level chip use gpio_cd */
+        if (cpu_is_rk312x() &&
+                soc_is_rk3126() &&
+                (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD)) {
+                slot->cd_gpio = of_get_named_gpio(host->dev->of_node, "cd-gpios", 0);
+                if (gpio_is_valid(slot->cd_gpio)) {
+                        /* Request gpio int for card detection */
+                        dw_mci_of_set_cd_gpio_irq(host->dev, slot->cd_gpio,host->mmc);
+                } else {
+                        slot->cd_gpio = -ENODEV;
+                        dev_err(host->dev, "failed to get your cd-gpios!\n");
+                }
+        }
 
 	if (host->pdata->get_ocr)
 		mmc->ocr_avail = host->pdata->get_ocr(id);
@@ -3333,6 +3407,14 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
 		mmc->max_blk_count = host->ring_size;
 		mmc->max_seg_size = 0x1000;
 		mmc->max_req_size = mmc->max_seg_size * mmc->max_blk_count;
+		if(cpu_is_rk3036() || cpu_is_rk312x()){
+                        /* fixup for external dmac setting */
+                        mmc->max_segs = 64;
+		        mmc->max_blk_size = 65536; /* BLKSIZ is 16 bits */
+		        mmc->max_blk_count = 65535;
+		        mmc->max_req_size = mmc->max_blk_size * mmc->max_blk_count;
+		        mmc->max_seg_size = mmc->max_req_size; 
+                }
 #else
 		mmc->max_segs = 64;
 		mmc->max_blk_size = 65536; /* BLKSIZ is 16 bits */
@@ -3340,6 +3422,7 @@ static int dw_mci_init_slot(struct dw_mci *host, unsigned int id)
 		mmc->max_req_size = mmc->max_blk_size * mmc->max_blk_count;
 		mmc->max_seg_size = mmc->max_req_size;
 #endif /* CONFIG_MMC_DW_IDMAC */
+                
 	}
         /* pwr_en */   
         slot->pwr_en_gpio = dw_mci_of_get_pwr_en_gpio(host->dev, slot->id);
@@ -3450,10 +3533,13 @@ static void dw_mci_init_dma(struct dw_mci *host)
 
 	/* Determine which DMA interface to use */
 #if defined(CONFIG_MMC_DW_IDMAC)
-
+        if(cpu_is_rk3036() || cpu_is_rk312x()){
+                host->dma_ops = &dw_mci_edmac_ops;
+                dev_info(host->dev, "Using external DMA controller.\n");
+        }else{
                 host->dma_ops = &dw_mci_idmac_ops;
                 dev_info(host->dev, "Using internal DMA controller.\n");
-
+        }
 #endif
 
 	if (!host->dma_ops)
@@ -3623,6 +3709,7 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 static void dw_mci_dealwith_timeout(struct dw_mci *host)
 {
         u32 ret, i, regs;
+	u32 sdio_int;
 
         switch(host->state){
                 case STATE_IDLE:
@@ -3640,8 +3727,9 @@ static void dw_mci_dealwith_timeout(struct dw_mci *host)
 
                         /* NO requirement to reclaim slave chn using external dmac */
                         #ifdef CONFIG_MMC_DW_IDMAC
-                        if (host->use_dma && host->dma_ops->init)
-	                        host->dma_ops->init(host);
+                        if(!(cpu_is_rk3036() || cpu_is_rk312x()))
+                                if (host->use_dma && host->dma_ops->init)
+	                                host->dma_ops->init(host);
                         #endif
 
                         /*
@@ -3656,7 +3744,18 @@ static void dw_mci_dealwith_timeout(struct dw_mci *host)
                                         | SDMMC_INT_RXDR | SDMMC_INT_VSI | DW_MCI_ERROR_FLAGS;
                         if(!(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO))
                                 regs |= SDMMC_INT_CD;
-                                mci_writel(host, INTMASK, regs);
+
+			if ((host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO)) {
+				if (host->verid < DW_MMC_240A)
+					sdio_int = SDMMC_INT_SDIO(0);
+				else
+					sdio_int = SDMMC_INT_SDIO(8);
+
+				if (mci_readl(host, INTMASK) & sdio_int)
+					regs |= sdio_int;
+			}
+
+			mci_writel(host, INTMASK, regs);
                         mci_writel(host, CTRL, SDMMC_CTRL_INT_ENABLE);
                         for (i = 0; i < host->num_slots; i++) {
                                 struct dw_mci_slot *slot = host->slot[i];
@@ -3680,12 +3779,24 @@ static void dw_mci_dto_timeout(unsigned long host_data)
 
 	disable_irq(host->irq);
 
+	dev_err(host->dev, "data_over interrupt timeout!\n");
 	host->data_status = SDMMC_INT_EBE;
 	mci_writel(host, RINTSTS, 0xFFFFFFFF);
 	dw_mci_dealwith_timeout(host);
 
 	enable_irq(host->irq);
 }
+
+
+void resume_rescan_enable(struct work_struct *work)
+{
+	struct dw_mci *host =
+		container_of(work, struct dw_mci, resume_rescan.work);
+	host->mmc->rescan_disable = 0;
+	mmc_detect_change(host->mmc, 10);
+}
+
+
 int dw_mci_probe(struct dw_mci *host)
 {
 	const struct dw_mci_drv_data *drv_data = host->drv_data;
@@ -3773,8 +3884,10 @@ int dw_mci_probe(struct dw_mci *host)
         host->svi_flags = 0;
 
 	spin_lock_init(&host->lock);
-	INIT_LIST_HEAD(&host->queue);
+	spin_lock_init(&host->slock);
 
+	INIT_LIST_HEAD(&host->queue);
+	INIT_DELAYED_WORK(&host->resume_rescan, resume_rescan_enable);
 	/*
 	 * Get the host data width - this assumes that HCON has been set with
 	 * the correct values.
@@ -3930,7 +4043,9 @@ void dw_mci_remove(struct dw_mci *host)
         struct mmc_host *mmc = host->mmc;
         struct dw_mci_slot *slot = mmc_priv(mmc);
 	int i;
+
 	del_timer_sync(&host->dto_timer);
+	cancel_delayed_work(&host->resume_rescan);
 
         mci_writel(host, RINTSTS, 0xFFFFFFFF);
         mci_writel(host, INTMASK, 0); /* disable all mmc interrupt first */
@@ -3971,30 +4086,46 @@ EXPORT_SYMBOL(dw_mci_remove);
 /*
  * TODO: we should probably disable the clock to the card in the suspend path.
  */
+extern int get_wifi_chip_type(void);
 int dw_mci_suspend(struct dw_mci *host)
 {
+	struct dw_mci_slot *slot = mmc_priv(host->mmc);
+
+	if((host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO) &&
+		((get_wifi_chip_type() == WIFI_ESP8089) || (get_wifi_chip_type() == WIFI_ESP8089)))
+		return 0;
         if(host->vmmc)
                 regulator_disable(host->vmmc);
 
-        if(host->use_dma && host->dma_ops->exit)
-                host->dma_ops->exit(host);
-
         /*only for sdmmc controller*/
-        if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD){
+        if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) {
                 host->mmc->rescan_disable = 1;
-                if(cancel_delayed_work_sync(&host->mmc->detect))
-			wake_unlock(&host->mmc->detect_wake_lock);
+                if (!(cpu_is_rk312x() || cpu_is_rk3036())) {
+                        if (cancel_delayed_work_sync(&host->mmc->detect))
+			        wake_unlock(&host->mmc->detect_wake_lock);
+                } else {
+                        /* we find dpm suspend timeout for mmc cancel this work sync way,
+                           actually just workaround this for low end platform with
+                           gpio-debounce detect method.
+                        */
+                        if (cancel_delayed_work(&host->mmc->detect))
+                                wake_unlock(&host->mmc->detect_wake_lock);
+                }
 
                 disable_irq(host->irq);
-                if(pinctrl_select_state(host->pinctrl, host->pins_idle) < 0)
+                if (pinctrl_select_state(host->pinctrl, host->pins_idle) < 0)
                         MMC_DBG_ERR_FUNC(host->mmc, "Idle pinctrl setting failed! [%s]",
                                                 mmc_hostname(host->mmc));
 
                 mci_writel(host, RINTSTS, 0xFFFFFFFF);
                 mci_writel(host, INTMASK, 0x00);
                 mci_writel(host, CTRL, 0x00);
-dw_mci_of_get_cd_gpio(host->dev, 0, host->mmc);
-                enable_irq_wake(host->mmc->slot.cd_irq);
+
+                /* Soc rk3126 already in gpio_cd mode */
+                if (!(cpu_is_rk312x() && soc_is_rk3126())) {
+                        dw_mci_of_get_cd_gpio(host->dev, 0, host->mmc);
+                        enable_irq_wake(host->mmc->slot.cd_irq);
+                }
         }
         return 0;
 }
@@ -4005,32 +4136,37 @@ int dw_mci_resume(struct dw_mci *host)
 	int i, ret, retry_cnt = 0;
 	u32 regs;
         struct dw_mci_slot *slot;
+	if((host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO) &&
+			((get_wifi_chip_type() == WIFI_ESP8089) || (get_wifi_chip_type() == WIFI_ESP8089)))
+		return 0;
     
-        if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO){
+        if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO) {
                 slot = mmc_priv(host->mmc);
-
                 if(!test_bit(DW_MMC_CARD_PRESENT, &slot->flags))
-                        return 0;
+			return 0;
         }
+
     	/*only for sdmmc controller*/
-	if(host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) {
-		disable_irq_wake(host->mmc->slot.cd_irq);
-                mmc_gpio_free_cd(host->mmc);
+	if (host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD) {
+                /* Soc rk3126 already in gpio_cd mode */
+                if (!(cpu_is_rk312x() && soc_is_rk3126())) {
+                        disable_irq_wake(host->mmc->slot.cd_irq);
+                        mmc_gpio_free_cd(host->mmc);
+                }
 		if(pinctrl_select_state(host->pinctrl, host->pins_default) < 0)
                         MMC_DBG_ERR_FUNC(host->mmc, "Default pinctrl setting failed! [%s]",
                                                 mmc_hostname(host->mmc));
-		host->mmc->rescan_disable = 0;
+		host->mmc->rescan_disable = 1;
 		/* Disable jtag*/
 		if(cpu_is_rk3288())
                         grf_writel(((1 << 12) << 16) | (0 << 12), RK3288_GRF_SOC_CON0);
-                /*
+#if 0                
                 else if(cpu_is_rk3036())
                         grf_writel(((1 << 11) << 16) | (0 << 11), RK3036_GRF_SOC_CON0);
-                else if(cpu_is_rk3126())
-                        TODO;
-                else if audi-b
-                        TODO;
-                */
+                else if(cpu_is_rk312x())
+                        /* RK3036_GRF_SOC_CON0 is compatible with rk312x, tmp setting */
+                        grf_writel(((1 << 8) << 16) | (0 << 8), RK3036_GRF_SOC_CON0);
+#endif
 	}
 	if(host->vmmc){
 		ret = regulator_enable(host->vmmc);
@@ -4040,14 +4176,15 @@ int dw_mci_resume(struct dw_mci *host)
 			return ret;
 		}
 	}
-	
+
 	if(!dw_mci_ctrl_all_reset(host)){
 		ret = -ENODEV;
 		return ret;
 	}
 
-	if(host->use_dma && host->dma_ops->init)
-		host->dma_ops->init(host);
+	if(!(cpu_is_rk3036() || cpu_is_rk312x()))
+		if(host->use_dma && host->dma_ops->init)
+			host->dma_ops->init(host);
 
 	/*
 	 * Restore the initial value at FIFOTH register
@@ -4078,6 +4215,13 @@ int dw_mci_resume(struct dw_mci *host)
 			dw_mci_set_ios(slot->mmc, &slot->mmc->ios);
 			dw_mci_setup_bus(slot, true);
 		}
+	}
+
+	if ((host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SD)) {
+		schedule_delayed_work(&host->resume_rescan, msecs_to_jiffies(2000));
+	}
+	if ((host->mmc->restrict_caps & RESTRICT_CARD_TYPE_SDIO)) {
+		host->mmc->rescan_disable = 1;
 	}
 
 	return 0;

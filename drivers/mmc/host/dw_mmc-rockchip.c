@@ -84,6 +84,7 @@ enum dw_mci_rockchip_type {
 	DW_MCI_TYPE_RK3188,
 	DW_MCI_TYPE_RK3288,
 	DW_MCI_TYPE_RK3036,
+	DW_MCI_TYPE_RK312X,
 };
 
 /* Rockchip implementation specific driver private data */
@@ -108,6 +109,9 @@ static struct dw_mci_rockchip_compatible {
 	},{
 		.compatible	= "rockchip,rk3036-sdmmc",
 		.ctrl_type	= DW_MCI_TYPE_RK3036,
+	},{
+		.compatible	= "rockchip,rk312x-sdmmc",
+		.ctrl_type	= DW_MCI_TYPE_RK312X,
 	},
 };
 
@@ -137,7 +141,8 @@ static int dw_mci_rockchip_setup_clock(struct dw_mci *host)
 	struct dw_mci_rockchip_priv_data *priv = host->priv;
 
 	if ((priv->ctrl_type == DW_MCI_TYPE_RK3288) ||
-	        (priv->ctrl_type == DW_MCI_TYPE_RK3036))
+                (priv->ctrl_type == DW_MCI_TYPE_RK3036) ||
+                (priv->ctrl_type == DW_MCI_TYPE_RK312X))
 		host->bus_hz /= (priv->ciu_div + 1);
 
 	return 0;
@@ -270,11 +275,6 @@ static void dw_mci_rockchip_load_tuning_base(void)
         /* load tuning base */
         if(cpu_is_rk3288())
                 cru_tuning_base =  RK3288_CRU_SDMMC_CON0;
-
-     /* Fixme: 3036
-        else if(cpu_is_rk3036())
-                cru_tuning_base =  RK3036_CRU_SDMMC_CON0;
-     */
 }
 
 static int inline __dw_mci_rockchip_execute_tuning(struct dw_mci_slot *slot, u32 opcode,
@@ -358,29 +358,29 @@ static int dw_mci_rockchip_execute_tuning(struct dw_mci_slot *slot, u32 opcode,
            So we take average --- 60ps, (1.66ns/ 2) = 0.83(middle-value),TAKE 0.9
            0.9 / 60ps = 15 delayline
          */
-        if(cpu_is_rk3288()){
-                /* Fixme: 3036:  dose it compatitable? */
-                 ref = ((FREQ_REF_150MHZ + host->bus_hz - 1) / host->bus_hz);
-                 step = (15 * ref);
+        if  ( 1 ) {//(cpu_is_rk3288() && !(rockchip_get_cpu_version() > 0)) {
+                /* RK3288, non-eco */
+                ref = DIV_ROUND_UP(FREQ_REF_150MHZ, host->bus_hz);
+                step = (15 * ref);
 
-                 if(step > MAX_DELAY_LINE){
+                if (step > MAX_DELAY_LINE) {
                         step = MAX_DELAY_LINE;       
                         MMC_DBG_WARN_FUNC(host->mmc,
                                         "execute tuning: TOO LARGE STEP![%s]", mmc_hostname(host->mmc));
-                 }              
-                 MMC_DBG_INFO_FUNC(host->mmc,
+                }
+                MMC_DBG_INFO_FUNC(host->mmc,
                                 "execute tuning: SOC is RK3288, ref = %d, step = %d[%s]",
                                 ref, step, mmc_hostname(host->mmc));
                  
-        }else{              
-                 step = (15 * ((FREQ_REF_150MHZ / host->bus_hz) * 100)) / 100;
+        } else {
+                step = (15 * ((FREQ_REF_150MHZ / host->bus_hz) * 100)) / 100;
 
-                 if(step > MAX_DELAY_LINE){
+                if (step > MAX_DELAY_LINE) {
                         step = MAX_DELAY_LINE;
                         MMC_DBG_WARN_FUNC(host->mmc,
                                         "execute tuning: TOO LARGE STEP![%s]", mmc_hostname(host->mmc));
-                 }              
-                 MMC_DBG_INFO_FUNC(host->mmc,
+                }
+                MMC_DBG_INFO_FUNC(host->mmc,
                                 "execute tuning: SOC is UNKNOWN, step = %d[%s]",
                                 step, mmc_hostname(host->mmc));
         }
@@ -395,7 +395,6 @@ re_phase:
         dw_mci_rockchip_load_signal_integrity(host, SLEW_RATE_SLOW, default_drv);
         /* Loop degree from 0 ~ 270 */
         for(start_degree = SDMMC_SHIFT_DEGREE_0; start_degree < SDMMC_SHIFT_DEGREE_270; start_degree++){
-
                 dw_mci_rockchip_set_degree(host, tuning_data->con_id, tuning_data->tuning_type, start_degree);
                 if(0 == __dw_mci_rockchip_execute_tuning(slot, opcode, blk_test, blksz)){
                         if(!memcmp(blk_pattern, blk_test, blksz)){
