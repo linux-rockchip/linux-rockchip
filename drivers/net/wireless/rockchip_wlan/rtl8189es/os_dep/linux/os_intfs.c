@@ -22,6 +22,8 @@
 #include <drv_types.h>
 #include <hal_data.h>
 
+#include <linux/rfkill-wlan.h>
+
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
 #error "Shall be Linux or Windows, but not both!\n"
@@ -3415,6 +3417,8 @@ int rtw_suspend_normal(_adapter *padapter)
 	if(padapter->intf_deinit)
 		padapter->intf_deinit(adapter_to_dvobj(padapter));
 
+	rockchip_wifi_set_carddetect(0);
+
 	DBG_871X("<== "FUNC_ADPT_FMT" exit....\n", FUNC_ADPT_ARG(padapter));
 	return ret;
 }
@@ -3902,6 +3906,9 @@ _func_enter_;
 	pdbgpriv = &psdpriv->drv_dbg;
 	
 	DBG_871X("==> "FUNC_ADPT_FMT" entry....\n", FUNC_ADPT_ARG(padapter));
+
+	rockchip_wifi_set_carddetect(1);
+
 	// interface init
 	//if (sdio_init(adapter_to_dvobj(padapter)) != _SUCCESS)
 	if((padapter->intf_init)&& (padapter->intf_init(adapter_to_dvobj(padapter)) != _SUCCESS))

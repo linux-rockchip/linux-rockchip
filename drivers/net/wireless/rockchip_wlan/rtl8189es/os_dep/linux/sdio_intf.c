@@ -244,6 +244,9 @@ _func_enter_;
 	psdio_data = &dvobj->intf_data;
 	func = psdio_data->func;
 
+      /* give us some time to enable, in ms */
+        func->enable_timeout = 100;
+
 	//3 1. init SDIO bus
 	sdio_claim_host(func);
 
