@@ -18,11 +18,12 @@ struct hdmi_id_ref_info {
 static int uboot_vic;
 static void hdmi_work_queue(struct work_struct *work);
 
-struct delayed_work *hdmi_submit_work(struct hdmi *hdmi, int event, int delay, void *data)
+struct delayed_work *hdmi_submit_work(struct hdmi *hdmi,
+				int event, int delay, void *data)
 {
 	struct hdmi_delayed_work *work;
 
-	DBG("%s event %04x delay %d\n", __func__, event, delay);
+	DBG("%s event %04x delay %d", __func__, event, delay);
 
 	work = kmalloc(sizeof(struct hdmi_delayed_work), GFP_ATOMIC);
 
@@ -35,8 +36,7 @@ struct delayed_work *hdmi_submit_work(struct hdmi *hdmi, int event, int delay, v
 				   &work->work,
 				   msecs_to_jiffies(delay));
 	} else {
-		printk(KERN_WARNING
-		       "HDMI: Cannot allocate memory to create work\n");
+		pr_warn("HDMI: Cannot allocate memory to create work\n");
 		return 0;
 	}
 
@@ -77,30 +77,24 @@ static void hdmi_wq_set_video(struct hdmi *hdmi)
 
 	DBG("%s", __func__);
 
-	hdmi_set_lcdc(hdmi);
 	video.vic = hdmi->vic;
 	video.color_input = HDMI_COLOR_RGB_0_255;
 	video.sink_hdmi = hdmi->edid.sink_hdmi;
 	video.format_3d = hdmi->mode_3d;
 	/* For DVI, output RGB */
-	if (hdmi->edid.sink_hdmi == 0)
+	if (hdmi->edid.sink_hdmi == 0) {
 		video.color_output = HDMI_COLOR_RGB_0_255;
-	else {
-		if (hdmi->edid.ycbcr444) {
-			if (hdmi->colormode == HDMI_COLOR_AUTO ||
-				hdmi->colormode == HDMI_COLOR_YCbCr444)
+	} else {
+		if (hdmi->colormode == HDMI_COLOR_AUTO) {
+			if (hdmi->edid.ycbcr444)
 				video.color_output = HDMI_COLOR_YCbCr444;
-		} else if (hdmi->edid.ycbcr422) {
-			if (hdmi->colormode == HDMI_COLOR_AUTO ||
-				hdmi->colormode == HDMI_COLOR_YCbCr422)
+			else if (hdmi->edid.ycbcr422)
 				video.color_output = HDMI_COLOR_YCbCr422;
-		} else {
-			if (hdmi->colormode == HDMI_COLOR_AUTO ||
-				hdmi->colormode == HDMI_COLOR_RGB_16_235)
-				video.color_output = HDMI_COLOR_RGB_16_235;
 			else
-				video.color_output = HDMI_COLOR_RGB_0_255;
-		}
+				video.color_output = HDMI_COLOR_RGB_16_235;
+				
+		} else
+			video.color_output = hdmi->colormode;
 	}
 	if (hdmi->edid.deepcolor & HDMI_DEEP_COLOR_30BITS) {
 		if (hdmi->colordepth == HDMI_DEPP_COLOR_AUTO ||
@@ -108,10 +102,10 @@ static void hdmi_wq_set_video(struct hdmi *hdmi)
 			video.color_output_depth = 10;
 	} else
 		video.color_output_depth = 8;
-	/*
+/*	
 	video.color_output_depth = 8;
 	video.color_output = HDMI_COLOR_RGB_0_255;
-	*/
+*/	
 	if (hdmi->ops->setVideo)
 		hdmi->ops->setVideo(hdmi, &video);
 }
@@ -186,13 +180,8 @@ static void hdmi_wq_parse_edid(struct hdmi *hdmi)
 			continue;
 		}
 	}
-	hdmi->scdc.hf_vsdb_version = pedid->hf_vsdb_version;
-	hdmi->scdc.lte_340mcsc_scramble = pedid->lte_340mcsc_scramble;
-	hdmi->scdc.rr_capable = pedid->rr_capable;
-	hdmi->scdc.scdc_present = pedid->scdc_present;
 out:
-	if (buff)
-		kfree(buff);
+	kfree(buff);
 	rc = hdmi_ouputmode_select(hdmi, rc);
 }
 
@@ -205,22 +194,21 @@ static void hdmi_wq_insert(struct hdmi *hdmi)
 	hdmi_cec_set_physical_address(hdmi->edid.cecaddress);
 	hdmi_send_uevent(hdmi, KOBJ_ADD);
 	if (hdmi->enable) {
-		if (!hdmi->uboot)
-			hdmi_wq_set_video(hdmi);
-		else {
-			hdmi->autoset = 0;
-			hdmi_set_lcdc(hdmi);
-		}
+		hdmi->autoset = 0;
+		hdmi_set_lcdc(hdmi);
+		hdmi_wq_set_video(hdmi);
 		#ifdef CONFIG_SWITCH
 		switch_set_state(&(hdmi->switchdev), 1);
 		#endif
 		hdmi_wq_set_audio(hdmi);
 		hdmi_wq_set_output(hdmi, hdmi->mute);
 		if (hdmi->ops->hdcp_cb)
-			hdmi->ops->hdcp_cb();
+			hdmi->ops->hdcp_cb(hdmi);
 		if (hdmi->ops->setCEC)
 			hdmi->ops->setCEC(hdmi);
 	}
+	if (hdmi->uboot)
+		hdmi->uboot = 0;
 }
 
 static void hdmi_wq_remove(struct hdmi *hdmi)
@@ -237,12 +225,10 @@ static void hdmi_wq_remove(struct hdmi *hdmi)
 		kfree(pos);
 	}
 
-	if (hdmi->edid.audio)
-		kfree(hdmi->edid.audio);
+	kfree(hdmi->edid.audio);
 
 	if (hdmi->edid.specs) {
-		if (hdmi->edid.specs->modedb)
-			kfree(hdmi->edid.specs->modedb);
+		kfree(hdmi->edid.specs->modedb);
 		kfree(hdmi->edid.specs);
 	}
 	memset(&hdmi->edid, 0, sizeof(struct hdmi_edid));
@@ -334,12 +320,14 @@ static void hdmi_work_queue(struct work_struct *work)
 		if (hdmi->enable && !hdmi->sleep) {
 			hdmi_wq_set_output(hdmi,
 					   HDMI_VIDEO_MUTE | HDMI_AUDIO_MUTE);
-			msleep(100);
+			msleep(1000);
+			hdmi_set_lcdc(hdmi);
 			hdmi_wq_set_video(hdmi);
 			hdmi_wq_set_audio(hdmi);
+			msleep(1000);
 			hdmi_wq_set_output(hdmi, hdmi->mute);
 			if (hdmi->ops->hdcp_cb)
-				hdmi->ops->hdcp_cb();
+				hdmi->ops->hdcp_cb(hdmi);
 		}
 		break;
 	case HDMI_SET_AUDIO:
@@ -373,13 +361,23 @@ static void hdmi_work_queue(struct work_struct *work)
 						  HDMI_VIDEO_FORMAT_NORMAL);
 		}
 		break;
+	case HDMI_SET_COLOR:
+		hdmi_wq_set_output(hdmi,
+				   HDMI_VIDEO_MUTE | HDMI_AUDIO_MUTE);
+		msleep(100);
+		hdmi_wq_set_video(hdmi);
+		hdmi_wq_set_output(hdmi, hdmi->mute);
+		break;
+	case HDMI_ENABLE_HDCP:
+		if (hdmi->hotplug == HDMI_HPD_ACTIVED && hdmi->ops->hdcp_cb)
+			hdmi->ops->hdcp_cb(hdmi);
+		break;
 	default:
-		printk(KERN_ERR "HDMI: hdmi_work_queue() unkown event\n");
+		pr_err("HDMI: hdmi_work_queue() unkown event\n");
 		break;
 	}
 
-	if (hdmi_w->data)
-		kfree(hdmi_w->data);
+	kfree(hdmi_w->data);
 	kfree(hdmi_w);
 
 	DBG("hdmi_work_queue() - exit\n");
@@ -393,7 +391,7 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 	int i;
 
 	if (property == NULL || ops == NULL) {
-		printk(KERN_ERR "HDMI: %s invalid parameter\n", __func__);
+		pr_err("HDMI: %s invalid parameter\n", __func__);
 		return NULL;
 	}
 
@@ -409,7 +407,7 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 
 	hdmi = kmalloc(sizeof(struct hdmi), GFP_KERNEL);
 	if (!hdmi) {
-		printk(KERN_ERR "HDMI: no memory to allocate hdmi device.\n");
+		pr_err("HDMI: no memory to allocate hdmi device.\n");
 		return NULL;
 	}
 	memset(hdmi, 0, sizeof(struct hdmi));
@@ -424,10 +422,12 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 	if (uboot_vic > 0) {
 		hdmi->vic = uboot_vic;
 		hdmi->uboot = 1;
-	} else if (hdmi->autoset)
+		hdmi->autoset = 0;
+	} else if (hdmi->autoset) {
 		hdmi->vic = 0;
-	else
+	} else {
 		hdmi->vic = HDMI_VIDEO_DEFAULT_MODE;
+	}
 	hdmi->colormode = HDMI_VIDEO_DEFAULT_COLORMODE;
 	hdmi->colordepth = HDMI_DEPP_COLOR_AUTO;
 	hdmi->mode_3d = HDMI_3D_NONE;
@@ -447,12 +447,12 @@ struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops)
 	sprintf(name, "hdmi-%s", hdmi->property->name);
 	hdmi->workqueue = create_singlethread_workqueue(name);
 	if (hdmi->workqueue == NULL) {
-		printk(KERN_ERR "HDMI,: create workqueue failed.\n");
+		pr_err("HDMI,: create workqueue failed.\n");
 		goto err_create_wq;
 	}
 	hdmi->ddev = hdmi_register_display_sysfs(hdmi, NULL);
 	if (hdmi->ddev == NULL) {
-		printk(KERN_ERR "HDMI : register display sysfs failed.\n");
+		pr_err("HDMI : register display sysfs failed.\n");
 		goto err_register_display;
 	}
 	rk_display_device_enable(hdmi->ddev);
@@ -490,11 +490,9 @@ void hdmi_unregister(struct hdmi *hdmi)
 		#endif
 		hdmi_unregister_display_sysfs(hdmi);
 		fb_destroy_modelist(&hdmi->edid.modelist);
-		if (hdmi->edid.audio)
-			kfree(hdmi->edid.audio);
+		kfree(hdmi->edid.audio);
 		if (hdmi->edid.specs) {
-			if (hdmi->edid.specs->modedb)
-				kfree(hdmi->edid.specs->modedb);
+			kfree(hdmi->edid.specs->modedb);
 			kfree(hdmi->edid.specs);
 		}
 		kfree(hdmi);
@@ -538,15 +536,11 @@ int hdmi_config_audio(struct hdmi_audio	*audio)
 			continue;
 		hdmi = ref_info[i].hdmi;
 
-		/* printk(KERN_ERR "enable %d, sleep %d\n", hdmi->enable, hdmi->sleep); */
-		// Same as current audio setting, return.
- 		//Warning: rk30 hdmi bug: fixed hdmi noise, another workaround is keeping i2s always on.
 		#if 0
 		if (memcmp(audio, &hdmi->audio, sizeof(struct hdmi_audio)) == 0)
 			continue;
 		#endif
-		/*for (j = 0; j < hdmi->edid.audio_num; j++)
-		{
+		/*for (j = 0; j < hdmi->edid.audio_num; j++) {
 			if (audio->type == hdmi->edid.audio_num)
 				break;
 		}*/
@@ -555,9 +549,10 @@ int hdmi_config_audio(struct hdmi_audio	*audio)
 			(audio->channel > hdmi->edid.audio[j].channel) ||
 			((audio->rate & hdmi->edid.audio[j].rate) == 0)||
 			((audio->type == HDMI_AUDIO_LPCM) &&
-			((audio->word_length & hdmi->edid.audio[j].word_length) == 0)) )
-		{
-			printk("[%s] warning : input audio type not supported in hdmi sink\n", __func__);
+			((audio->word_length &
+			  hdmi->edid.audio[j].word_length) == 0)) ) {
+			pr_warn("[%s] warning : input audio type
+				not supported in hdmi sink\n", __func__);
 			continue;
 		}*/
 		memcpy(&hdmi->audio, audio, sizeof(struct hdmi_audio));
@@ -587,8 +582,9 @@ void hdmi_audio_mute(int mute)
 static int __init bootloader_setup(char *str)
 {
 	if (str) {
-		printk("hdmi init vic is %s\n", str);
-		sscanf(str, "%d", &uboot_vic);
+		pr_info("hdmi init vic is %s\n", str);
+		if (kstrtoint(str, 0, &uboot_vic) < 0)
+			uboot_vic = 0;
 	}
 	return 0;
 }

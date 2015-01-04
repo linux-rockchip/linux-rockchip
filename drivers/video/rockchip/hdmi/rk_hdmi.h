@@ -14,118 +14,117 @@
 #define HDMI_VIDEO_DVI					(3 << 8)
 #define HDMI_VIC_MASK					(0xFF)
 #define HDMI_TYPE_MASK					(0xFF << 8)
-#define HDMI_MAX_ID	4
+#define HDMI_MAX_ID					4
 
-
-/* HDMI video information code according CEA-861-E */
+/* HDMI video information code according CEA-861-F */
 enum hdmi_video_infomation_code {
-	HDMI_640x480p_60HZ = 1,
-	HDMI_720x480p_60HZ_4_3,
-	HDMI_720x480p_60HZ_16_9,
-	HDMI_1280x720p_60HZ,
-	HDMI_1920x1080i_60HZ,		/*5*/
-	HDMI_720x480i_60HZ_4_3,
-	HDMI_720x480i_60HZ_16_9,
-	HDMI_720x240p_60HZ_4_3,
-	HDMI_720x240p_60HZ_16_9,
-	HDMI_2880x480i_60HZ_4_3,	/*10*/
-	HDMI_2880x480i_60HZ_16_9,
-	HDMI_2880x240p_60HZ_4_3,
-	HDMI_2880x240p_60HZ_16_9,
-	HDMI_1440x480p_60HZ_4_3,
-	HDMI_1440x480p_60HZ_16_9,	/*15*/
-	HDMI_1920x1080p_60HZ,
-	HDMI_720x576p_50HZ_4_3,
-	HDMI_720x576p_50HZ_16_9,
-	HDMI_1280x720p_50HZ,
-	HDMI_1920x1080i_50HZ,		/*20*/
-	HDMI_720x576i_50HZ_4_3,
-	HDMI_720x576i_50HZ_16_9,
-	HDMI_720x288p_50HZ_4_3,
-	HDMI_720x288p_50HZ_16_9,
-	HDMI_2880x576i_50HZ_4_3,	/*25*/
-	HDMI_2880x576i_50HZ_16_9,
-	HDMI_2880x288p_50HZ_4_3,
-	HDMI_2880x288p_50HZ_16_9,
-	HDMI_1440x576p_50HZ_4_3,
-	HDMI_1440x576p_50HZ_16_9,	/*30*/
-	HDMI_1920x1080p_50HZ,
-	HDMI_1920x1080p_24HZ,
-	HDMI_1920x1080p_25HZ,
-	HDMI_1920x1080p_30HZ,
-	HDMI_2880x480p_60HZ_4_3,	/*35*/
-	HDMI_2880x480p_60HZ_16_9,
-	HDMI_2880x576p_50HZ_4_3,
-	HDMI_2880x576p_50HZ_16_9,
-	HDMI_1920x1080i_50HZ_1250,	/* V Line 1250 total*/
-	HDMI_1920x1080i_100HZ,		/*40*/
-	HDMI_1280x720p_100HZ,
-	HDMI_720x576p_100HZ_4_3,
-	HDMI_720x576p_100HZ_16_9,
-	HDMI_720x576i_100HZ_4_3,
-	HDMI_720x576i_100HZ_16_9,	/*45*/
-	HDMI_1920x1080i_120HZ,
-	HDMI_1280x720p_120HZ,
-	HDMI_720x480p_120HZ_4_3,
-	HDMI_720x480p_120HZ_16_9,
-	HDMI_720x480i_120HZ_4_3,	/*50*/
-	HDMI_720x480i_120HZ_16_9,
-	HDMI_720x576p_200HZ_4_3,
-	HDMI_720x576p_200HZ_16_9,
-	HDMI_720x576i_200HZ_4_3,
-	HDMI_720x576i_200HZ_16_9,	/*55*/
-	HDMI_720x480p_240HZ_4_3,
-	HDMI_720x480p_240HZ_16_9,
-	HDMI_720x480i_240HZ_4_3,
-	HDMI_720x480i_240HZ_16_9,
-	HDMI_1280x720p_24HZ,		/*60*/
-	HDMI_1280x720p_25HZ,
-	HDMI_1280x720p_30HZ,
-	HDMI_1920x1080p_120HZ,
-	HDMI_1920x1080p_100HZ,
-	HDMI_1280x720p_24HZ_4_3,	/*65*/
-	HDMI_1280x720p_25HZ_4_3,
-	HDMI_1280x720p_30HZ_4_3,
-	HDMI_1280x720p_50HZ_4_3,
-	HDMI_1280x720p_60HZ_4_3,
-	HDMI_1280x720p_100HZ_4_3,	/*70*/
-	HDMI_1280x720p_120HZ_4_3,
-	HDMI_1920x1080p_24HZ_4_3,
-	HDMI_1920x1080p_25HZ_4_3,
-	HDMI_1920x1080p_30HZ_4_3,
-	HDMI_1920x1080p_50HZ_4_3,	/*75*/
-	HDMI_1920x1080p_60HZ_4_3,
-	HDMI_1920x1080p_100HZ_4_3,
-	HDMI_1920x1080p_120HZ_4_3,
-	HDMI_1680x720p_24HZ,
-	HDMI_1680x720p_25HZ,		/*80*/
-	HDMI_1680x720p_30HZ,
-	HDMI_1680x720p_50HZ,
-	HDMI_1680x720p_60HZ,
-	HDMI_1680x720p_100HZ,
-	HDMI_1680x720p_120HZ,		/*85*/
-	HDMI_2560x1080p_24HZ,
-	HDMI_2560x1080p_25HZ,
-	HDMI_2560x1080p_30HZ,
-	HDMI_2560x1080p_50HZ,
-	HDMI_2560x1080p_60HZ,		/*90*/
-	HDMI_2560x1080p_100HZ,
-	HDMI_2560x1080p_120HZ,
-	HDMI_3840x2160p_24HZ,
-	HDMI_3840x2160p_25HZ,
-	HDMI_3840x2160p_30HZ,		/*95*/
-	HDMI_3840x2160p_50HZ,
-	HDMI_3840x2160p_60HZ,
-	HDMI_4096x2160p_24HZ,
-	HDMI_4096x2160p_25HZ,
-	HDMI_4096x2160p_30HZ,		/*100*/
-	HDMI_4096x2160p_50HZ,
-	HDMI_4096x2160p_60HZ,
-	HDMI_3840x2160p_24HZ_4_3,
-	HDMI_3840x2160p_25HZ_4_3,
-	HDMI_3840x2160p_30HZ_4_3,	/*105*/
-	HDMI_3840x2160p_50HZ_4_3,
-	HDMI_3840x2160p_60HZ_4_3,
+	HDMI_640x480P_60HZ = 1,
+	HDMI_720x480P_60HZ_4_3,
+	HDMI_720x480P_60HZ_16_9,
+	HDMI_1280x720P_60HZ,
+	HDMI_1920x1080I_60HZ,		/*5*/
+	HDMI_720x480I_60HZ_4_3,
+	HDMI_720x480I_60HZ_16_9,
+	HDMI_720x240P_60HZ_4_3,
+	HDMI_720x240P_60HZ_16_9,
+	HDMI_2880x480I_60HZ_4_3,	/*10*/
+	HDMI_2880x480I_60HZ_16_9,
+	HDMI_2880x240P_60HZ_4_3,
+	HDMI_2880x240P_60HZ_16_9,
+	HDMI_1440x480P_60HZ_4_3,
+	HDMI_1440x480P_60HZ_16_9,	/*15*/
+	HDMI_1920x1080P_60HZ,
+	HDMI_720x576P_50HZ_4_3,
+	HDMI_720x576P_50HZ_16_9,
+	HDMI_1280x720P_50HZ,
+	HDMI_1920x1080I_50HZ,		/*20*/
+	HDMI_720x576I_50HZ_4_3,
+	HDMI_720x576I_50HZ_16_9,
+	HDMI_720x288P_50HZ_4_3,
+	HDMI_720x288P_50HZ_16_9,
+	HDMI_2880x576I_50HZ_4_3,	/*25*/
+	HDMI_2880x576I_50HZ_16_9,
+	HDMI_2880x288P_50HZ_4_3,
+	HDMI_2880x288P_50HZ_16_9,
+	HDMI_1440x576P_50HZ_4_3,
+	HDMI_1440x576P_50HZ_16_9,	/*30*/
+	HDMI_1920x1080P_50HZ,
+	HDMI_1920x1080P_24HZ,
+	HDMI_1920x1080P_25HZ,
+	HDMI_1920x1080P_30HZ,
+	HDMI_2880x480P_60HZ_4_3,	/*35*/
+	HDMI_2880x480P_60HZ_16_9,
+	HDMI_2880x576P_50HZ_4_3,
+	HDMI_2880x576P_50HZ_16_9,
+	HDMI_1920x1080I_50HZ_1250,	/* V Line 1250 total*/
+	HDMI_1920x1080I_100HZ,		/*40*/
+	HDMI_1280x720P_100HZ,
+	HDMI_720x576P_100HZ_4_3,
+	HDMI_720x576P_100HZ_16_9,
+	HDMI_720x576I_100HZ_4_3,
+	HDMI_720x576I_100HZ_16_9,	/*45*/
+	HDMI_1920x1080I_120HZ,
+	HDMI_1280x720P_120HZ,
+	HDMI_720x480P_120HZ_4_3,
+	HDMI_720x480P_120HZ_16_9,
+	HDMI_720x480I_120HZ_4_3,	/*50*/
+	HDMI_720x480I_120HZ_16_9,
+	HDMI_720x576P_200HZ_4_3,
+	HDMI_720x576P_200HZ_16_9,
+	HDMI_720x576I_200HZ_4_3,
+	HDMI_720x576I_200HZ_16_9,	/*55*/
+	HDMI_720x480P_240HZ_4_3,
+	HDMI_720x480P_240HZ_16_9,
+	HDMI_720x480I_240HZ_4_3,
+	HDMI_720x480I_240HZ_16_9,
+	HDMI_1280x720P_24HZ,		/*60*/
+	HDMI_1280x720P_25HZ,
+	HDMI_1280x720P_30HZ,
+	HDMI_1920x1080P_120HZ,
+	HDMI_1920x1080P_100HZ,
+	HDMI_1280x720P_24HZ_4_3,	/*65*/
+	HDMI_1280x720P_25HZ_4_3,
+	HDMI_1280x720P_30HZ_4_3,
+	HDMI_1280x720P_50HZ_4_3,
+	HDMI_1280x720P_60HZ_4_3,
+	HDMI_1280x720P_100HZ_4_3,	/*70*/
+	HDMI_1280x720P_120HZ_4_3,
+	HDMI_1920x1080P_24HZ_4_3,
+	HDMI_1920x1080P_25HZ_4_3,
+	HDMI_1920x1080P_30HZ_4_3,
+	HDMI_1920x1080P_50HZ_4_3,	/*75*/
+	HDMI_1920x1080P_60HZ_4_3,
+	HDMI_1920x1080P_100HZ_4_3,
+	HDMI_1920x1080P_120HZ_4_3,
+	HDMI_1680x720P_24HZ,
+	HDMI_1680x720P_25HZ,		/*80*/
+	HDMI_1680x720P_30HZ,
+	HDMI_1680x720P_50HZ,
+	HDMI_1680x720P_60HZ,
+	HDMI_1680x720P_100HZ,
+	HDMI_1680x720P_120HZ,		/*85*/
+	HDMI_2560x1080P_24HZ,
+	HDMI_2560x1080P_25HZ,
+	HDMI_2560x1080P_30HZ,
+	HDMI_2560x1080P_50HZ,
+	HDMI_2560x1080P_60HZ,		/*90*/
+	HDMI_2560x1080P_100HZ,
+	HDMI_2560x1080P_120HZ,
+	HDMI_3840x2160P_24HZ,
+	HDMI_3840x2160P_25HZ,
+	HDMI_3840x2160P_30HZ,		/*95*/
+	HDMI_3840x2160P_50HZ,
+	HDMI_3840x2160P_60HZ,
+	HDMI_4096x2160P_24HZ,
+	HDMI_4096x2160P_25HZ,
+	HDMI_4096x2160P_30HZ,		/*100*/
+	HDMI_4096x2160P_50HZ,
+	HDMI_4096x2160P_60HZ,
+	HDMI_3840x2160P_24HZ_4_3,
+	HDMI_3840x2160P_25HZ_4_3,
+	HDMI_3840x2160P_30HZ_4_3,	/*105*/
+	HDMI_3840x2160P_50HZ_4_3,
+	HDMI_3840x2160P_60HZ_4_3,
 };
 
 /* HDMI Extended Resolution */
@@ -211,7 +210,7 @@ enum hdmi_audio_word_length {
 enum hdmi_hotpulg_status {
 	HDMI_HPD_REMOVED = 0,		/* HDMI is disconnected */
 	HDMI_HPD_INSERT,		/* HDMI is connected, but HDP is low
-					or TMDS link is not uppoll to 3.3V*/
+					or TMDS link is not pull up to 3.3V*/
 	HDMI_HPD_ACTIVED		/* HDMI is connected, all singnal
 					  is normal */
 };
@@ -241,32 +240,35 @@ struct hdmi_video_timing {
 
 /* HDMI Video Parameters */
 struct hdmi_video {
-	unsigned int vic;				/* Video information code*/
-	unsigned int color_input;			/* Input video color mode*/
-	unsigned int color_output;			/* Output video color mode*/
-	unsigned int color_output_depth;		/* Output video Color Depth*/
-	unsigned int sink_hdmi;				/* Output signal is DVI or HDMI*/
-	unsigned int format_3d;				/* Output 3D mode*/
+	unsigned int vic;		/* Video information code*/
+	unsigned int color_input;	/* Input video color mode*/
+	unsigned int color_output;	/* Output video color mode*/
+	unsigned int color_output_depth;/* Output video Color Depth*/
+	unsigned int sink_hdmi;		/* Output signal is DVI or HDMI*/
+	unsigned int format_3d;		/* Output 3D mode*/
 };
 
 /* HDMI Audio Parameters */
 struct hdmi_audio {
-	u32	type;					/*Audio type*/
-	u32	channel;				/*Audio channel number*/
-	u32	rate;					/*Audio sampling rate*/
-	u32	word_length;				/*Audio data word length*/
+	u32	type;			/*Audio type*/
+	u32	channel;		/*Audio channel number*/
+	u32	rate;			/*Audio sampling rate*/
+	u32	word_length;		/*Audio data word length*/
 };
 
 /* HDMI EDID Information */
 struct hdmi_edid {
-	unsigned char sink_hdmi;			/*HDMI display device flag*/
-	unsigned char ycbcr444;				/*Display device support YCbCr444*/
-	unsigned char ycbcr422;				/*Display device support YCbCr422*/
-	unsigned char ycbcr420;				/*Display device support YCbCr420*/
-	unsigned char deepcolor;			/*bit3:DC_48bit; bit2:DC_36bit; bit1:DC_30bit; bit0:DC_Y444;*/
-	unsigned int  cecaddress;			/*CEC physical address*/
-	unsigned int  maxtmdsclock;			/*Max supported tmds clock*/
-	unsigned char fields_present;			/*bit7: latency bit6: i_lantency bit5: hdmi_video*/
+	unsigned char sink_hdmi;	/*HDMI display device flag*/
+	unsigned char ycbcr444;		/*Display device support YCbCr444*/
+	unsigned char ycbcr422;		/*Display device support YCbCr422*/
+	unsigned char ycbcr420;		/*Display device support YCbCr420*/
+	unsigned char deepcolor;	/*bit3:DC_48bit; bit2:DC_36bit;
+					  bit1:DC_30bit; bit0:DC_Y444;*/
+	unsigned int  cecaddress;	/*CEC physical address*/
+	unsigned int  maxtmdsclock;	/*Max supported tmds clock*/
+	unsigned char fields_present;	/*bit7: latency
+					  bit6: i_lantency
+					  bit5: hdmi_video*/
 	unsigned char video_latency;
 	unsigned char audio_latency;
 	unsigned char interlaced_video_latency;
@@ -280,28 +282,28 @@ struct hdmi_edid {
 	unsigned char dual_view;
 	unsigned char osd_disparity_3d;
 
-	struct fb_monspecs	*specs;			/*Device spec*/
-	struct list_head modelist;			/*Device supported display mode list*/
-	struct hdmi_audio *audio;			/*Device supported audio info*/
-	unsigned int  audio_num;			/*Device supported audio type number*/
+	struct fb_monspecs	*specs;	/*Device spec*/
+	struct list_head modelist;	/*Device supported display mode list*/
+	struct hdmi_audio *audio;	/*Device supported audio info*/
+	unsigned int  audio_num;	/*Device supported audio type number*/
 };
 
 struct hdmi;
 
 struct hdmi_ops {
-	int (*enable) (struct hdmi *);
-	int (*disable) (struct hdmi *);
-	int (*getStatus) (struct hdmi *);
-	int (*insert) (struct hdmi *);
-	int (*remove) (struct hdmi *);
-	int (*getEdid)	(struct hdmi *, int, unsigned char *);
-	int (*setVideo) (struct hdmi *, struct hdmi_video *);
-	int (*setAudio) (struct hdmi *, struct hdmi_audio *);
-	int (*setMute)	(struct hdmi *, int);
-	int (*setVSI)	(struct hdmi *, unsigned char, unsigned char);
-	int (*setCEC)	(struct hdmi *);
+	int (*enable)(struct hdmi *);
+	int (*disable)(struct hdmi *);
+	int (*getStatus)(struct hdmi *);
+	int (*insert)(struct hdmi *);
+	int (*remove)(struct hdmi *);
+	int (*getEdid)(struct hdmi *, int, unsigned char *);
+	int (*setVideo)(struct hdmi *, struct hdmi_video *);
+	int (*setAudio)(struct hdmi *, struct hdmi_audio *);
+	int (*setMute)(struct hdmi *, int);
+	int (*setVSI)(struct hdmi *, unsigned char, unsigned char);
+	int (*setCEC)(struct hdmi *);
 	/* call back for hdcp operatoion */
-	void (*hdcp_cb)(void);
+	void (*hdcp_cb)(struct hdmi *);
 	void (*hdcp_irq_cb)(int);
 	int (*hdcp_power_on_cb)(void);
 	void (*hdcp_power_off_cb)(void);
@@ -314,22 +316,14 @@ struct hdmi_property {
 	void *priv;
 };
 
-struct hdmi_scdc {
-	unsigned char hf_vsdb_version;
-	unsigned char scdc_present;
-	unsigned char rr_capable;
-	unsigned char lte_340mcsc_scramble;
-};
-
-
 /* HDMI Information */
 struct hdmi {
-	int id;						/*HDMI id*/
-	struct device	*dev;				/*HDMI device*/
-	struct rk_lcdc_driver *lcdc;			/*HDMI linked lcdc*/
-	struct rk_display_device *ddev;			/*Registered display device*/
+	int id;					/*HDMI id*/
+	struct device	*dev;			/*HDMI device*/
+	struct rk_lcdc_driver *lcdc;		/*HDMI linked lcdc*/
+	struct rk_display_device *ddev;		/*Registered display device*/
 	#ifdef CONFIG_SWITCH
-	struct switch_dev	switchdev;		/*Registered switch device*/
+	struct switch_dev	switchdev;	/*Registered switch device*/
 	#endif
 
 	struct hdmi_property *property;
@@ -338,26 +332,59 @@ struct hdmi {
 	struct mutex lock;
 	struct workqueue_struct *workqueue;
 
-	bool uboot;					/* if true, HDMI is initialized in uboot*/
+	bool uboot;	/* if true, HDMI is initialized in uboot*/
 
-	int hotplug;					/* hot plug status*/
-	int autoset;					/* if true, auto set hdmi output mode according EDID.*/
-	int mute;					/* HDMI display status, 2 means mute audio, 1 means mute display; 0 is unmute*/
+	int hotplug;	/* hot plug status*/
+	int autoset;	/* if true, auto set hdmi output mode according EDID.*/
+	int mute;	/* HDMI display status:
+			   2 means mute audio,
+			   1 means mute display;
+			   0 is unmute*/
 	int colordepth;
 	int colormode;
 
-	struct hdmi_edid edid;				/* EDID information*/
-	int enable;					/* Enable flag*/
-	int sleep;					/* Sleep flag*/
-	int vic;					/* HDMI output video information code*/
-	int mode_3d;					/* HDMI output video 3d mode*/
-	struct hdmi_audio audio;			/* HDMI output audio information.*/
-	struct hdmi_scdc scdc;				/*HDMI scdc information*/
-	int cecenable;				/*HDMI CEC switch*/
+	struct hdmi_edid edid;		/* EDID information*/
+	int enable;			/* Enable flag*/
+	int sleep;			/* Sleep flag*/
+	int vic;			/* HDMI output video information code*/
+	int mode_3d;			/* HDMI output video 3d mode*/
+	struct hdmi_audio audio;	/* HDMI output audio information.*/
+	int cecenable;			/*HDMI CEC switch*/
 };
 
 /* HDMI EDID Block Size */
 #define HDMI_EDID_BLOCK_SIZE	128
+
+/* SCDC Registers */
+#define SCDC_SINK_VER		0x01	/* sink version		*/
+#define SCDC_SOURCE_VER		0x02	/* source version	*/
+#define SCDC_UPDATE_0		0x10	/* Update_0		*/
+#define SCDC_UPDATE_1		0x11	/* Update_1		*/
+#define SCDC_UPDATE_RESERVED	0x12	/* 0x12-0x1f - Reserved */
+#define SCDC_TMDS_CONFIG	0x20	/* TMDS_Config   */
+#define SCDC_SCRAMBLER_STAT	0x21	/* Scrambler_Status   */
+#define SCDC_CONFIG_0		0x30	/* Config_0           */
+#define SCDC_CONFIG_RESERVED	0x31	/* 0x31-0x3f - Reserved */
+#define SCDC_STATUS_FLAG_0	0x40	/* Status_Flag_0        */
+#define SCDC_STATUS_FLAG_1	0x41	/* Status_Flag_1        */
+#define SCDC_STATUS_RESERVED	0x42	/* 0x42-0x4f - Reserved */
+#define SCDC_ERR_DET_0_L	0x50	/* Err_Det_0_L          */
+#define SCDC_ERR_DET_0_H	0x51	/* Err_Det_0_H          */
+#define SCDC_ERR_DET_1_L	0x52	/* Err_Det_1_L          */
+#define SCDC_ERR_DET_1_H	0x53	/* Err_Det_1_H          */
+#define SCDC_ERR_DET_2_L	0x54	/* Err_Det_2_L          */
+#define SCDC_ERR_DET_2_H	0x55	/* Err_Det_2_H          */
+#define SCDC_ERR_DET_CHKSUM	0x56	/* Err_Det_Checksum     */
+#define SCDC_TEST_CFG_0		0xc0	/* Test_config_0        */
+#define SCDC_TEST_RESERVED	0xc1	/* 0xc1-0xcf		*/
+#define SCDC_MAN_OUI_3RD	0xd0	/* Manufacturer IEEE OUI,
+					   Third Octet */
+#define SCDC_MAN_OUI_2ND	0xd1	/* Manufacturer IEEE OUI,
+					   Second Octet */
+#define SCDC_MAN_OUI_1ST	0xd2	/* Manufacturer IEEE OUI,
+					   First Octet */
+#define SCDC_DEVICE_ID		0xd3	/* 0xd3-0xdd - Device ID            */
+#define SCDC_MAN_SPECIFIC	0xde	/* 0xde-0xff - ManufacturerSpecific */
 
 /* Event source */
 #define HDMI_SRC_SHIFT		8
@@ -377,12 +404,15 @@ struct hdmi {
 #define HDMI_SET_3D			(HDMI_SYSFS_SRC		| 7)
 #define HDMI_MUTE_AUDIO			(HDMI_SYSFS_SRC		| 8)
 #define HDMI_UNMUTE_AUDIO		(HDMI_SYSFS_SRC		| 9)
+#define HDMI_SET_COLOR			(HDMI_SYSFS_SRC		| 10)
+#define HDMI_ENABLE_HDCP		(HDMI_SYSFS_SRC		| 11)
 
 #define HDMI_DEFAULT_SCALE		95
 #define HDMI_AUTO_CONFIG		true
 
 /* HDMI default vide mode */
-#define HDMI_VIDEO_DEFAULT_MODE			HDMI_1280x720p_60HZ/*HDMI_1920x1080p_60HZ*/
+#define HDMI_VIDEO_DEFAULT_MODE			HDMI_1280x720P_60HZ
+						/*HDMI_1920x1080P_60HZ*/
 #define HDMI_VIDEO_DEFAULT_COLORMODE		HDMI_COLOR_AUTO
 #define HDMI_VIDEO_DEFAULT_COLORDEPTH		HDMI_DEPP_COLOR_AUTO
 
@@ -394,30 +424,35 @@ struct hdmi {
 
 #ifdef DEBUG
 #define DBG(format, ...) \
-		printk(KERN_INFO "HDMI: " format "\n", ## __VA_ARGS__)
+		pr_info("HDMI: " format "\n", ## __VA_ARGS__)
 #else
 #define DBG(format, ...)
 #endif
 
-extern struct hdmi *hdmi_register(struct hdmi_property *property, struct hdmi_ops *ops);
-extern void hdmi_unregister(struct hdmi *hdmi);
-extern struct delayed_work *hdmi_submit_work(struct hdmi *hdmi, int event, int delay, void *data);
-extern void hdmi_suspend(struct hdmi *hdmi);
+struct hdmi *hdmi_register(struct hdmi_property *property,
+	struct hdmi_ops *ops);
+void hdmi_unregister(struct hdmi *hdmi);
+struct delayed_work *hdmi_submit_work(struct hdmi *hdmi,
+	int event, int delay, void *data);
+void hdmi_suspend(struct hdmi *hdmi);
 
-extern struct rk_display_device *hdmi_register_display_sysfs(struct hdmi *hdmi, struct device *parent);
-extern void hdmi_unregister_display_sysfs(struct hdmi *hdmi);
+struct rk_display_device *hdmi_register_display_sysfs(struct hdmi *hdmi,
+	struct device *parent);
+void hdmi_unregister_display_sysfs(struct hdmi *hdmi);
 
-extern int hdmi_edid_parse_base(unsigned char *buf, int *extend_num, struct hdmi_edid *pedid);
-extern int hdmi_edid_parse_extensions(unsigned char *buf, struct hdmi_edid *pedid);
+int hdmi_edid_parse_base(unsigned char *buf,
+	int *extend_num, struct hdmi_edid *pedid);
+int hdmi_edid_parse_extensions(unsigned char *buf,
+	struct hdmi_edid *pedid);
 
-extern void hdmi_init_modelist(struct hdmi *hdmi);
-extern int hdmi_set_lcdc(struct hdmi *hdmi);
-extern int hdmi_ouputmode_select(struct hdmi *hdmi, int edid_ok);
-extern int hdmi_add_vic(int vic, struct list_head *head);
-extern int hdmi_find_best_mode(struct hdmi *hdmi, int vic);
-extern int hdmi_videomode_to_vic(struct fb_videomode *vmode);
-extern const struct fb_videomode *hdmi_vic_to_videomode(int vic);
-extern const struct hdmi_video_timing *hdmi_vic2timing(int vic);
-extern int hdmi_config_audio(struct hdmi_audio *audio);
+void hdmi_init_modelist(struct hdmi *hdmi);
+int hdmi_set_lcdc(struct hdmi *hdmi);
+int hdmi_ouputmode_select(struct hdmi *hdmi, int edid_ok);
+int hdmi_add_vic(int vic, struct list_head *head);
+int hdmi_find_best_mode(struct hdmi *hdmi, int vic);
+int hdmi_videomode_to_vic(struct fb_videomode *vmode);
+const struct fb_videomode *hdmi_vic_to_videomode(int vic);
+const struct hdmi_video_timing *hdmi_vic2timing(int vic);
+int hdmi_config_audio(struct hdmi_audio *audio);
 
 #endif

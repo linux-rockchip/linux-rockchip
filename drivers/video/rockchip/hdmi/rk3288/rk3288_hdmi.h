@@ -40,6 +40,7 @@ struct hdmi_dev {
 #endif
 	int			audiosrc;
 	int			enable;
+	int			hdcp_enable;
 	unsigned char		clk_disable;
 	unsigned char		clk_on;
 

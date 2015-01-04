@@ -227,7 +227,7 @@
         supports-highspeed;
 	supports-emmc;
         bootpart-no-access;
-	//supports-tSD;//only tsd-sdcard mode 
+	supports-tSD;//only tsd-sdcard mode 
 	supports-DDR_MODE;
 	caps2-mmc-hs200;
 
@@ -508,6 +508,7 @@
 	status = "okay";
 	rockchips,hdmi_audio_source = <0>;
 	hdmi_cec = <0>;
+	hdcp_enable = <0>;
 };
 
 &adc {

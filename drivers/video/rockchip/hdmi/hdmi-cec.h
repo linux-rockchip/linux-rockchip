@@ -185,5 +185,4 @@ int hdmi_cec_enumerate(void);
 void hdmi_cec_set_physical_address(int devPa);
 void hdmi_cec_submit_work(int event, int delay, void *data);
 void CecSendActiveSource(void);
-void rk3288_hdmi_cec_setcecla(struct hdmi *hdmi, int ceclgaddr);
 #endif /* __HDMI_CEC_H__ */
