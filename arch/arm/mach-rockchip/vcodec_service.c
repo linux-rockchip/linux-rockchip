@@ -576,6 +576,7 @@ static void vpu_put_clk(struct vpu_service_info *pservice)
 #endif
 }
 
+static void vpu_service_power_off(struct vpu_service_info *pservice);
 static void vpu_reset(struct vpu_service_info *pservice)
 {
 #if defined(CONFIG_ARCH_RK29)
@@ -606,6 +607,8 @@ static void vpu_reset(struct vpu_service_info *pservice)
 	*pservice->reg_codec = NULL;
 	pservice->reg_pproc = NULL;
 	pservice->reg_resev = NULL;
+
+	vpu_service_power_off(pservice);
 }
 
 static void reg_deinit(struct vpu_service_info *pservice, vpu_reg *reg);
@@ -1542,6 +1545,19 @@ static long vpu_service_ioctl(struct file *filp, unsigned int cmd, unsigned long
 		}
 		mutex_lock(pservice->lock);
 		reg = list_entry(session->done.next, vpu_reg, session_link);
+
+		if (pservice->hw_info->hw_id == HEVC_ID) {
+			if (pservice->irq_status & 0x8000)
+				vpu_reset(pservice);
+		} else {
+			if (reg->type == VPU_ENC) {
+				if (pservice->irq_status & 0x40)
+					vpu_reset(pservice);
+			} else {
+				if (pservice->irq_status & 40000)
+					vpu_reset(pservice);
+			}
+		}
 		return_reg(pservice, reg, (u32 __user *)req.req);
 		mutex_unlock(pservice->lock);
 		break;
