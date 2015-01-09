@@ -1068,7 +1068,7 @@ static vpu_reg *reg_init(struct vpu_service_info *pservice, vpu_session *session
 				} else if (reg_check_fmt(reg) == VPU_DEC_FMT_H264) {
 					if (reg_probe_width(reg) > 3200) {
 						// raise frequency for 4k avc.
-						reg->freq = VPU_FREQ_500M;
+						reg->freq = VPU_FREQ_600M;
 					}
 				} else {
 					if (reg_check_interlace(reg)) {
