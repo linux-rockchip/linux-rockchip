@@ -2354,6 +2354,21 @@ static irqreturn_t vdpu_isr(int irq, void *dev_id)
 			reg_from_run_to_done(pservice, pservice->reg_pproc);
 		}
 	}
+	if (pservice->hw_info->hw_id == HEVC_ID) {
+		if (pservice->irq_status & 0x8000) {
+			pr_info("hevc timeout occur, irq status %08x\n", pservice->irq_status);
+			rockchip_iovmm_deactivate(pservice->dev);
+			mdelay(1);
+			rockchip_iovmm_activate(pservice->dev);
+		}
+	} else {
+		if (pservice->irq_status & 0x40) {
+			pr_info("vdpu timeout occur, irq status %08x\n", pservice->irq_status);
+			rockchip_iovmm_deactivate(pservice->dev);
+			mdelay(1);
+			rockchip_iovmm_activate(pservice->dev);
+		}
+	}
 	try_set_reg(pservice);
 	mutex_unlock(pservice->lock);
 	return IRQ_HANDLED;
