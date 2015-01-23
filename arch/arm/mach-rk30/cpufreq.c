@@ -44,6 +44,10 @@
 #endif
 #define FREQ_PRINTK_ERR(fmt, args...) pr_err(fmt, ## args)
 
+/* TS:2014-11-26 Dorado [system][High temperature reboot ][] ADD-S */
+#define LIMIT_TEMPERATURE_RESET  80
+/* TS:2014-11-26 Dorado [system][High temperature reboot ][] ADD-E */
+
 /* Frequency table index must be sequential starting at 0 */
 static struct cpufreq_frequency_table default_freq_table[] = {
 	{.frequency = 816 * 1000, .index = 1100 * 1000},
@@ -118,12 +122,21 @@ module_param(temp_limt_freq, uint, 0444);
 static const struct cpufreq_frequency_table temp_limits[] = {
 	{.frequency = 1416 * 1000, .index = 50},
 	{.frequency = 1200 * 1000, .index = 55},
+#if 0 /* TS:2014-11-26 Dorado [system][High temperature reboot][] MOD-S */
 	{.frequency = 1008 * 1000, .index = 60},
 	{.frequency =  816 * 1000, .index = 75},
+#else /* TS:2014-11-26 Dorado [system][High temperature reboot][] MOD */ 
+	{.frequency =  816 * 1000, .index = 65},
+	{.frequency =  504 * 1000, .index = 75},
+#endif /* TS:2014-11-26 Dorado [system][High temperature reboot][] MOD-E */
 };
 
 static const struct cpufreq_frequency_table temp_limits_high[] = {
+#if 0 /* TS:2014-11-26 Dorado [system][High temperature reboot][] MOD-S */
 	{.frequency =  816 * 1000, .index = 100},
+#else /* TS:2014-11-26 Dorado [system][High temperature reboot][] MOD */
+	{.frequency =  504 * 1000, .index = 100},
+#endif /* TS:2014-11-26 Dorado [system][High temperature reboot][] MOD-E */
 };
 
 extern int rk30_tsadc_get_temp(unsigned int chn);
@@ -176,6 +189,14 @@ static void rk30_cpufreq_temp_limit_work_func(struct work_struct *work)
 			limits_size = ARRAY_SIZE(temp_limits_high);
 		}
 	}
+
+	/* TS:2014-11-26 Dorado [system][High temperature reboot ][] ADD-S */
+	if(temp > LIMIT_TEMPERATURE_RESET ){
+		FREQ_PRINTK_LOG("The temperature of CPU is too high（>80C），system will reboot!");
+		kernel_restart(NULL);
+	}
+	/* TS:2014-11-26 Dorado [system][High temperature reboot ][] ADD-E */
+
 	for (i = 0; i < limits_size; i++) {
 		if (temp > limits_table[i].index) {
 			new = limits_table[i].frequency;

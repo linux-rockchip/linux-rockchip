@@ -29,11 +29,15 @@ static void __init rk30_cpu_axi_init(void)
 	CPU_AXI_SET_QOS_PRIORITY(0, 0, CPU0);
 	CPU_AXI_SET_QOS_PRIORITY(0, 0, CPU1R);
 	CPU_AXI_SET_QOS_PRIORITY(0, 0, CPU1W);
-#ifdef CONFIG_RK29_VMAC
+ /* TS:2014-10-29 Dorado [B][improve the audio noises][1907] DEL-S*/
+//#ifdef CONFIG_RK29_VMAC
+ /* TS:2014-10-29 Dorado [B][improve the audio noises][1907] DEL-E*/
 	CPU_AXI_SET_QOS_PRIORITY(2, 2, PERI);
-#else
-	CPU_AXI_SET_QOS_PRIORITY(0, 0, PERI);
-#endif
+/* TS:2014-10-29 Dorado [B][improve the audio noises][1907] DEL-S*/
+//#else
+//	CPU_AXI_SET_QOS_PRIORITY(0, 0, PERI);
+//#endif
+/* TS:2014-10-29 Dorado [B][improve the audio noises][1907] DEL-E*/
 	CPU_AXI_SET_QOS_PRIORITY(3, 3, LCDC0);
 	CPU_AXI_SET_QOS_PRIORITY(3, 3, LCDC1);
 	CPU_AXI_SET_QOS_PRIORITY(2, 1, GPU);

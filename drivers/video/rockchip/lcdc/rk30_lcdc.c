@@ -532,7 +532,7 @@ static int rk30_cursor_set_pos(struct rk_lcdc_device_driver *dev_drv, int x, int
 //	lcdc_writel(lcdc_dev, WIN0_ACT_INFO,v_ACT_WIDTH(xact) | v_ACT_HEIGHT(yact));
 	spin_lock(&lcdc_dev->reg_lock);
 		if(likely(lcdc_dev->clk_on)) {
-		#if 0
+		#if 1
 		xact = (lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF) + 1;
 		yact = ((lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF0000 ) >> 16) + 1;
 	//	printk("xact is %d yact is %d\n", xact, yact);

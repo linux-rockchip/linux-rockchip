@@ -243,7 +243,10 @@ static inline void rfkill_rk_sleep_bt_internal(struct rfkill_rk_data *rfkill, bo
     
     DBG("*** bt sleep: %d ***\n", sleep);
 #ifndef CONFIG_BK3515A_COMBO
+
+	if(!sleep){
     gpio_direction_output(wake->io, sleep?!wake->enable:wake->enable);
+		}
 #else
     if(!sleep)
     {
@@ -345,7 +348,7 @@ static int rfkill_rk_set_power(void *data, bool blocked)
             msleep(20);
         }
 
-#if defined(CONFIG_AP6210) || defined(CONFIG_AP6335)
+//#if defined(CONFIG_AP6210) || defined(CONFIG_AP6335)
         if (gpio_is_valid(rts->io))
         {
             if (rts->iomux.name)
@@ -364,7 +367,7 @@ static int rfkill_rk_set_power(void *data, bool blocked)
                 rk_mux_api_set(rts->iomux.name, rts->iomux.fmux);
             }
         }
-#endif
+//#endif
 
     	LOG("bt turn on power\n");
 	} else {

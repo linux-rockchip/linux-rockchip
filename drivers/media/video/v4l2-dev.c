@@ -741,7 +741,12 @@ void video_unregister_device(struct video_device *vdev)
 	 */
 	clear_bit(V4L2_FL_REGISTERED, &vdev->flags);
 	mutex_unlock(&videodev_lock);
-	device_unregister(&vdev->dev);
+
+    /* TS:2014-10-31 Dorado [Function][USB camera hotplug][36069] ADD-S */
+    devnode_clear(vdev);
+    /* TS:2014-10-31 Dorado [Function][USB camera hotplug][36069] ADD-E */
+
+    device_unregister(&vdev->dev);
 }
 EXPORT_SYMBOL(video_unregister_device);
 

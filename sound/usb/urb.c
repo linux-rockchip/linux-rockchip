@@ -172,16 +172,21 @@ static void snd_complete_urb(struct urb *urb)
 	struct snd_pcm_substream *substream = ctx->subs->pcm_substream;
 	int err = 0;
 
-	if ((subs->running && subs->ops.retire(subs, substream->runtime, urb)) ||
-	    !subs->running || /* can be stopped during retire callback */
-	    (err = subs->ops.prepare(subs, substream->runtime, urb)) < 0 ||
-	    (err = usb_submit_urb(urb, GFP_ATOMIC)) < 0) {
-		clear_bit(ctx->index, &subs->active_mask);
-		if (err < 0) {
-			snd_printd(KERN_ERR "cannot submit urb (err = %d)\n", err);
-			snd_pcm_stop(substream, SNDRV_PCM_STATE_XRUN);
+	// Add substream condition to fix remove USB device cause
+	// crash when music is playing
+	if(substream){
+		if ((subs->running && subs->ops.retire(subs, substream->runtime, urb)) ||
+					!subs->running || /* can be stopped during retire callback */
+					(err = subs->ops.prepare(subs, substream->runtime, urb)) < 0 ||
+					(err = usb_submit_urb(urb, GFP_ATOMIC)) < 0) {
+			clear_bit(ctx->index, &subs->active_mask);
+			if (err < 0) {
+					snd_printd(KERN_ERR "cannot submit urb (err = %d)\n", err);
+					snd_pcm_stop(substream, SNDRV_PCM_STATE_XRUN);
+			}
 		}
 	}
+
 }
 
 

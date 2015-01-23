@@ -130,7 +130,9 @@ static int rt3261_voice_hw_params(struct snd_pcm_substream *substream,
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_DSP_A |
 		SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBS_CFS ); 
 
-	switch(params_rate(params)) {
+	DBG("%s Force sample rate to 8K!\n", __func__);
+	//switch(params_rate(params)) {
+	switch(8000) {
 		case 8000:
 		case 16000:
 		case 24000:
@@ -226,14 +228,16 @@ static int rk29_rt3261_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_enable_pin(dapm, "Headset Jack");
 	snd_soc_dapm_enable_pin(dapm, "Ext Spk");
 	snd_soc_dapm_enable_pin(dapm, "Headphone Jack");
-#ifdef CONFIG_HDMI
+//#ifdef CONFIG_HDMI
+#if 0
 	extern int hdmi_is_insert(void);
 	extern void codec_set_spk(bool on);         
 	if(hdmi_is_insert())                 
 		codec_set_spk(false);
 #endif
 
-#ifdef CONFIG_HDMI_RK30
+//#ifdef CONFIG_HDMI_RK30
+#if 0
 	extern int hdmi_get_hotplug(void);
 	if(hdmi_get_hotplug() == 2/*HDMI_HPD_ACTIVED*/)
 		codec_set_spk(false);

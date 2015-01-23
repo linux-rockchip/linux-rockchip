@@ -322,6 +322,48 @@ static struct platform_device rk29_device_backlight = {
 
 #endif
 
+#if defined (CONFIG_SND_SOC_RT3224) || defined (CONFIG_SND_SOC_RT3261)
+
+#define DIFFERENTIAL 1
+#define SINGLE_END 0
+#define TWO_SPK 2
+#define ONE_SPK 1
+
+enum {
+	SPK_AMPLIFY_ZERO_POINT_FIVE_WATT=1,
+	SPK_AMPLIFY_ZERO_POINT_SIX_WATT,
+	SPK_AMPLIFY_ZERO_POINT_EIGHT_WATT,
+	SPK_AMPLIFY_ONE_WATT,
+};
+
+enum {
+	LR_NORMAL,
+	LR_SWAP,
+	LEFT_COPY_TO_RIGHT,
+	RIGHT_COPY_LEFT,
+};
+
+static int rt3261_io_init(int gpio, char *iomux_name, int iomux_mode)
+{
+	gpio_request(gpio,NULL);
+	rk30_mux_api_set(iomux_name, iomux_mode);
+	gpio_direction_output(gpio,1);
+
+};
+
+static struct rt3261_platform_data rt3261_info = {
+	.codec_en_gpio 			= RK30_PIN4_PD7,
+	.codec_en_gpio_info		= {GPIO4D7_SMCDATA15_TRACEDATA15_NAME,GPIO4D_GPIO4D7},
+	.io_init			= rt3261_io_init,
+	.spk_num 			= TWO_SPK,
+	.modem_input_mode		= DIFFERENTIAL,
+	.lout_to_modem_mode		= DIFFERENTIAL,
+	.spk_amplify			= SPK_AMPLIFY_ZERO_POINT_SIX_WATT,
+	.playback_if1_data_control	= LR_NORMAL,
+	.playback_if2_data_control	= LR_NORMAL,
+};
+#endif
+
 #ifdef CONFIG_RK29_SUPPORT_MODEM
 
 #define RK30_MODEM_POWER        RK30_PIN4_PD1
@@ -1881,6 +1923,22 @@ static struct i2c_board_info __initdata i2c0_info[] = {
                 .flags                  = 0,
         },
 #endif
+#if defined (CONFIG_SND_SOC_RT3224) || defined (CONFIG_SND_SOC_RT3261)
+        {
+                .type                   = "rt3261",
+                .addr                   = 0x1c,
+                .flags                  = 0,
+				.platform_data          = &rt3261_info,
+        },
+#endif
+
+#ifdef CONFIG_SND_RK29_SOC_RT5640
+	    {
+			.type                   = "rt5640",
+			.addr                   = 0x1c,
+			.flags                  = 0,
+		},
+#endif
 
 #ifdef CONFIG_MFD_RK610
 		{
@@ -2166,6 +2224,13 @@ static void __init machine_rk30_board_init(void)
 #if defined(CONFIG_MT5931_MT6622)
     clk_set_rate(clk_get_sys("rk_serial.0", "uart"), 24*1000000);
 #endif
+#if defined (CONFIG_SND_SOC_RT3224) || defined (CONFIG_SND_SOC_RT3261)
+	//add for codec_en
+	gpio_request(RK30_PIN4_PD7, "codec_en");
+	rk30_mux_api_set(GPIO4D7_SMCDATA15_TRACEDATA15_NAME, GPIO4D_GPIO4D7);
+	gpio_direction_output(RK30_PIN4_PD7, GPIO_HIGH);
+#endif
+
 }
 
 #define RGA_VIDEO_MEM_SIZE	8*SZ_1M
